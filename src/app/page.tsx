@@ -30,8 +30,9 @@ export default function Home() {
           A private ledger for a life in film.
         </h1>
         <p className="text-paper-300 mt-7 max-w-2xl text-lg leading-8">
-          The data model, scoring engine, migration path, and visual language
-          are ready. Library and rating workflows arrive in the next phase.
+          The catalog is open: add films through TMDB or by hand, shape the
+          watchlist, and record the scores and watches that make each title
+          yours.
         </p>
       </section>
 
@@ -58,6 +59,12 @@ export default function Home() {
       </section>
 
       <div className="mt-12">
+        <Link
+          href="/library"
+          className="text-paper-100 decoration-accent-500 hover:text-accent-300 mr-7 text-sm underline underline-offset-4"
+        >
+          Enter the library
+        </Link>
         <Link
           href="/dev/tokens"
           className="text-paper-300 decoration-hairline hover:text-accent-300 text-sm underline underline-offset-4"

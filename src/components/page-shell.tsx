@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import type { ReactNode } from "react";
 
 export function PageShell({ children }: { children: ReactNode }) {
@@ -13,9 +14,15 @@ export function PageShell({ children }: { children: ReactNode }) {
             Picture House
           </Link>
           <nav
-            aria-label="Utility navigation"
-            className="text-paper-500 text-sm"
+            aria-label="Primary navigation"
+            className="text-paper-500 flex items-center gap-5 text-sm"
           >
+            <Link
+              href="/library"
+              className="hover:text-accent-300 transition-colors duration-150"
+            >
+              Library
+            </Link>
             <Link
               href="/dev/tokens"
               className="hover:text-accent-300 transition-colors duration-150"
@@ -28,6 +35,29 @@ export function PageShell({ children }: { children: ReactNode }) {
       <main className="mx-auto w-full max-w-7xl px-5 py-12 sm:px-8 sm:py-16">
         {children}
       </main>
+      <footer className="border-hairline mt-12 border-t">
+        <div className="text-paper-500 mx-auto flex max-w-7xl flex-col gap-4 px-5 py-8 text-xs leading-5 sm:px-8 md:flex-row md:items-center">
+          <a
+            href="https://www.themoviedb.org"
+            target="_blank"
+            rel="noreferrer"
+            className="shrink-0"
+          >
+            <Image
+              src="/tmdb.svg"
+              alt="The Movie Database"
+              width={34}
+              height={34}
+              className="h-auto w-[34px]"
+            />
+          </a>
+          <p>
+            This product uses the TMDB API but is not endorsed or certified by
+            TMDB. Film metadata and imagery are cached locally for this personal
+            library.
+          </p>
+        </div>
+      </footer>
     </div>
   );
 }

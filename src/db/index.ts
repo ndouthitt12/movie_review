@@ -6,7 +6,7 @@ import * as schema from "./schema";
 
 export function resolveDatabasePath() {
   return path.resolve(
-    process.cwd(),
+    /* turbopackIgnore: true */ process.cwd(),
     process.env.DATABASE_URL ?? "data/movie-ratings.sqlite",
   );
 }
@@ -15,7 +15,7 @@ export function createDb(databasePath = resolveDatabasePath()) {
   fs.mkdirSync(path.dirname(databasePath), { recursive: true });
   const sqlite = new Database(databasePath);
   sqlite.pragma("foreign_keys = ON");
-  sqlite.pragma("journal_mode = WAL");
+  sqlite.pragma("busy_timeout = 5000");
   return { db: drizzle(sqlite, { schema }), sqlite };
 }
 

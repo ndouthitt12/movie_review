@@ -1,0 +1,27 @@
+export function compareLibraryValues(
+  left: string | number | null | undefined,
+  right: string | number | null | undefined,
+  direction: "asc" | "desc",
+) {
+  const leftMissing = left === null || left === undefined;
+  const rightMissing = right === null || right === undefined;
+  if (leftMissing && rightMissing) return 0;
+  if (leftMissing) return 1;
+  if (rightMissing) return -1;
+  const result =
+    typeof left === "number" && typeof right === "number"
+      ? left - right
+      : String(left).localeCompare(String(right));
+  return direction === "desc" ? -result : result;
+}
+
+export function sameIdSet(
+  submitted: readonly number[],
+  expected: readonly number[],
+) {
+  if (submitted.length !== expected.length) return false;
+  const values = new Set(submitted);
+  return (
+    values.size === submitted.length && expected.every((id) => values.has(id))
+  );
+}

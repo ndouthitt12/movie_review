@@ -14,9 +14,19 @@ npm run db:seed
 npm run dev
 ```
 
-Open `http://localhost:3000`. The Phase 1 design reference is at `http://localhost:3000/dev/tokens`.
+Open `http://localhost:3000`. The library is at `/library`, and the design reference is at `/dev/tokens`.
 
-`TMDB_API_KEY` is reserved for the Phase 2 server-side proxy. `DATABASE_URL` defaults to `data/movie-ratings.sqlite`; the database and all `.env` files are ignored by Git.
+Set `TMDB_API_KEY` to a TMDB v3 API key to enable search and metadata lookup. The key is read only by server route handlers. `DATABASE_URL` defaults to `data/movie-ratings.sqlite`; the database and all `.env` files are ignored by Git.
+
+## Phase 2 workflows
+
+- Add films through debounced TMDB search or the manual fallback form.
+- Browse Watched as a sortable dense table or poster grid, maintain a drag-ordered To Watch list, and review To Re-Watch titles.
+- Share URL-backed title/notes, genre, franchise, year, and score filters.
+- Rate all eight attributes with live formula contributions and the secondary Quality score.
+- Edit film status and notes, and add, edit, or delete dated watch-log entries.
+
+TMDB metadata requests are proxied server-side, search results are cached for 15 minutes, and the UI includes TMDB’s required approved logo and attribution notice.
 
 ## Commands
 
