@@ -41,3 +41,15 @@ export function validRcaFilterIds(
     ),
   ];
 }
+
+export function scoreWithinRange(
+  score: number | null,
+  minimum: number,
+  maximum: number,
+  maximumExclusive = false,
+) {
+  if (score === null) return minimum === -Infinity && maximum === Infinity;
+  return (
+    score >= minimum && (maximumExclusive ? score < maximum : score <= maximum)
+  );
+}

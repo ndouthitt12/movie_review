@@ -87,3 +87,19 @@ export const rcaTagMergeSchema = z.object({
   sourceId: z.number().int().positive(),
   targetId: z.number().int().positive(),
 });
+
+export const rubricSchema = z.object({
+  rubric: z
+    .array(
+      z.object({
+        score: z.number().int().min(0).max(10),
+        meaning: z.string().trim().min(1).max(500),
+        examples: z.array(z.string().trim().min(1).max(200)).max(20),
+      }),
+    )
+    .length(11)
+    .refine(
+      (rows) => new Set(rows.map(({ score }) => score)).size === 11,
+      "Rubric must contain each score from 0 through 10 exactly once.",
+    ),
+});

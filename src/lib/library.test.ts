@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { compareLibraryValues, sameIdSet, validRcaFilterIds } from "./library";
+import {
+  compareLibraryValues,
+  sameIdSet,
+  scoreWithinRange,
+  validRcaFilterIds,
+} from "./library";
 
 describe("library helpers", () => {
   it("sorts ISO dates symmetrically and keeps missing values last", () => {
@@ -19,5 +24,13 @@ describe("library helpers", () => {
   it("drops stale, invalid, and duplicate RCA ids from URL filters", () => {
     expect(validRcaFilterIds("1,999,2,1,nope,-4", [1, 2, 3])).toEqual([1, 2]);
     expect(validRcaFilterIds("999", [1, 2, 3])).toEqual([]);
+  });
+
+  it("keeps histogram clickthrough ranges half-open without changing manual ranges", () => {
+    expect(scoreWithinRange(7, 6.5, 7, true)).toBe(false);
+    expect(scoreWithinRange(6.999, 6.5, 7, true)).toBe(true);
+    expect(scoreWithinRange(7, 6.5, 7)).toBe(true);
+    expect(scoreWithinRange(null, 0, 10)).toBe(false);
+    expect(scoreWithinRange(null, -Infinity, Infinity)).toBe(true);
   });
 });

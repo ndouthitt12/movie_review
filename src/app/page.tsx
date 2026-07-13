@@ -37,6 +37,12 @@ export default async function Home() {
             Browse your films
           </Link>
           <Link
+            href="/dashboard"
+            className="border-hairline bg-ink-850 text-paper-100 hover:border-paper-500 rounded-ui border px-6 py-3 text-sm font-bold"
+          >
+            Open dashboard
+          </Link>
+          <Link
             href="/settings/rca"
             className="border-hairline bg-ink-850 text-paper-100 hover:border-paper-500 rounded-ui border px-6 py-3 text-sm font-bold"
           >

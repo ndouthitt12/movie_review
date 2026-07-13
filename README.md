@@ -14,7 +14,7 @@ npm run db:seed
 npm run dev
 ```
 
-Open `http://localhost:3000`. The library is at `/library`, and the design reference is at `/dev/tokens`.
+Open `http://localhost:3000`. The library is at `/library`, analytics are at `/dashboard`, the editable rating scale is at `/rubric`, and the design reference is at `/dev/tokens`.
 
 Set `TMDB_API_KEY` to a TMDB v3 API key to enable search and metadata lookup. The key is read only by server route handlers. `DATABASE_URL` defaults to `data/movie-ratings.sqlite`; the database and all `.env` files are ignored by Git.
 
@@ -27,6 +27,14 @@ Set `TMDB_API_KEY` to a TMDB v3 API key to enable search and metadata lookup. Th
 - Edit film status and notes, and add, edit, or delete dated watch-log entries.
 
 TMDB metadata requests are proxied server-side, search results are cached for 15 minutes, and the UI includes TMDB’s required approved logo and attribution notice.
+
+## Phase 4 workflows
+
+- Review rating distributions, monthly and yearly watch trends, attribute averages, genre and decade breakdowns, franchise report cards, correlations, and RCA tag patterns on `/dashboard`.
+- Track current and longest day, week, and month streaks; inspect every logged watch in the year calendar; and optionally set a weekly pace goal.
+- Select genre, decade, franchise, and RCA analytics to open the corresponding URL-filtered library view.
+- Edit the 0–10 meanings and example films on `/rubric`; rating screens link directly to this reference.
+- Visually review the bar, histogram, radar, sparkline, and heatmap primitives on `/dev/components`.
 
 ## Commands
 

@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { starterRcaTags } from "@/db/seed-data";
+import { defaultRubric, starterRcaTags } from "@/db/seed-data";
 import { rcaAttributes } from "@/db/schema";
 
 let directory: string;
@@ -22,6 +22,7 @@ let saveRating: (
   request: Request,
   context: { params: Promise<{ id: string }> },
 ) => Promise<Response>;
+let updateRubric: (request: Request) => Promise<Response>;
 
 beforeAll(async () => {
   directory = await fs.mkdtemp(path.join(os.tmpdir(), "picture-house-phase3-"));
@@ -60,6 +61,7 @@ beforeAll(async () => {
   deleteTag = item.DELETE;
   mergeTags = (await import("@/app/api/rca-tags/merge/route")).POST;
   saveRating = (await import("@/app/api/films/[id]/rating/route")).PUT;
+  updateRubric = (await import("@/app/api/settings/rubric/route")).PUT;
 });
 
 afterAll(async () => {
@@ -185,6 +187,40 @@ describe("Phase 3 RCA integration", () => {
     expect(
       sqlite.prepare("select count(*) as count from film_rca_tags").get(),
     ).toEqual({ count: 0 });
+  });
+});
+
+describe("Phase 4 rubric integration", () => {
+  it("validates and persists all eleven rubric levels", async () => {
+    const invalid = await updateRubric(
+      jsonRequest("http://test/api/settings/rubric", "PUT", {
+        rubric: defaultRubric.slice(0, 10),
+      }),
+    );
+    expect(invalid.status).toBe(400);
+
+    const rubric = defaultRubric.map((row) =>
+      row.score === 7
+        ? { ...row, meaning: "A personal favorite", examples: ["Arrival"] }
+        : row,
+    );
+    const response = await updateRubric(
+      jsonRequest("http://test/api/settings/rubric", "PUT", { rubric }),
+    );
+    expect(response.status).toBe(200);
+    expect(
+      JSON.parse(
+        (
+          sqlite.prepare("select rubric from settings where id = 1").get() as {
+            rubric: string;
+          }
+        ).rubric,
+      ).find((row: { score: number }) => row.score === 7),
+    ).toEqual({
+      score: 7,
+      meaning: "A personal favorite",
+      examples: ["Arrival"],
+    });
   });
 });
 

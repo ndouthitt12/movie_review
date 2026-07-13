@@ -23,14 +23,26 @@ export function PageShell({ children }: { children: ReactNode }) {
             className="text-paper-300 flex items-center gap-5 text-xs font-semibold tracking-wide uppercase"
           >
             <Link
+              href="/dashboard"
+              className="hover:text-paper-100 transition-colors duration-150"
+            >
+              Dashboard
+            </Link>
+            <Link
               href="/library"
               className="hover:text-paper-100 transition-colors duration-150"
             >
               Library
             </Link>
             <Link
+              href="/rubric"
+              className="hover:text-paper-100 hidden transition-colors duration-150 sm:block"
+            >
+              Rubric
+            </Link>
+            <Link
               href="/settings/rca"
-              className="hover:text-paper-100 transition-colors duration-150"
+              className="hover:text-paper-100 hidden transition-colors duration-150 md:block"
             >
               Why tags
             </Link>
@@ -51,8 +63,9 @@ export function PageShell({ children }: { children: ReactNode }) {
             <Image
               src="/tmdb.svg"
               alt="The Movie Database"
-              width={34}
-              height={34}
+              width={70}
+              height={30}
+              className="h-[30px] w-auto"
             />
           </a>
           <p>

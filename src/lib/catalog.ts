@@ -12,6 +12,7 @@ import {
 } from "@/db/schema";
 import { defaultWeights } from "@/db/seed-data";
 import type { RatingWeights } from "./scoring";
+import type { DashboardFilm } from "./stats";
 
 export async function getLibraryFilms() {
   const subFranchises = alias(franchises, "sub_franchises");
@@ -146,4 +147,82 @@ export async function getFilmDetail(id: number) {
     weights: (setting?.weights ?? defaultWeights) as RatingWeights,
     selectedRcaTags,
   };
+}
+
+export async function getDashboardData() {
+  const subFranchises = alias(franchises, "dashboard_sub_franchises");
+  const filmRows = db
+    .select({
+      id: films.id,
+      title: films.title,
+      releaseYear: films.releaseYear,
+      status: films.status,
+      genrePrimary: films.genrePrimary,
+      genreSecondary: films.genreSecondary,
+      franchise: franchises.name,
+      subFranchise: subFranchises.name,
+      story: ratings.story,
+      direction: ratings.direction,
+      writing: ratings.writing,
+      acting: ratings.acting,
+      music: ratings.music,
+      impact: ratings.impact,
+      rewatchability: ratings.rewatchability,
+      genreFit: ratings.genreFit,
+      overall: ratings.overall,
+    })
+    .from(films)
+    .leftJoin(ratings, eq(ratings.filmId, films.id))
+    .leftJoin(franchises, eq(franchises.id, films.franchiseId))
+    .leftJoin(subFranchises, eq(subFranchises.id, films.subFranchiseId))
+    .all();
+  const tagRows = db
+    .select({
+      filmId: filmRcaTags.filmId,
+      id: rcaTags.id,
+      label: rcaTags.label,
+      attribute: rcaTags.attribute,
+    })
+    .from(filmRcaTags)
+    .innerJoin(rcaTags, eq(rcaTags.id, filmRcaTags.rcaTagId))
+    .all();
+  const tagsByFilm = new Map<number, DashboardFilm["rcaTags"]>();
+  for (const tag of tagRows) {
+    const list = tagsByFilm.get(tag.filmId) ?? [];
+    list.push({ id: tag.id, label: tag.label, attribute: tag.attribute });
+    tagsByFilm.set(tag.filmId, list);
+  }
+  const dashboardFilms: DashboardFilm[] = filmRows.map((film) => {
+    const rating =
+      film.overall === null || film.story === null
+        ? null
+        : {
+            story: film.story,
+            direction: film.direction!,
+            writing: film.writing!,
+            acting: film.acting!,
+            music: film.music!,
+            impact: film.impact!,
+            rewatchability: film.rewatchability!,
+            genreFit: film.genreFit!,
+            overall: film.overall,
+          };
+    return { ...film, rating, rcaTags: tagsByFilm.get(film.id) ?? [] };
+  });
+  const watches = db
+    .select({
+      filmId: watchLog.filmId,
+      watchedOn: watchLog.watchedOn,
+      title: films.title,
+    })
+    .from(watchLog)
+    .innerJoin(films, eq(films.id, watchLog.filmId))
+    .orderBy(asc(watchLog.watchedOn), asc(watchLog.id))
+    .all();
+  return { films: dashboardFilms, watches };
+}
+
+export async function getRubric() {
+  const setting = db.select().from(settings).where(eq(settings.id, 1)).get();
+  return setting?.rubric ?? [];
 }

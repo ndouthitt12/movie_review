@@ -9,7 +9,11 @@ import { RcaChip } from "@/components/rca/rca-chip";
 import { RcaMultiselect } from "@/components/rca/rca-multiselect";
 import { rankFilms } from "@/lib/scoring";
 import { tmdbImage } from "@/lib/tmdb";
-import { compareLibraryValues, validRcaFilterIds } from "@/lib/library";
+import {
+  compareLibraryValues,
+  scoreWithinRange,
+  validRcaFilterIds,
+} from "@/lib/library";
 import type { LibraryFilm } from "@/lib/catalog";
 import type { RcaTagWithUsage } from "@/lib/rca";
 
@@ -46,9 +50,10 @@ export function LibraryView({
   const router = useRouter();
   const pathname = usePathname();
   const status = params.get("status") ?? "watched";
+  const isRatingView = status === "watched" || status === "rated";
   const view = params.get("view") ?? "table";
   const sort = (params.get("sort") ??
-    (status === "watched" ? "rank" : "title")) as SortKey;
+    (isRatingView ? "rank" : "title")) as SortKey;
   const direction = params.get("dir") === "desc" ? "desc" : "asc";
   const [ordered, setOrdered] = useState(() =>
     films
@@ -70,6 +75,7 @@ export function LibraryView({
     const next = new URLSearchParams(params.toString());
     if (!value) next.delete(key);
     else next.set(key, value);
+    if (key === "maxScore") next.delete("maxScoreExclusive");
     router.replace(`${pathname}?${next.toString()}`, { scroll: false });
   }
 
@@ -105,11 +111,14 @@ export function LibraryView({
     const maxYear = parameterNumber(params.get("maxYear"), Infinity);
     const minScore = parameterNumber(params.get("minScore"), -Infinity);
     const maxScore = parameterNumber(params.get("maxScore"), Infinity);
+    const maxScoreExclusive = params.get("maxScoreExclusive") === "1";
     const rcaMode = params.get("rcaMode") === "all" ? "all" : "any";
     const base =
       status === "to_watch"
         ? ordered
-        : films.filter((film) => film.status === status);
+        : status === "rated"
+          ? films.filter(({ overall }) => overall !== null)
+          : films.filter((film) => film.status === status);
     const result = base
       .filter(
         (film) => !q || `${film.title} ${film.notes}`.toLowerCase().includes(q),
@@ -129,10 +138,8 @@ export function LibraryView({
       .filter(
         (film) => film.releaseYear >= minYear && film.releaseYear <= maxYear,
       )
-      .filter(
-        (film) =>
-          (film.overall ?? -Infinity) >= minScore &&
-          (film.overall ?? Infinity) <= maxScore,
+      .filter((film) =>
+        scoreWithinRange(film.overall, minScore, maxScore, maxScoreExclusive),
       )
       .filter((film) => {
         if (!selectedRcaIds.length) return true;
@@ -197,6 +204,7 @@ export function LibraryView({
     "maxYear",
     "minScore",
     "maxScore",
+    "maxScoreExclusive",
     "rca",
   ].some((key) => params.has(key));
 
@@ -205,6 +213,7 @@ export function LibraryView({
       <div className="border-hairline flex flex-wrap gap-2 border-b pb-5">
         {[
           ["watched", "Watched"],
+          ["rated", "All Rated"],
           ["to_watch", "To Watch"],
           ["to_rewatch", "To Re-Watch"],
         ].map(([value, label]) => (
@@ -216,7 +225,7 @@ export function LibraryView({
             {label}
           </button>
         ))}
-        {status === "watched" ? (
+        {isRatingView ? (
           <div className="ml-auto flex gap-2">
             <button
               onClick={() => setDiscreteParam("view", "table")}
@@ -333,7 +342,7 @@ export function LibraryView({
         />
       ) : status === "to_rewatch" ? (
         <RewatchList films={filtered} />
-      ) : view === "grid" && status === "watched" ? (
+      ) : view === "grid" && isRatingView ? (
         <PosterGrid films={filtered} />
       ) : (
         <FilmTable

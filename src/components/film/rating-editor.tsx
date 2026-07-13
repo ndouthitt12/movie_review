@@ -343,7 +343,7 @@ export function RatingEditor({
           {saving ? "Saving…" : "Save rating"}
         </Button>
         {initial ? <QuietButton onClick={cancel}>Cancel</QuietButton> : null}
-        <a href="/dev/tokens" className="link-button ml-1">
+        <a href="/rubric" className="link-button ml-1">
           Rating rubric
         </a>
         {message ? (
