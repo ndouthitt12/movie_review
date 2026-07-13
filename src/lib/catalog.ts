@@ -1,13 +1,21 @@
-import { asc, desc, eq } from "drizzle-orm";
+import { asc, desc, eq, inArray } from "drizzle-orm";
 import { alias } from "drizzle-orm/sqlite-core";
 import { db } from "@/db";
-import { films, franchises, ratings, settings, watchLog } from "@/db/schema";
+import {
+  filmRcaTags,
+  films,
+  franchises,
+  ratings,
+  rcaTags,
+  settings,
+  watchLog,
+} from "@/db/schema";
 import { defaultWeights } from "@/db/seed-data";
 import type { RatingWeights } from "./scoring";
 
 export async function getLibraryFilms() {
   const subFranchises = alias(franchises, "sub_franchises");
-  return db
+  const rows = db
     .select({
       id: films.id,
       tmdbId: films.tmdbId,
@@ -39,6 +47,45 @@ export async function getLibraryFilms() {
     .leftJoin(subFranchises, eq(subFranchises.id, films.subFranchiseId))
     .orderBy(asc(films.watchOrder), asc(films.title))
     .all();
+  const tagRows = rows.length
+    ? db
+        .select({
+          filmId: filmRcaTags.filmId,
+          id: rcaTags.id,
+          label: rcaTags.label,
+          attribute: rcaTags.attribute,
+          polarity: rcaTags.polarity,
+          color: rcaTags.color,
+        })
+        .from(filmRcaTags)
+        .innerJoin(rcaTags, eq(rcaTags.id, filmRcaTags.rcaTagId))
+        .where(
+          inArray(
+            filmRcaTags.filmId,
+            rows.map(({ id }) => id),
+          ),
+        )
+        .orderBy(asc(rcaTags.label))
+        .all()
+    : [];
+  const tagsByFilm = new Map<number, typeof tagRows>();
+  for (const tag of tagRows) {
+    const list = tagsByFilm.get(tag.filmId) ?? [];
+    list.push(tag);
+    tagsByFilm.set(tag.filmId, list);
+  }
+  return rows.map((film) => ({
+    ...film,
+    rcaTags: (tagsByFilm.get(film.id) ?? []).map(
+      ({ id, label, attribute, polarity, color }) => ({
+        id,
+        label,
+        attribute,
+        polarity,
+        color,
+      }),
+    ),
+  }));
 }
 
 export type LibraryFilm = Awaited<ReturnType<typeof getLibraryFilms>>[number];
@@ -79,10 +126,24 @@ export async function getFilmDetail(id: number) {
     .orderBy(desc(watchLog.watchedOn), desc(watchLog.id))
     .all();
   const setting = db.select().from(settings).where(eq(settings.id, 1)).get();
+  const selectedRcaTags = db
+    .select({
+      id: rcaTags.id,
+      label: rcaTags.label,
+      attribute: rcaTags.attribute,
+      polarity: rcaTags.polarity,
+      color: rcaTags.color,
+    })
+    .from(filmRcaTags)
+    .innerJoin(rcaTags, eq(rcaTags.id, filmRcaTags.rcaTagId))
+    .where(eq(filmRcaTags.filmId, id))
+    .orderBy(asc(rcaTags.attribute), asc(rcaTags.label))
+    .all();
   return {
     film,
     rating,
     watches,
     weights: (setting?.weights ?? defaultWeights) as RatingWeights,
+    selectedRcaTags,
   };
 }

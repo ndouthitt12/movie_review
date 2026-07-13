@@ -2,13 +2,15 @@ import { AddFilmDialog } from "@/components/library/add-film-dialog";
 import { LibraryView } from "@/components/library/library-view";
 import { PageShell } from "@/components/page-shell";
 import { getCatalogOptions, getLibraryFilms } from "@/lib/catalog";
+import { getRcaTagsWithUsage } from "@/lib/rca";
 
 export const dynamic = "force-dynamic";
 
 export default async function LibraryPage() {
-  const [films, options] = await Promise.all([
+  const [films, options, rcaTags] = await Promise.all([
     getLibraryFilms(),
     getCatalogOptions(),
+    getRcaTagsWithUsage(),
   ]);
   const filterFranchises = [
     ...new Set(options.franchises.map(({ name }) => name)),
@@ -18,16 +20,14 @@ export default async function LibraryPage() {
     .map(({ name }) => name);
   return (
     <PageShell>
-      <header className="mb-10 flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
+      <header className="mb-8 flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-accent-300 text-xs tracking-[0.22em] uppercase">
-            Personal catalog
-          </p>
-          <h1 className="text-paper-100 mt-3 font-serif text-5xl tracking-tight">
-            The library
+          <p className="eyebrow">Personal catalog</p>
+          <h1 className="text-paper-100 mt-1 text-4xl font-bold tracking-tight">
+            Your films
           </h1>
           <p className="text-paper-500 mt-3 text-sm">
-            Dense when you need it. Cinematic when you don’t.
+            Sort the scores, scan the posters, remember why.
           </p>
         </div>
         <AddFilmDialog
@@ -39,6 +39,7 @@ export default async function LibraryPage() {
         films={films}
         genres={options.genres}
         franchises={filterFranchises}
+        rcaTags={rcaTags}
       />
     </PageShell>
   );

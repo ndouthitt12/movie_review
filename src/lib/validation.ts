@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { filmStatuses } from "@/db/schema";
+import { filmStatuses, rcaAttributes, rcaPolarities } from "@/db/schema";
 
 const optionalText = z.string().trim().max(5000).nullable().optional();
 
@@ -45,6 +45,7 @@ export const ratingSchema = z
     quality: score,
     promoteToWatched: z.boolean().optional().default(false),
     watchedOn: z.iso.date().optional(),
+    rcaTagIds: z.array(z.number().int().positive()).max(100).default([]),
   })
   .refine((value) => !value.promoteToWatched || value.watchedOn, {
     message: "A local watch date is required when moving a film to Watched.",
@@ -58,4 +59,31 @@ export const watchSchema = z.object({
 
 export const reorderSchema = z.object({
   filmIds: z.array(z.number().int().positive()).min(1),
+});
+
+const optionalColor = z
+  .string()
+  .trim()
+  .regex(/^#[0-9a-fA-F]{6}$/, "Color must be a six-digit hex value.")
+  .nullable()
+  .optional();
+
+export const rcaTagCreateSchema = z.object({
+  label: z.string().trim().min(1).max(80),
+  attribute: z.enum(rcaAttributes),
+  polarity: z.enum(rcaPolarities),
+  color: optionalColor,
+});
+
+export const rcaTagUpdateSchema = z
+  .object({
+    label: z.string().trim().min(1).max(80).optional(),
+    polarity: z.enum(rcaPolarities).optional(),
+    color: optionalColor,
+  })
+  .refine((value) => Object.keys(value).length > 0, "No changes supplied");
+
+export const rcaTagMergeSchema = z.object({
+  sourceId: z.number().int().positive(),
+  targetId: z.number().int().positive(),
 });

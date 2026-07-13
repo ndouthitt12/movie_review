@@ -5,10 +5,13 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { Input } from "@/components/input";
+import { RcaChip } from "@/components/rca/rca-chip";
+import { RcaMultiselect } from "@/components/rca/rca-multiselect";
 import { rankFilms } from "@/lib/scoring";
 import { tmdbImage } from "@/lib/tmdb";
 import { compareLibraryValues } from "@/lib/library";
 import type { LibraryFilm } from "@/lib/catalog";
+import type { RcaTagWithUsage } from "@/lib/rca";
 
 const attributes = [
   "story",
@@ -32,10 +35,12 @@ export function LibraryView({
   films,
   genres,
   franchises,
+  rcaTags,
 }: {
   films: LibraryFilm[];
   genres: string[];
   franchises: string[];
+  rcaTags: RcaTagWithUsage[];
 }) {
   const params = useSearchParams();
   const router = useRouter();
@@ -92,6 +97,8 @@ export function LibraryView({
     const maxYear = parameterNumber(params.get("maxYear"), Infinity);
     const minScore = parameterNumber(params.get("minScore"), -Infinity);
     const maxScore = parameterNumber(params.get("maxScore"), Infinity);
+    const selectedRcaIds = parseIdList(params.get("rca"));
+    const rcaMode = params.get("rcaMode") === "all" ? "all" : "any";
     const base =
       status === "to_watch"
         ? ordered
@@ -119,7 +126,14 @@ export function LibraryView({
         (film) =>
           (film.overall ?? -Infinity) >= minScore &&
           (film.overall ?? Infinity) <= maxScore,
-      );
+      )
+      .filter((film) => {
+        if (!selectedRcaIds.length) return true;
+        const ids = new Set(film.rcaTags.map(({ id }) => id));
+        return rcaMode === "all"
+          ? selectedRcaIds.every((id) => ids.has(id))
+          : selectedRcaIds.some((id) => ids.has(id));
+      });
     return status === "to_watch"
       ? result
       : result.sort((a, b) => compare(a, b, sort, direction, ranks));
@@ -176,6 +190,7 @@ export function LibraryView({
     "maxYear",
     "minScore",
     "maxScore",
+    "rca",
   ].some((key) => params.has(key));
 
   return (
@@ -261,12 +276,30 @@ export function LibraryView({
           onChange={(event) => setParam("maxScore", event.target.value)}
           placeholder="Score to"
         />
+        <div className="md:col-span-3 lg:col-span-3">
+          <RcaMultiselect
+            label="Filter by why tags"
+            options={rcaTags}
+            selectedIds={parseIdList(params.get("rca"))}
+            onChange={(ids) =>
+              setDiscreteParam("rca", ids.length ? ids.join(",") : null)
+            }
+            placeholder="Filter by why tags…"
+          />
+        </div>
         <select
-          disabled
-          aria-label="RCA tag filter arrives in Phase 3"
-          className="rounded-ui border-hairline bg-ink-900 text-paper-500 h-10 border px-3 text-sm"
+          value={params.get("rcaMode") === "all" ? "all" : "any"}
+          onChange={(event) =>
+            setDiscreteParam(
+              "rcaMode",
+              event.target.value === "all" ? "all" : null,
+            )
+          }
+          aria-label="Why tag match mode"
+          className="select-field"
         >
-          <option>RCA tags — Phase 3</option>
+          <option value="any">Match any tag</option>
+          <option value="all">Match all tags</option>
         </select>
       </div>
 
@@ -391,6 +424,18 @@ function FilmTable({
                 >
                   {film.title}
                 </Link>
+                {film.rcaTags.length ? (
+                  <div className="mt-1.5 flex max-w-xs flex-wrap gap-1">
+                    {film.rcaTags.slice(0, 3).map((tag) => (
+                      <RcaChip key={tag.id} tag={tag} compact />
+                    ))}
+                    {film.rcaTags.length > 3 ? (
+                      <span className="text-paper-500 text-[10px]">
+                        +{film.rcaTags.length - 3}
+                      </span>
+                    ) : null}
+                  </div>
+                ) : null}
               </td>
               <td className="border-hairline text-paper-500 border-b px-3 py-2">
                 {film.releaseYear}
@@ -422,7 +467,7 @@ function PosterGrid({ films }: { films: LibraryFilm[] }) {
     <div className="grid grid-cols-2 gap-x-4 gap-y-7 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
       {films.map((film) => (
         <Link key={film.id} href={`/films/${film.id}`} className="group">
-          <div className="rounded-ui border-hairline bg-ink-900 relative aspect-[2/3] overflow-hidden border">
+          <div className="poster-frame relative aspect-[2/3] overflow-hidden">
             {film.posterPath ? (
               <Image
                 src={tmdbImage(film.posterPath, "w342")!}
@@ -436,6 +481,22 @@ function PosterGrid({ films }: { films: LibraryFilm[] }) {
                 {film.title}
               </div>
             )}
+            <div className="bg-ink-950/90 absolute inset-x-0 bottom-0 translate-y-full p-3 transition-transform duration-200 group-hover:translate-y-0 group-focus-visible:translate-y-0">
+              <p className="text-positive text-xl font-bold tabular-nums">
+                {film.overall?.toFixed(3) ?? "Unrated"}
+              </p>
+              {film.rcaTags.length ? (
+                <div className="mt-2 flex flex-wrap gap-1">
+                  {film.rcaTags.slice(0, 4).map((tag) => (
+                    <RcaChip key={tag.id} tag={tag} compact />
+                  ))}
+                </div>
+              ) : (
+                <p className="text-paper-500 mt-1 text-[10px]">
+                  No why tags yet
+                </p>
+              )}
+            </div>
           </div>
           <h3 className="text-paper-100 mt-2 truncate text-sm font-medium">
             {film.title}
@@ -573,4 +634,12 @@ function parameterNumber(value: string | null, fallback: number) {
   if (value === null || value.trim() === "") return fallback;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function parseIdList(value: string | null) {
+  if (!value) return [];
+  return value
+    .split(",")
+    .map(Number)
+    .filter((id) => Number.isInteger(id) && id > 0);
 }

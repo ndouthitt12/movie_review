@@ -6,6 +6,7 @@ import { RatingEditor } from "@/components/film/rating-editor";
 import { WatchLog } from "@/components/film/watch-log";
 import { PageShell } from "@/components/page-shell";
 import { getFilmDetail } from "@/lib/catalog";
+import { getRcaTagsWithUsage } from "@/lib/rca";
 import { tmdbImage } from "@/lib/tmdb";
 
 export const dynamic = "force-dynamic";
@@ -17,9 +18,12 @@ export default async function FilmPage({
 }) {
   const id = Number((await params).id);
   if (!Number.isInteger(id)) notFound();
-  const detail = await getFilmDetail(id);
+  const [detail, rcaTags] = await Promise.all([
+    getFilmDetail(id),
+    getRcaTagsWithUsage(),
+  ]);
   if (!detail) notFound();
-  const { film, rating, watches, weights } = detail;
+  const { film, rating, watches, weights, selectedRcaTags } = detail;
   const initialRating = rating
     ? {
         story: rating.story,
@@ -58,7 +62,7 @@ export default async function FilmPage({
         <div className="bg-ink-950/70 absolute inset-0" />
         <div className="film-grain absolute inset-0 opacity-20" />
         <div className="relative z-10 grid min-h-[31rem] items-end gap-8 p-6 sm:p-10 md:grid-cols-[13rem_1fr]">
-          <div className="rounded-ui border-hairline bg-ink-900 relative aspect-[2/3] overflow-hidden border">
+          <div className="rounded-ui border-hairline bg-ink-900 relative aspect-[2/3] w-36 overflow-hidden border sm:w-48 md:w-auto">
             {poster ? (
               <Image
                 src={poster}
@@ -116,6 +120,8 @@ export default async function FilmPage({
           status={film.status}
           initial={initialRating}
           weights={weights}
+          allRcaTags={rcaTags}
+          initialRcaTags={selectedRcaTags}
         />
         <WatchLog
           filmId={film.id}

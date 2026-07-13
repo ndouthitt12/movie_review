@@ -1,7 +1,11 @@
 import "dotenv/config";
 import { createDb } from "../src/db";
-import { defaultRubric, defaultWeights } from "../src/db/seed-data";
-import { settings } from "../src/db/schema";
+import {
+  defaultRubric,
+  defaultWeights,
+  starterRcaTags,
+} from "../src/db/seed-data";
+import { rcaTags, settings } from "../src/db/schema";
 
 const { db, sqlite } = createDb();
 try {
@@ -16,7 +20,17 @@ try {
       },
     })
     .run();
-  console.log("Default weights and rating rubric seeded.");
+  db.insert(rcaTags)
+    .values(
+      starterRcaTags.map(([attribute, label, polarity]) => ({
+        attribute,
+        label,
+        polarity,
+      })),
+    )
+    .onConflictDoNothing()
+    .run();
+  console.log("Default weights, rating rubric, and RCA tags seeded.");
 } finally {
   sqlite.close();
 }

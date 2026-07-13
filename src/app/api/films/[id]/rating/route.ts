@@ -1,8 +1,15 @@
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { defaultWeights } from "@/db/seed-data";
-import { films, ratings, settings, watchLog } from "@/db/schema";
+import {
+  filmRcaTags,
+  films,
+  ratings,
+  rcaTags,
+  settings,
+  watchLog,
+} from "@/db/schema";
 import {
   computeOverall,
   computeSecondary,
@@ -34,7 +41,21 @@ export async function PUT(
     .where(eq(settings.id, 1))
     .get();
   const weights = (setting?.weights ?? defaultWeights) as RatingWeights;
-  const { promoteToWatched, watchedOn, quality, ...scores } = parsed.data;
+  const { promoteToWatched, watchedOn, quality, rcaTagIds, ...scores } =
+    parsed.data;
+  const uniqueRcaTagIds = [...new Set(rcaTagIds)];
+  const validTags = uniqueRcaTagIds.length
+    ? db
+        .select({ id: rcaTags.id })
+        .from(rcaTags)
+        .where(inArray(rcaTags.id, uniqueRcaTagIds))
+        .all()
+    : [];
+  if (validTags.length !== uniqueRcaTagIds.length)
+    return NextResponse.json(
+      { error: "One or more RCA tags no longer exist." },
+      { status: 409 },
+    );
   const overall = computeOverall(scores, weights);
   const secondary = computeSecondary(
     quality,
@@ -64,6 +85,11 @@ export async function PUT(
         },
       })
       .run();
+    tx.delete(filmRcaTags).where(eq(filmRcaTags.filmId, id)).run();
+    if (uniqueRcaTagIds.length)
+      tx.insert(filmRcaTags)
+        .values(uniqueRcaTagIds.map((rcaTagId) => ({ filmId: id, rcaTagId })))
+        .run();
     if (film.status === "to_watch" && promoteToWatched) {
       const today = watchedOn!;
       tx.update(films)

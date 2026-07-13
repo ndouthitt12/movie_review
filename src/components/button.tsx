@@ -7,7 +7,7 @@ export const Button = forwardRef<
   return (
     <button
       ref={ref}
-      className={`rounded-ui border-accent-500 bg-accent-500 text-paper-100 hover:border-accent-400 hover:bg-accent-400 inline-flex min-h-9 items-center justify-center border px-4 text-sm font-medium transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-40 ${className}`}
+      className={`rounded-ui border-positive bg-positive text-ink-950 inline-flex min-h-9 items-center justify-center border px-4 text-sm font-bold transition duration-150 hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40 ${className}`}
       {...props}
     />
   );

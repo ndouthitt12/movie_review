@@ -2,7 +2,12 @@
 
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { Button } from "@/components/button";
+import { Button, QuietButton } from "@/components/button";
+import { RcaChip } from "@/components/rca/rca-chip";
+import {
+  RcaMultiselect,
+  type RcaOption,
+} from "@/components/rca/rca-multiselect";
 import { dateInTimeZone } from "@/lib/dates";
 import {
   computeOverall,
@@ -23,27 +28,45 @@ const labels: Record<keyof AttributeScores, string> = {
   rewatchability: "Rewatchability",
   genreFit: "Genre fit",
 };
+const schemaAttribute: Record<keyof AttributeScores, RcaOption["attribute"]> = {
+  story: "story",
+  direction: "direction",
+  writing: "writing",
+  acting: "acting",
+  music: "music",
+  impact: "impact",
+  rewatchability: "rewatchability",
+  genreFit: "genre_fit",
+};
 
 export function RatingEditor({
   filmId,
   status,
   initial,
   weights,
+  allRcaTags,
+  initialRcaTags,
 }: {
   filmId: number;
   status: string;
   initial: InitialRating | null;
   weights: RatingWeights;
+  allRcaTags: RcaOption[];
+  initialRcaTags: RcaOption[];
 }) {
   const router = useRouter();
-  const [scores, setScores] = useState<AttributeScores>(
-    () =>
-      initial ??
-      (Object.fromEntries(
-        scoreAttributes.map((key) => [key, 50]),
-      ) as unknown as AttributeScores),
-  );
+  const defaultScores = () =>
+    initial ??
+    (Object.fromEntries(
+      scoreAttributes.map((key) => [key, 50]),
+    ) as unknown as AttributeScores);
+  const [scores, setScores] = useState<AttributeScores>(defaultScores);
   const [quality, setQuality] = useState(initial?.quality ?? 50);
+  const [tags, setTags] = useState(allRcaTags);
+  const [selectedIds, setSelectedIds] = useState(
+    initialRcaTags.map(({ id }) => id),
+  );
+  const [editing, setEditing] = useState(!initial);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const overall = useMemo(
@@ -54,6 +77,23 @@ export function RatingEditor({
     () => computeSecondary(quality, scores.rewatchability, scores.genreFit),
     [quality, scores],
   );
+
+  async function createTag(attribute: RcaOption["attribute"], label: string) {
+    const response = await fetch("/api/rca-tags", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        label,
+        attribute,
+        polarity: "neutral",
+        color: null,
+      }),
+    });
+    const body = (await response.json()) as RcaOption & { error?: string };
+    if (!response.ok) throw new Error(body.error ?? "Could not create tag.");
+    setTags((current) => [...current, body]);
+    return body;
+  }
 
   async function save() {
     let promoteToWatched = false;
@@ -69,6 +109,7 @@ export function RatingEditor({
       body: JSON.stringify({
         ...scores,
         quality,
+        rcaTagIds: selectedIds,
         promoteToWatched,
         watchedOn: promoteToWatched ? dateInTimeZone() : undefined,
       }),
@@ -77,75 +118,190 @@ export function RatingEditor({
     setSaving(false);
     if (!response.ok) setMessage(body.error ?? "Could not save rating.");
     else {
-      setMessage("Rating saved.");
+      setMessage("Rating and why tags saved.");
+      setEditing(false);
       router.refresh();
     }
   }
 
-  return (
-    <section className="border-hairline border-t pt-10">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-accent-300 text-xs tracking-[0.2em] uppercase">
-            Weighted rating
-          </p>
-          <h2 className="text-paper-100 mt-2 font-serif text-4xl">
-            Make the score legible
-          </h2>
-        </div>
-        <div className="text-right">
-          <p className="text-paper-500 text-xs uppercase">Live overall</p>
-          <p className="text-score-high text-4xl tabular-nums">
-            {overall.toFixed(3)}
-          </p>
-        </div>
-      </div>
-      <div className="divide-hairline border-hairline mt-8 divide-y border-y">
-        {scoreAttributes.map((key) => (
-          <div
-            key={key}
-            className="grid gap-3 py-5 md:grid-cols-[10rem_1fr_4rem_9rem] md:items-center"
-          >
-            <label
-              htmlFor={`score-${key}`}
-              className="text-paper-100 font-medium"
-            >
-              {labels[key]}
-            </label>
-            <input
-              id={`score-${key}`}
-              type="range"
-              min={0}
-              max={100}
-              value={scores[key]}
-              onChange={(event) =>
-                setScores((current) => ({
-                  ...current,
-                  [key]: Number(event.target.value),
-                }))
-              }
-              className="accent-accent-400"
-            />
-            <output
-              htmlFor={`score-${key}`}
-              className="text-paper-100 text-right tabular-nums"
-            >
-              {scores[key]}
-            </output>
-            <div className="text-paper-500 text-right text-xs tabular-nums">
-              {contribution(key, scores, weights).toFixed(3)} overall
-            </div>
+  function cancel() {
+    setScores(defaultScores());
+    setQuality(initial?.quality ?? 50);
+    setSelectedIds(initialRcaTags.map(({ id }) => id));
+    setEditing(false);
+    setMessage("");
+  }
+
+  if (!editing && initial) {
+    return (
+      <section className="panel overflow-hidden">
+        <header className="border-hairline bg-ink-850 flex items-end justify-between border-b px-5 py-5 sm:px-7">
+          <div>
+            <p className="eyebrow">Your rating</p>
+            <h2 className="text-paper-100 mt-1 text-2xl font-bold">
+              The breakdown
+            </h2>
+          </div>
+          <div className="text-right">
+            <p className="text-positive text-3xl font-bold tabular-nums">
+              {overall.toFixed(3)}
+            </p>
             <button
-              disabled
-              className="text-paper-500 text-left text-xs md:col-start-2"
+              type="button"
+              onClick={() => setEditing(true)}
+              className="link-button mt-1"
             >
-              RCA annotations arrive in Phase 3
+              Edit rating
             </button>
           </div>
-        ))}
+        </header>
+        <div className="bg-hairline grid gap-px sm:grid-cols-2 lg:grid-cols-4">
+          {scoreAttributes.map((key) => {
+            const attribute = schemaAttribute[key];
+            const selected = tags.filter(
+              (tag) =>
+                tag.attribute === attribute && selectedIds.includes(tag.id),
+            );
+            return (
+              <div key={key} className="bg-ink-900 p-4">
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="text-paper-500 text-xs font-semibold tracking-wide uppercase">
+                    {labels[key]}
+                  </span>
+                  <span className="text-paper-100 text-xl font-bold tabular-nums">
+                    {scores[key]}
+                  </span>
+                </div>
+                {selected.length ? (
+                  <div className="mt-3 flex flex-wrap gap-1">
+                    {selected.map((tag) => (
+                      <RcaChip key={tag.id} tag={tag} compact />
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-paper-500 mt-3 text-xs">No why tags</p>
+                )}
+              </div>
+            );
+          })}
+        </div>
+        <div className="border-hairline flex flex-wrap items-center gap-2 border-t px-5 py-4 sm:px-7">
+          <span className="text-paper-500 mr-2 text-xs font-semibold tracking-wide uppercase">
+            Overall
+          </span>
+          {tags
+            .filter(
+              (tag) =>
+                tag.attribute === "overall" && selectedIds.includes(tag.id),
+            )
+            .map((tag) => (
+              <RcaChip key={tag.id} tag={tag} />
+            ))}
+          {!selectedIds.some(
+            (id) => tags.find((tag) => tag.id === id)?.attribute === "overall",
+          ) ? (
+            <span className="text-paper-500 text-xs">No overall why tags</span>
+          ) : null}
+          {message ? (
+            <p className="text-positive ml-auto text-xs" role="status">
+              {message}
+            </p>
+          ) : null}
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="panel overflow-hidden">
+      <header className="border-hairline bg-ink-850 flex flex-col gap-4 border-b px-5 py-5 sm:flex-row sm:items-end sm:justify-between sm:px-7">
+        <div>
+          <p className="eyebrow">Weighted rating</p>
+          <h2 className="text-paper-100 mt-1 text-2xl font-bold">
+            Rate every part
+          </h2>
+        </div>
+        <div className="flex gap-7 sm:text-right">
+          <div>
+            <p className="text-paper-500 text-[10px] font-semibold uppercase">
+              Secondary
+            </p>
+            <p className="text-sky text-xl font-bold tabular-nums">
+              {secondary.toFixed(3)}
+            </p>
+          </div>
+          <div>
+            <p className="text-paper-500 text-[10px] font-semibold uppercase">
+              Live overall
+            </p>
+            <p className="text-positive text-3xl font-bold tabular-nums">
+              {overall.toFixed(3)}
+            </p>
+          </div>
+        </div>
+      </header>
+      <div className="divide-hairline divide-y">
+        {scoreAttributes.map((key) => {
+          const attribute = schemaAttribute[key];
+          const scopedTags = tags.filter((tag) => tag.attribute === attribute);
+          const scopedSelected = selectedIds.filter((id) =>
+            scopedTags.some((tag) => tag.id === id),
+          );
+          return (
+            <div
+              key={key}
+              className="grid gap-4 px-5 py-5 sm:px-7 lg:grid-cols-[9rem_minmax(12rem,1fr)_3rem_minmax(15rem,1fr)] lg:items-center"
+            >
+              <label
+                htmlFor={`score-${key}`}
+                className="text-paper-100 font-semibold"
+              >
+                {labels[key]}
+              </label>
+              <input
+                id={`score-${key}`}
+                type="range"
+                min={0}
+                max={100}
+                value={scores[key]}
+                onChange={(event) =>
+                  setScores((current) => ({
+                    ...current,
+                    [key]: Number(event.target.value),
+                  }))
+                }
+                className="rating-range"
+              />
+              <output
+                htmlFor={`score-${key}`}
+                className="text-paper-100 text-right text-lg font-bold tabular-nums"
+              >
+                {scores[key]}
+              </output>
+              <RcaMultiselect
+                label={`${labels[key]} why tags`}
+                options={scopedTags}
+                selectedIds={scopedSelected}
+                onChange={(nextScoped) =>
+                  setSelectedIds((current) => [
+                    ...current.filter(
+                      (id) => !scopedTags.some((tag) => tag.id === id),
+                    ),
+                    ...nextScoped,
+                  ])
+                }
+                onCreate={(label) => createTag(attribute, label)}
+              />
+              <p className="text-paper-500 text-[10px] tabular-nums lg:col-start-2">
+                {contribution(key, scores, weights).toFixed(3)} weighted
+                contribution
+              </p>
+            </div>
+          );
+        })}
       </div>
-      <div className="border-hairline mt-8 grid gap-5 border-b pb-8 md:grid-cols-[10rem_1fr_4rem_9rem] md:items-center">
-        <label htmlFor="quality" className="text-paper-100 font-medium">
+      <div className="border-hairline bg-ink-850/40 grid gap-4 border-t px-5 py-5 sm:px-7 lg:grid-cols-[9rem_minmax(12rem,1fr)_3rem_minmax(15rem,1fr)] lg:items-center">
+        <label htmlFor="quality" className="text-paper-100 font-semibold">
           Quality
         </label>
         <input
@@ -155,35 +311,47 @@ export function RatingEditor({
           max={100}
           value={quality}
           onChange={(event) => setQuality(Number(event.target.value))}
-          className="accent-accent-400"
+          className="rating-range"
         />
         <output
           htmlFor="quality"
-          className="text-paper-100 text-right tabular-nums"
+          className="text-paper-100 text-right text-lg font-bold tabular-nums"
         >
           {quality}
         </output>
-        <div className="text-right">
-          <p className="text-paper-500 text-xs">Secondary</p>
-          <p className="text-score-mid tabular-nums">{secondary.toFixed(3)}</p>
-        </div>
+        <RcaMultiselect
+          label="Overall why tags"
+          options={tags.filter((tag) => tag.attribute === "overall")}
+          selectedIds={selectedIds.filter(
+            (id) => tags.find((tag) => tag.id === id)?.attribute === "overall",
+          )}
+          onChange={(nextOverall) =>
+            setSelectedIds((current) => [
+              ...current.filter(
+                (id) =>
+                  tags.find((tag) => tag.id === id)?.attribute !== "overall",
+              ),
+              ...nextOverall,
+            ])
+          }
+          onCreate={(label) => createTag("overall", label)}
+          placeholder="Add overall why tags…"
+        />
       </div>
-      <div className="mt-6 flex items-center gap-4">
-        <Button onClick={save} disabled={saving}>
+      <footer className="border-hairline flex flex-wrap items-center gap-3 border-t px-5 py-5 sm:px-7">
+        <Button onClick={() => void save()} disabled={saving}>
           {saving ? "Saving…" : "Save rating"}
         </Button>
-        <a
-          href="/dev/tokens"
-          className="text-paper-500 hover:text-accent-300 text-xs underline underline-offset-4"
-        >
-          Rating rubric reference
+        {initial ? <QuietButton onClick={cancel}>Cancel</QuietButton> : null}
+        <a href="/dev/tokens" className="link-button ml-1">
+          Rating rubric
         </a>
         {message ? (
           <p className="text-paper-300 text-sm" role="status">
             {message}
           </p>
         ) : null}
-      </div>
+      </footer>
     </section>
   );
 }

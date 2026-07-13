@@ -4,35 +4,40 @@ import type { ReactNode } from "react";
 
 export function PageShell({ children }: { children: ReactNode }) {
   return (
-    <div className="bg-ink-950 min-h-screen">
-      <header className="border-hairline border-b">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5 sm:px-8">
+    <div className="min-h-screen">
+      <header className="border-hairline bg-ink-850/95 sticky top-0 z-50 border-b shadow-lg backdrop-blur">
+        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-5 sm:px-8">
           <Link
             href="/"
-            className="text-paper-100 font-serif text-xl font-semibold tracking-tight"
+            className="text-paper-100 flex items-center gap-2.5 text-lg font-bold tracking-tight"
           >
+            <span className="flex items-center gap-1" aria-hidden="true">
+              <span className="bg-accent-400 h-2.5 w-2.5 rounded-full" />
+              <span className="bg-positive h-2.5 w-2.5 rounded-full" />
+              <span className="bg-sky h-2.5 w-2.5 rounded-full" />
+            </span>
             Picture House
           </Link>
           <nav
             aria-label="Primary navigation"
-            className="text-paper-500 flex items-center gap-5 text-sm"
+            className="text-paper-300 flex items-center gap-5 text-xs font-semibold tracking-wide uppercase"
           >
             <Link
               href="/library"
-              className="hover:text-accent-300 transition-colors duration-150"
+              className="hover:text-paper-100 transition-colors duration-150"
             >
               Library
             </Link>
             <Link
-              href="/dev/tokens"
-              className="hover:text-accent-300 transition-colors duration-150"
+              href="/settings/rca"
+              className="hover:text-paper-100 transition-colors duration-150"
             >
-              Design tokens
+              Why tags
             </Link>
           </nav>
         </div>
       </header>
-      <main className="mx-auto w-full max-w-7xl px-5 py-12 sm:px-8 sm:py-16">
+      <main className="mx-auto w-full max-w-7xl px-5 py-10 sm:px-8 sm:py-14">
         {children}
       </main>
       <footer className="border-hairline mt-12 border-t">
@@ -48,7 +53,6 @@ export function PageShell({ children }: { children: ReactNode }) {
               alt="The Movie Database"
               width={34}
               height={34}
-              className="h-auto w-[34px]"
             />
           </a>
           <p>
