@@ -9,7 +9,7 @@ import { RcaChip } from "@/components/rca/rca-chip";
 import { RcaMultiselect } from "@/components/rca/rca-multiselect";
 import { rankFilms } from "@/lib/scoring";
 import { tmdbImage } from "@/lib/tmdb";
-import { compareLibraryValues } from "@/lib/library";
+import { compareLibraryValues, validRcaFilterIds } from "@/lib/library";
 import type { LibraryFilm } from "@/lib/catalog";
 import type { RcaTagWithUsage } from "@/lib/rca";
 
@@ -57,6 +57,14 @@ export function LibraryView({
   );
   const [dragging, setDragging] = useState<number | null>(null);
   const [orderError, setOrderError] = useState("");
+  const selectedRcaIds = useMemo(
+    () =>
+      validRcaFilterIds(
+        params.get("rca"),
+        rcaTags.map(({ id }) => id),
+      ),
+    [params, rcaTags],
+  );
 
   function setParam(key: string, value: string | null) {
     const next = new URLSearchParams(params.toString());
@@ -97,7 +105,6 @@ export function LibraryView({
     const maxYear = parameterNumber(params.get("maxYear"), Infinity);
     const minScore = parameterNumber(params.get("minScore"), -Infinity);
     const maxScore = parameterNumber(params.get("maxScore"), Infinity);
-    const selectedRcaIds = parseIdList(params.get("rca"));
     const rcaMode = params.get("rcaMode") === "all" ? "all" : "any";
     const base =
       status === "to_watch"
@@ -137,7 +144,7 @@ export function LibraryView({
     return status === "to_watch"
       ? result
       : result.sort((a, b) => compare(a, b, sort, direction, ranks));
-  }, [direction, films, ordered, params, ranks, sort, status]);
+  }, [direction, films, ordered, params, ranks, selectedRcaIds, sort, status]);
 
   function changeSort(key: SortKey) {
     const nextDirection = sort === key && direction === "asc" ? "desc" : "asc";
@@ -280,7 +287,7 @@ export function LibraryView({
           <RcaMultiselect
             label="Filter by why tags"
             options={rcaTags}
-            selectedIds={parseIdList(params.get("rca"))}
+            selectedIds={selectedRcaIds}
             onChange={(ids) =>
               setDiscreteParam("rca", ids.length ? ids.join(",") : null)
             }
@@ -634,12 +641,4 @@ function parameterNumber(value: string | null, fallback: number) {
   if (value === null || value.trim() === "") return fallback;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
-}
-
-function parseIdList(value: string | null) {
-  if (!value) return [];
-  return value
-    .split(",")
-    .map(Number)
-    .filter((id) => Number.isInteger(id) && id > 0);
 }

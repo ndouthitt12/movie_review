@@ -25,3 +25,19 @@ export function sameIdSet(
     values.size === submitted.length && expected.every((id) => values.has(id))
   );
 }
+
+export function validRcaFilterIds(
+  value: string | null,
+  availableIds: readonly number[],
+) {
+  if (!value) return [];
+  const available = new Set(availableIds);
+  return [
+    ...new Set(
+      value
+        .split(",")
+        .map(Number)
+        .filter((id) => Number.isInteger(id) && id > 0 && available.has(id)),
+    ),
+  ];
+}

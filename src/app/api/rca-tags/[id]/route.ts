@@ -1,4 +1,4 @@
-import { count, eq } from "drizzle-orm";
+import { and, count, eq, ne, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { filmRcaTags, rcaTags } from "@/db/schema";
@@ -15,6 +15,27 @@ export async function PATCH(
   );
   if (!Number.isInteger(id) || !parsed.success)
     return NextResponse.json({ error: "Invalid tag update." }, { status: 400 });
+  const existing = db.select().from(rcaTags).where(eq(rcaTags.id, id)).get();
+  if (!existing)
+    return NextResponse.json({ error: "Tag not found." }, { status: 404 });
+  if (parsed.data.label) {
+    const duplicate = db
+      .select({ id: rcaTags.id })
+      .from(rcaTags)
+      .where(
+        and(
+          eq(rcaTags.attribute, existing.attribute),
+          ne(rcaTags.id, id),
+          sql`lower(${rcaTags.label}) = lower(${parsed.data.label})`,
+        ),
+      )
+      .get();
+    if (duplicate)
+      return NextResponse.json(
+        { error: "That label already exists for this attribute." },
+        { status: 409 },
+      );
+  }
   try {
     const tag = db
       .update(rcaTags)
@@ -22,8 +43,6 @@ export async function PATCH(
       .where(eq(rcaTags.id, id))
       .returning()
       .get();
-    if (!tag)
-      return NextResponse.json({ error: "Tag not found." }, { status: 404 });
     return NextResponse.json(tag);
   } catch (error) {
     if (isUniqueConstraint(error))
@@ -42,8 +61,8 @@ export async function DELETE(
   const id = Number((await params).id);
   if (!Number.isInteger(id))
     return NextResponse.json({ error: "Invalid tag id." }, { status: 400 });
-  const existing = db.select().from(rcaTags).where(eq(rcaTags.id, id)).get();
-  if (!existing)
+  const tag = db.select().from(rcaTags).where(eq(rcaTags.id, id)).get();
+  if (!tag)
     return NextResponse.json({ error: "Tag not found." }, { status: 404 });
   const usage = db
     .select({ count: count() })

@@ -85,7 +85,7 @@ describe("Phase 3 RCA integration", () => {
     expect(sourceResponse.status).toBe(201);
     const source = (await sourceResponse.json()) as { id: number };
     const duplicate = await postTag({
-      label: "Emotional ending",
+      label: "emotional ENDING",
       attribute: "impact",
       polarity: "negative",
       color: null,
@@ -98,6 +98,14 @@ describe("Phase 3 RCA integration", () => {
       color: "#00e054",
     });
     const target = (await targetResponse.json()) as { id: number };
+
+    const duplicateRename = await updateTag(
+      jsonRequest(`http://test/api/rca-tags/${source.id}`, "PATCH", {
+        label: "EMOTIONALLY RESONANT",
+      }),
+      { params: Promise.resolve({ id: String(source.id) }) },
+    );
+    expect(duplicateRename.status).toBe(409);
 
     const rating = await saveRating(
       jsonRequest("http://test/api/films/1/rating", "PUT", {
@@ -123,10 +131,17 @@ describe("Phase 3 RCA integration", () => {
     const renamed = await updateTag(
       jsonRequest(`http://test/api/rca-tags/${source.id}`, "PATCH", {
         label: "Powerful ending",
+        polarity: "neutral",
+        color: "#123456",
       }),
       { params: Promise.resolve({ id: String(source.id) }) },
     );
     expect(renamed.status).toBe(200);
+    expect(await renamed.json()).toMatchObject({
+      label: "Powerful ending",
+      polarity: "neutral",
+      color: "#123456",
+    });
     const merged = await mergeTags(
       jsonRequest("http://test/api/rca-tags/merge", "POST", {
         sourceId: source.id,

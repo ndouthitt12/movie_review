@@ -26,6 +26,12 @@ export function RcaManager({
   const [label, setLabel] = useState("");
   const [polarity, setPolarity] =
     useState<(typeof rcaPolarities)[number]>("positive");
+  const [color, setColor] = useState("");
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editLabel, setEditLabel] = useState("");
+  const [editPolarity, setEditPolarity] =
+    useState<(typeof rcaPolarities)[number]>("neutral");
+  const [editColor, setEditColor] = useState("");
   const [sourceId, setSourceId] = useState("");
   const [targetId, setTargetId] = useState("");
   const [message, setMessage] = useState("");
@@ -51,26 +57,45 @@ export function RcaManager({
     const response = await fetch("/api/rca-tags", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ label, attribute, polarity, color: null }),
+      body: JSON.stringify({
+        label,
+        attribute,
+        polarity,
+        color: color.trim() || null,
+      }),
     });
     const body = (await response.json()) as { error?: string };
     if (!response.ok) return setMessage(body.error ?? "Could not create tag.");
     setLabel("");
+    setColor("");
     setMessage("Tag created.");
     await refresh();
   }
 
-  async function rename(tag: RcaTagWithUsage) {
-    const next = window.prompt("Rename tag", tag.label)?.trim();
-    if (!next || next === tag.label) return;
-    const response = await fetch(`/api/rca-tags/${tag.id}`, {
+  function startEditing(tag: RcaTagWithUsage) {
+    setEditingId(tag.id);
+    setEditLabel(tag.label);
+    setEditPolarity(tag.polarity);
+    setEditColor(tag.color ?? "");
+    setMessage("");
+  }
+
+  async function saveEdit(event: React.FormEvent) {
+    event.preventDefault();
+    if (editingId === null) return;
+    const response = await fetch(`/api/rca-tags/${editingId}`, {
       method: "PATCH",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ label: next }),
+      body: JSON.stringify({
+        label: editLabel,
+        polarity: editPolarity,
+        color: editColor.trim() || null,
+      }),
     });
     const body = (await response.json()) as { error?: string };
-    if (!response.ok) return setMessage(body.error ?? "Could not rename tag.");
-    setMessage("Tag renamed.");
+    if (!response.ok) return setMessage(body.error ?? "Could not update tag.");
+    setEditingId(null);
+    setMessage("Tag updated.");
     await refresh();
   }
 
@@ -119,7 +144,7 @@ export function RcaManager({
       <section className="panel grid gap-7 p-5 lg:grid-cols-2 lg:p-7">
         <form onSubmit={create}>
           <p className="eyebrow">Create tag</p>
-          <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_10rem_9rem_auto]">
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-[1fr_9rem_8rem_8rem_auto]">
             <Input
               value={label}
               onChange={(event) => setLabel(event.target.value)}
@@ -150,6 +175,13 @@ export function RcaManager({
                 <option key={value}>{value}</option>
               ))}
             </select>
+            <Input
+              aria-label="Optional tag color"
+              value={color}
+              onChange={(event) => setColor(event.target.value)}
+              placeholder="#00e054 (optional)"
+              pattern="#[0-9a-fA-F]{6}"
+            />
             <Button type="submit">Create</Button>
           </div>
         </form>
@@ -215,31 +247,87 @@ export function RcaManager({
               </header>
               <ul className="divide-hairline divide-y">
                 {groupTags.map((tag) => (
-                  <li
-                    key={tag.id}
-                    className="flex items-center gap-3 px-5 py-3"
-                  >
-                    <span className={`status-dot ${tag.polarity}`} />
-                    <span className="text-paper-100 min-w-0 flex-1 truncate text-sm">
-                      {tag.label}
-                    </span>
-                    <span className="text-paper-500 text-xs tabular-nums">
-                      {tag.usageCount} uses
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => void rename(tag)}
-                      className="link-button"
-                    >
-                      Rename
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => void remove(tag)}
-                      className="text-accent-300 hover:text-accent-200 text-xs"
-                    >
-                      Delete
-                    </button>
+                  <li key={tag.id} className="px-5 py-3">
+                    {editingId === tag.id ? (
+                      <form
+                        onSubmit={saveEdit}
+                        className="grid gap-2 sm:grid-cols-[1fr_8rem_8rem_auto_auto]"
+                      >
+                        <Input
+                          aria-label={`Label for ${tag.label}`}
+                          value={editLabel}
+                          onChange={(event) => setEditLabel(event.target.value)}
+                          required
+                        />
+                        <select
+                          aria-label={`Polarity for ${tag.label}`}
+                          value={editPolarity}
+                          onChange={(event) =>
+                            setEditPolarity(
+                              event.target.value as typeof editPolarity,
+                            )
+                          }
+                          className="select-field"
+                        >
+                          {rcaPolarities.map((value) => (
+                            <option key={value}>{value}</option>
+                          ))}
+                        </select>
+                        <Input
+                          aria-label={`Color for ${tag.label}`}
+                          value={editColor}
+                          onChange={(event) => setEditColor(event.target.value)}
+                          placeholder="No color"
+                          pattern="#[0-9a-fA-F]{6}"
+                        />
+                        <Button type="submit" className="px-3 text-xs">
+                          Save
+                        </Button>
+                        <QuietButton
+                          type="button"
+                          onClick={() => setEditingId(null)}
+                          className="px-3 text-xs"
+                        >
+                          Cancel
+                        </QuietButton>
+                      </form>
+                    ) : (
+                      <div className="flex items-center gap-3">
+                        <span
+                          className={`status-dot ${tag.polarity}`}
+                          style={
+                            tag.color
+                              ? { backgroundColor: tag.color }
+                              : undefined
+                          }
+                        />
+                        <span className="text-paper-100 min-w-0 flex-1 truncate text-sm">
+                          {tag.label}
+                        </span>
+                        <span className="text-paper-500 text-xs capitalize">
+                          {tag.polarity}
+                        </span>
+                        <span className="text-paper-500 text-xs tabular-nums">
+                          {tag.usageCount} uses
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => startEditing(tag)}
+                          aria-label={`Edit ${tag.label}`}
+                          className="link-button"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void remove(tag)}
+                          aria-label={`Delete ${tag.label}`}
+                          className="text-accent-300 hover:text-accent-200 text-xs"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    )}
                   </li>
                 ))}
               </ul>

@@ -17,6 +17,21 @@ export async function POST(request: Request) {
       { error: parsed.error.issues[0]?.message ?? "Invalid tag." },
       { status: 400 },
     );
+  const duplicate = db
+    .select({ id: rcaTags.id })
+    .from(rcaTags)
+    .where(
+      and(
+        eq(rcaTags.attribute, parsed.data.attribute),
+        sql`lower(${rcaTags.label}) = lower(${parsed.data.label})`,
+      ),
+    )
+    .get();
+  if (duplicate)
+    return NextResponse.json(
+      { error: "That label already exists for this attribute." },
+      { status: 409 },
+    );
   try {
     const tag = db.insert(rcaTags).values(parsed.data).returning().get();
     return NextResponse.json({ ...tag, usageCount: 0 }, { status: 201 });
@@ -29,3 +44,4 @@ export async function POST(request: Request) {
     throw error;
   }
 }
+import { and, eq, sql } from "drizzle-orm";

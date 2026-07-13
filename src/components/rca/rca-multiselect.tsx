@@ -26,6 +26,7 @@ export function RcaMultiselect({
   const id = useId();
   const rootRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const optionRefs = useRef(new Map<number, HTMLButtonElement>());
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(-1);
@@ -55,6 +56,13 @@ export function RcaMultiselect({
     document.addEventListener("mousedown", close);
     return () => document.removeEventListener("mousedown", close);
   }, []);
+
+  useEffect(() => {
+    if (!open || effectiveActive < 0) return;
+    optionRefs.current
+      .get(effectiveActive)
+      ?.scrollIntoView({ block: "nearest" });
+  }, [effectiveActive, open]);
 
   function toggle(idToToggle: number) {
     onChange(
@@ -162,6 +170,10 @@ export function RcaMultiselect({
         >
           {filtered.map((tag, index) => (
             <button
+              ref={(node) => {
+                if (node) optionRefs.current.set(index, node);
+                else optionRefs.current.delete(index);
+              }}
               type="button"
               role="option"
               aria-selected={selectedIds.includes(tag.id)}
@@ -183,6 +195,10 @@ export function RcaMultiselect({
           ))}
           {canCreate ? (
             <button
+              ref={(node) => {
+                if (node) optionRefs.current.set(filtered.length, node);
+                else optionRefs.current.delete(filtered.length);
+              }}
               type="button"
               role="option"
               aria-selected="false"

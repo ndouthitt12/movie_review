@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { compareLibraryValues, sameIdSet } from "./library";
+import { compareLibraryValues, sameIdSet, validRcaFilterIds } from "./library";
 
 describe("library helpers", () => {
   it("sorts ISO dates symmetrically and keeps missing values last", () => {
@@ -14,5 +14,10 @@ describe("library helpers", () => {
     expect(sameIdSet([2, 1], [1, 2])).toBe(true);
     expect(sameIdSet([1], [1, 2])).toBe(false);
     expect(sameIdSet([1, 1], [1, 2])).toBe(false);
+  });
+
+  it("drops stale, invalid, and duplicate RCA ids from URL filters", () => {
+    expect(validRcaFilterIds("1,999,2,1,nope,-4", [1, 2, 3])).toEqual([1, 2]);
+    expect(validRcaFilterIds("999", [1, 2, 3])).toEqual([]);
   });
 });
