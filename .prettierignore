@@ -1,0 +1,8 @@
+node_modules
+.next
+data
+drizzle/meta
+AGENTS.md
+CLAUDE.md
+PHASES.md
+PLAN.md
