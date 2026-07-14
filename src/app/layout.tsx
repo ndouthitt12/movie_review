@@ -1,11 +1,17 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Sans } from "next/font/google";
+import { IBM_Plex_Sans, Source_Serif_4 } from "next/font/google";
 import "./globals.css";
 
 const ui = IBM_Plex_Sans({
   variable: "--font-ui",
   subsets: ["latin"],
   weight: ["400", "500", "600"],
+  display: "swap",
+});
+
+const display = Source_Serif_4({
+  variable: "--font-display",
+  subsets: ["latin"],
   display: "swap",
 });
 
@@ -18,7 +24,10 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${ui.variable} antialiased`}>
+    <html
+      lang="en"
+      className={`${ui.variable} ${display.variable} antialiased`}
+    >
       <body>{children}</body>
     </html>
   );

@@ -7,6 +7,13 @@ import {
   RadarChart,
   Sparkline,
 } from "@/components/charts/charts";
+import { FilmIcon, StarIcon } from "@/components/ui/icons";
+import { ListRow } from "@/components/ui/list-row";
+import { Pill } from "@/components/ui/pill";
+import { RatingBreakdown } from "@/components/ui/rating-breakdown";
+import { SectionCard } from "@/components/ui/section-card";
+import { Stars } from "@/components/ui/stars";
+import { StatTile } from "@/components/ui/stat-tile";
 
 export default function ComponentsPage() {
   return (
@@ -24,6 +31,46 @@ export default function ComponentsPage() {
           Story
         </label>
         <MultiselectDemo />
+      </section>
+      <section className="mt-8 grid gap-6 xl:grid-cols-2">
+        <SectionCard title="Shared interface kit" action={{ href: "/library" }}>
+          <div className="grid grid-cols-2 gap-3">
+            <StatTile
+              icon={<FilmIcon className="h-6 w-6" />}
+              value="12"
+              label="Films"
+              delta="2 this week"
+            />
+            <StatTile
+              icon={<StarIcon className="h-6 w-6" />}
+              value="8.4"
+              label="Average"
+            />
+          </div>
+          <ListRow
+            href="/library"
+            leading={<FilmIcon className="h-5 w-5" />}
+            title="Library"
+            trailing="12"
+          />
+        </SectionCard>
+        <SectionCard title="Ratings & filters">
+          <Stars value={4.5} className="text-2xl" />
+          <div className="mt-5 flex flex-wrap gap-2">
+            <Pill active>All</Pill>
+            <Pill>Drama</Pill>
+            <Pill>Comedy</Pill>
+          </div>
+          <div className="mt-6">
+            <RatingBreakdown
+              items={[
+                { label: "5 stars", value: 8 },
+                { label: "4 stars", value: 5 },
+                { label: "3 stars", value: 2 },
+              ]}
+            />
+          </div>
+        </SectionCard>
       </section>
       <div className="mt-8 grid gap-6 xl:grid-cols-2">
         <Demo title="Bar chart">

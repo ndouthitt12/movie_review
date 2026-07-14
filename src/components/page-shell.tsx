@@ -1,55 +1,53 @@
 import Link from "next/link";
 import Image from "next/image";
 import type { ReactNode } from "react";
+import { BottomNav } from "@/components/ui/bottom-nav";
+import { Wordmark } from "@/components/ui/wordmark";
 
 export function PageShell({ children }: { children: ReactNode }) {
   return (
-    <div className="min-h-screen">
-      <header className="border-hairline bg-ink-850/95 sticky top-0 z-50 border-b shadow-lg backdrop-blur">
-        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-5 sm:px-8">
+    <div className="min-h-screen pb-20 md:pb-0">
+      <header className="border-hairline bg-ink-950/95 sticky top-0 z-50 border-b">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5 sm:px-8">
           <Link
             href="/"
-            className="text-paper-100 flex items-center gap-2.5 text-lg font-bold tracking-tight"
+            aria-label="Picture House home"
+            className="transition-opacity hover:opacity-80"
           >
-            <span className="flex items-center gap-1" aria-hidden="true">
-              <span className="bg-accent-400 h-2.5 w-2.5 rounded-full" />
-              <span className="bg-positive h-2.5 w-2.5 rounded-full" />
-              <span className="bg-sky h-2.5 w-2.5 rounded-full" />
-            </span>
-            Picture House
+            <Wordmark />
           </Link>
           <nav
             aria-label="Primary navigation"
-            className="text-paper-300 flex items-center gap-5 text-xs font-semibold tracking-wide uppercase"
+            className="text-paper-300 hidden items-center gap-6 text-xs font-semibold tracking-wide uppercase md:flex"
           >
             <Link
               href="/dashboard"
-              className="hover:text-paper-100 transition-colors duration-150"
+              className="hover:text-accent-400 transition-colors duration-150"
             >
               Dashboard
             </Link>
             <Link
               href="/library"
-              className="hover:text-paper-100 transition-colors duration-150"
+              className="hover:text-accent-400 transition-colors duration-150"
             >
               Library
             </Link>
             <Link
               href="/rubric"
-              className="hover:text-paper-100 hidden transition-colors duration-150 sm:block"
+              className="hover:text-accent-400 transition-colors duration-150"
             >
               Rubric
             </Link>
             <Link
               href="/admin/rca"
-              className="hover:text-paper-100 hidden transition-colors duration-150 md:block"
+              className="hover:text-accent-400 transition-colors duration-150"
             >
               Why tags
             </Link>
           </nav>
         </div>
       </header>
-      <main className="mx-auto w-full max-w-7xl px-5 py-10 sm:px-8 sm:py-14">
+      <main className="mx-auto w-full max-w-7xl px-5 py-8 sm:px-8 sm:py-12">
         {children}
       </main>
       <footer className="border-hairline mt-12 border-t">
@@ -75,6 +73,7 @@ export function PageShell({ children }: { children: ReactNode }) {
           </p>
         </div>
       </footer>
+      <BottomNav />
     </div>
   );
 }

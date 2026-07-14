@@ -1,27 +1,28 @@
 @import "tailwindcss";
 
 @theme inline {
-  --color-ink-950: #14181c;
-  --color-ink-900: #1b2228;
-  --color-ink-850: #202830;
-  --color-ink-800: #2c3640;
-  --color-ink-700: #445566;
-  --color-paper-100: #ffffff;
-  --color-paper-300: #c7d0d8;
-  --color-paper-500: #89a1b4;
-  --color-accent-200: #ffb05c;
-  --color-accent-300: #ff9d3d;
-  --color-accent-400: #ff8000;
-  --color-accent-500: #d96c00;
-  --color-positive: #00e054;
-  --color-sky: #40bcf4;
-  --color-score-low: #ff8000;
-  --color-score-mid: #40bcf4;
-  --color-score-high: #00e054;
-  --color-hairline: #2c3640;
+  --color-ink-950: #0a0a0a;
+  --color-ink-900: #141414;
+  --color-ink-850: #1c1c1e;
+  --color-ink-800: #26262a;
+  --color-ink-700: #3b3b40;
+  --color-paper-100: #f5f5f4;
+  --color-paper-300: #a8a8a6;
+  --color-paper-500: #6f6f6e;
+  --color-accent-200: #f5d58f;
+  --color-accent-300: #efc36b;
+  --color-accent-400: #e8b451;
+  --color-accent-500: #c99a3d;
+  --color-positive: #4ade80;
+  --color-sky: #7ca7c7;
+  --color-score-low: #8c6931;
+  --color-score-mid: #c99a3d;
+  --color-score-high: #e8b451;
+  --color-hairline: #26262a;
   --font-sans: var(--font-ui);
-  --font-serif: var(--font-ui);
-  --radius-ui: 4px;
+  --font-serif: var(--font-display);
+  --radius-ui: 12px;
+  --radius-card: 16px;
   --shadow-none: 0 0 #0000;
 }
 
@@ -38,26 +39,17 @@ body {
   background: var(--color-ink-950);
   color: var(--color-paper-100);
   font-family: var(--font-ui), sans-serif;
-  background-image:
-    radial-gradient(
-      circle at 50% -10%,
-      rgb(68 85 102 / 0.2),
-      transparent 34rem
-    ),
-    linear-gradient(180deg, #1b2228 0, #14181c 28rem);
-  background-attachment: fixed;
 }
 
 ::selection {
-  background: var(--color-positive);
+  background: var(--color-accent-400);
   color: var(--color-ink-950);
 }
 
 .panel {
   border: 1px solid var(--color-hairline);
-  border-radius: var(--radius-ui);
-  background: rgb(27 34 40 / 0.88);
-  box-shadow: 0 12px 35px rgb(0 0 0 / 0.16);
+  border-radius: var(--radius-card);
+  background: var(--color-ink-900);
 }
 
 .eyebrow {
@@ -101,12 +93,12 @@ body {
 }
 
 .select-field:focus {
-  border-color: var(--color-sky);
+  border-color: var(--color-accent-400);
   outline: none;
 }
 
 .link-button {
-  color: var(--color-sky);
+  color: var(--color-accent-400);
   font-size: 0.75rem;
   text-decoration: none;
 }
@@ -127,7 +119,7 @@ body {
   background: var(--color-positive);
 }
 .status-dot.negative {
-  background: var(--color-accent-400);
+  background: #ef6b6b;
 }
 .status-dot.neutral {
   background: var(--color-sky);
@@ -146,20 +138,20 @@ body {
 
 .group:hover .poster-frame,
 .group:focus-visible .poster-frame {
-  border-color: var(--color-positive);
+  border-color: var(--color-accent-400);
   box-shadow:
-    0 0 0 1px var(--color-positive),
+    0 0 0 1px var(--color-accent-400),
     0 10px 30px rgb(0 0 0 / 0.45);
   transform: translateY(-2px);
 }
 
 .rating-range {
   width: 100%;
-  accent-color: var(--color-positive);
+  accent-color: var(--color-accent-400);
 }
 
 :focus-visible {
-  outline: 1px solid var(--color-accent-300);
+  outline: 2px solid var(--color-accent-400);
   outline-offset: 3px;
 }
 
