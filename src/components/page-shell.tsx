@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import type { ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
 import { BottomNav } from "@/components/ui/bottom-nav";
 import { Wordmark } from "@/components/ui/wordmark";
 
@@ -73,7 +73,9 @@ export function PageShell({ children }: { children: ReactNode }) {
           </p>
         </div>
       </footer>
-      <BottomNav />
+      <Suspense fallback={null}>
+        <BottomNav />
+      </Suspense>
     </div>
   );
 }

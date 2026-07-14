@@ -147,7 +147,7 @@ function Demo({
   children: React.ReactNode;
 }) {
   return (
-    <section className="panel p-5">
+    <section className="panel min-w-0 p-5">
       <h2 className="text-paper-100 mb-4 text-lg font-bold">{title}</h2>
       {children}
     </section>

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import {
   BookmarkIcon,
   ChartIcon,
@@ -20,6 +20,9 @@ const items = [
 
 export function BottomNav() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const watchlistActive =
+    pathname === "/library" && searchParams.get("status") === "to_watch";
 
   return (
     <nav
@@ -29,7 +32,11 @@ export function BottomNav() {
       {items.map((item) => {
         const active = item.exact
           ? pathname === item.href
-          : pathname.startsWith(item.href.split("?")[0]);
+          : item.label === "Watchlist"
+            ? watchlistActive
+            : item.label === "Library"
+              ? pathname.startsWith("/library") && !watchlistActive
+              : pathname.startsWith(item.href);
         const Icon = item.icon;
         return (
           <Link

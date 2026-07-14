@@ -14,9 +14,12 @@ export function RcaManager({
   questionOptions: Array<{ key: string; label: string }>;
 }) {
   const [tags, setTags] = useState(initialTags);
-  const [questionKey, setQuestionKey] = useState(questionOptions[0]?.key ?? "overall");
+  const [questionKey, setQuestionKey] = useState(
+    questionOptions[0]?.key ?? "overall",
+  );
   const labels = useMemo(
-    () => Object.fromEntries(questionOptions.map(({ key, label }) => [key, label])),
+    () =>
+      Object.fromEntries(questionOptions.map(({ key, label }) => [key, label])),
     [questionOptions],
   );
   const [label, setLabel] = useState("");
@@ -173,7 +176,7 @@ export function RcaManager({
               aria-label="Optional tag color"
               value={color}
               onChange={(event) => setColor(event.target.value)}
-              placeholder="#00e054 (optional)"
+              placeholder="#e8b451 (optional)"
               pattern="#[0-9a-fA-F]{6}"
             />
             <Button type="submit">Create</Button>
@@ -232,9 +235,7 @@ export function RcaManager({
           return (
             <section key={group} className="panel overflow-hidden">
               <header className="border-hairline bg-ink-850 flex items-center justify-between border-b px-5 py-4">
-                <h2 className="text-paper-100 font-semibold">
-                  {groupLabel}
-                </h2>
+                <h2 className="text-paper-100 font-semibold">{groupLabel}</h2>
                 <span className="text-paper-500 text-xs">
                   {groupTags.length} tags
                 </span>
