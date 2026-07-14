@@ -27,7 +27,10 @@ export function Slider({
         onChange={(event) => onChange(Number(event.target.value))}
         className="rating-range"
       />
-      <output htmlFor={id} className="text-paper-100 text-right tabular-nums">
+      <output
+        htmlFor={id}
+        className="text-accent-400 text-right font-semibold tabular-nums"
+      >
         {value}
       </output>
     </div>

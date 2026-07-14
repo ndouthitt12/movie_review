@@ -1,14 +1,17 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { TabBar, type TabItem } from "@/components/ui/tab-bar";
+import { Wordmark } from "@/components/ui/wordmark";
 import { isAdminAuthenticated } from "@/lib/admin-auth";
 
-const links = [
-  ["Form Builder", "/admin/form"],
-  ["Scoring", "/admin/scoring"],
-  ["Rating Scale", "/admin/scale"],
-  ["RCA Tags", "/admin/rca"],
-  ["Versions", "/admin/versions"],
-] as const;
+const tabs: TabItem[] = [
+  { label: "Overview", href: "/admin", exact: true },
+  { label: "Form", href: "/admin/form" },
+  { label: "Scoring", href: "/admin/scoring" },
+  { label: "Scale", href: "/admin/scale" },
+  { label: "RCA", href: "/admin/rca" },
+  { label: "Versions", href: "/admin/versions" },
+];
 
 export default async function AdminLayout({
   children,
@@ -16,23 +19,19 @@ export default async function AdminLayout({
   children: React.ReactNode;
 }) {
   if (!(await isAdminAuthenticated())) redirect("/admin-login");
+
   return (
-    <div className="mx-auto grid min-h-[70vh] max-w-[1500px] gap-8 px-5 py-10 lg:grid-cols-[13rem_1fr]">
-      <aside className="border-hairline border-r pr-6">
-        <p className="eyebrow">Administration</p>
-        <nav className="mt-5 space-y-1" aria-label="Admin navigation">
-          {links.map(([label, href]) => (
-            <Link
-              key={href}
-              href={href}
-              className="text-paper-300 hover:bg-ink-850 hover:text-paper-100 block px-3 py-2 text-sm"
-            >
-              {label}
-            </Link>
-          ))}
-        </nav>
-      </aside>
-      <main>{children}</main>
+    <div className="mx-auto min-h-screen w-full max-w-[1500px] px-4 py-7 sm:px-6 sm:py-9 lg:px-10">
+      <header>
+        <Link href="/" aria-label="Picture House home">
+          <Wordmark className="text-3xl sm:text-4xl" />
+        </Link>
+        <h1 className="text-paper-100 mt-7 font-serif text-4xl font-semibold tracking-[-0.03em] sm:text-5xl">
+          Admin
+        </h1>
+        <TabBar tabs={tabs} className="mt-7" />
+      </header>
+      <main className="py-6 sm:py-8">{children}</main>
     </div>
   );
 }

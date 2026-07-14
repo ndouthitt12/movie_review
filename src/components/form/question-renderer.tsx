@@ -106,15 +106,16 @@ export function QuestionRenderer({
   }
 
   return (
-    <div>
+    <div className={disabled ? "opacity-60" : undefined}>
       {input}
       {question.allowNa &&
       (question.type === "slider" || question.type === "integer") ? (
-        <label className="text-paper-500 mt-2 flex items-center gap-2 text-xs">
+        <label className="text-paper-500 mt-3 flex items-center gap-2 text-xs">
           <input
             type="checkbox"
             checked={Boolean(value?.isNa)}
             disabled={disabled}
+            className="accent-accent-400 h-4 w-4"
             onChange={(event) =>
               onChange(event.target.checked ? { isNa: true } : {})
             }

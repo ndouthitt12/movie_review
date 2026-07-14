@@ -44,8 +44,8 @@ export function BarChart({
               y={margin.top + innerHeight - barHeight}
               width={barWidth}
               height={barHeight}
-              rx={1}
-              className="fill-accent-400 group-hover:fill-positive"
+              rx={3}
+              className="fill-accent-400 group-hover:fill-accent-300"
             >
               <title>{`${datum.label}: ${datum.detail ?? `${formatValue(datum.value)}${valueSuffix}`}`}</title>
             </rect>
@@ -123,7 +123,7 @@ export function HistogramChart({
       <text x={margin.left} y={13} className="fill-accent-300 text-[10px]">
         Actual bars
       </text>
-      <text x={margin.left + 78} y={13} className="fill-sky text-[10px]">
+      <text x={margin.left + 78} y={13} className="fill-accent-200 text-[10px]">
         Expected curve
       </text>
       {data.map((datum, index) => {
@@ -136,7 +136,7 @@ export function HistogramChart({
               y={margin.top + innerHeight - barHeight}
               width={barWidth}
               height={barHeight}
-              className="fill-accent-400 group-hover:fill-positive"
+              className="fill-accent-500 group-hover:fill-accent-400"
             >
               <title>{`${datum.label}: ${datum.count} actual, ${datum.expected.toFixed(1)} expected`}</title>
             </rect>
@@ -167,7 +167,7 @@ export function HistogramChart({
       <polyline
         points={points}
         fill="none"
-        className="stroke-sky"
+        className="stroke-accent-200"
         strokeWidth={2}
       />
       {data.map((datum, index) => {
@@ -178,7 +178,7 @@ export function HistogramChart({
             cx={x}
             cy={y}
             r={2.2}
-            className="fill-sky"
+            className="fill-accent-200"
           />
         );
       })}
@@ -217,7 +217,7 @@ export function TrendChart({
       <text x={margin.left} y={13} className="fill-accent-300 text-[10px]">
         Watches
       </text>
-      <text x={margin.left + 56} y={13} className="fill-sky text-[10px]">
+      <text x={margin.left + 56} y={13} className="fill-accent-200 text-[10px]">
         3-month average
       </text>
       {data.map((datum, index) => {
@@ -229,7 +229,8 @@ export function TrendChart({
               y={margin.top + innerHeight - barHeight}
               width={Math.max(2, slot * 0.7)}
               height={barHeight}
-              className="fill-accent-400"
+              rx={2}
+              className="fill-accent-500"
             >
               <title>{`${datum.period}: ${datum.count} watches; ${datum.rollingAverage.toFixed(1)} rolling average`}</title>
             </rect>
@@ -249,9 +250,21 @@ export function TrendChart({
       <polyline
         points={points}
         fill="none"
-        className="stroke-sky"
+        className="stroke-accent-300"
         strokeWidth={2}
       />
+      {points.split(" ").map((point, index) => {
+        const [x, y] = point.split(",").map(Number);
+        return (
+          <circle
+            key={data[index].period}
+            cx={x}
+            cy={y}
+            r={2.5}
+            className="fill-accent-300"
+          />
+        );
+      })}
     </ChartFrame>
   );
 }
@@ -292,7 +305,7 @@ export function RadarChart({ data }: { data: readonly ChartDatum[] }) {
             .map((_, index) => point(index, level).join(","))
             .join(" ")}
           fill="none"
-          className="stroke-ink-700"
+          className="stroke-ink-800"
         />
       ))}
       {data.map((datum, index) => {
@@ -304,7 +317,7 @@ export function RadarChart({ data }: { data: readonly ChartDatum[] }) {
               y1={centerY}
               x2={point(index, 1)[0]}
               y2={point(index, 1)[1]}
-              className="stroke-ink-700"
+              className="stroke-ink-800"
             />
             <text
               x={x}
@@ -438,7 +451,7 @@ function ChartFrame({
 
 function ChartEmpty() {
   return (
-    <div className="border-hairline text-paper-500 flex min-h-48 items-center justify-center border border-dashed text-sm">
+    <div className="rounded-ui border-hairline bg-ink-850 text-paper-500 flex min-h-48 items-center justify-center border border-dashed text-sm">
       No data yet
     </div>
   );

@@ -24,7 +24,7 @@ export function IntegerInput({
       onChange={(event) =>
         onChange(event.target.value === "" ? null : Number(event.target.value))
       }
-      className="input-field w-full"
+      className="rounded-ui border-hairline bg-ink-850 text-paper-100 hover:border-paper-500 focus:border-accent-400 h-10 w-full border px-3 text-sm transition-colors focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
     />
   );
 }

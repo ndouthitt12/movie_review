@@ -188,10 +188,10 @@ export function AddFilmDialog({ genres, franchiseNames }: Props) {
           aria-labelledby="add-film-title"
           ref={dialogRef}
         >
-          <div className="rounded-ui border-hairline bg-ink-900 mx-auto max-w-3xl border p-5 sm:p-8">
+          <div className="rounded-card border-hairline bg-ink-900 mx-auto max-w-3xl border p-5 sm:p-8">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-accent-300 text-xs tracking-[0.2em] uppercase">
+                <p className="text-accent-400 text-xs tracking-[0.2em] uppercase">
                   Library intake
                 </p>
                 <h2
@@ -226,12 +226,12 @@ export function AddFilmDialog({ genres, franchiseNames }: Props) {
                     ? "Searching…"
                     : "Results include year and director."}
                 </p>
-                <div className="divide-hairline border-hairline mt-5 divide-y border-y">
+                <div className="divide-hairline border-hairline rounded-ui mt-5 divide-y overflow-hidden border">
                   {results.map((result) => (
                     <button
                       key={result.id}
                       onClick={() => choose(result)}
-                      className="hover:bg-ink-850 flex w-full items-center gap-4 px-2 py-3 text-left"
+                      className="hover:bg-ink-850 flex w-full items-center gap-4 px-3 py-3 text-left"
                     >
                       <div className="bg-ink-800 relative h-16 w-11 shrink-0 overflow-hidden">
                         {result.posterPath ? (
@@ -316,7 +316,7 @@ function FilmFields({
     <form onSubmit={onSubmit} className="mt-8">
       {selected ? (
         <div className="border-hairline mb-6 flex gap-4 border-y py-4">
-          <div className="bg-ink-800 relative h-28 w-20 shrink-0">
+          <div className="rounded-ui bg-ink-800 relative h-28 w-20 shrink-0 overflow-hidden">
             {selected.posterPath ? (
               <Image
                 src={tmdbImage(selected.posterPath, "w185")!}
@@ -361,10 +361,7 @@ function FilmFields({
       ) : null}
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
         <Field label="Status">
-          <select
-            name="status"
-            className="rounded-ui border-hairline bg-ink-900 h-10 w-full border px-3 text-sm"
-          >
+          <select name="status" className="select-field bg-ink-850">
             <option value="to_watch">To Watch</option>
             <option value="watched">Watched</option>
             <option value="to_rewatch">To Re-Watch</option>
@@ -415,7 +412,7 @@ function FilmFields({
           <textarea
             name="overview"
             rows={3}
-            className="rounded-ui border-hairline bg-ink-900 text-paper-100 w-full border p-3 text-sm"
+            className="rounded-ui border-hairline bg-ink-850 text-paper-100 focus:border-accent-400 w-full border p-3 text-sm outline-none"
           />
         </Field>
       ) : null}
@@ -423,7 +420,7 @@ function FilmFields({
         <textarea
           name="notes"
           rows={3}
-          className="rounded-ui border-hairline bg-ink-900 text-paper-100 w-full border p-3 text-sm"
+          className="rounded-ui border-hairline bg-ink-850 text-paper-100 focus:border-accent-400 w-full border p-3 text-sm outline-none"
         />
       </Field>
       <div className="mt-6 flex gap-3">

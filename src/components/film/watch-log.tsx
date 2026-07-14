@@ -66,8 +66,9 @@ export function WatchLog({
     } else setMessage("Could not delete watch.");
   }
   return (
-    <section className="border-hairline border-t pt-10">
-      <h2 className="text-paper-100 font-serif text-3xl">Watch log</h2>
+    <section className="panel p-5 sm:p-7">
+      <p className="eyebrow">Viewing history</p>
+      <h2 className="text-paper-100 mt-1 font-serif text-3xl">Watch log</h2>
       <form onSubmit={add} className="mt-5 flex flex-wrap items-end gap-3">
         <label className="text-paper-500 text-xs tracking-widest uppercase">
           Watched on
@@ -89,12 +90,12 @@ export function WatchLog({
         </label>
         <Button type="submit">Add watch</Button>
       </form>
-      <div className="divide-hairline border-hairline mt-6 divide-y border-y">
+      <div className="border-hairline rounded-ui mt-6 overflow-hidden border">
         {watches.length ? (
           watches.map((watch) => (
             <div
               key={watch.id}
-              className="flex flex-wrap items-center gap-3 py-3"
+              className="border-hairline bg-ink-850 flex flex-wrap items-center gap-3 border-b p-3 last:border-b-0"
             >
               <Input
                 aria-label="Watch date"
@@ -138,7 +139,9 @@ export function WatchLog({
             </div>
           ))
         ) : (
-          <p className="text-paper-500 py-6 text-sm">No watches logged yet.</p>
+          <p className="text-paper-500 bg-ink-850 px-4 py-6 text-sm">
+            No watches logged yet.
+          </p>
         )}
       </div>
       {message ? (

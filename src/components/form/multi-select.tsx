@@ -67,14 +67,14 @@ export function MultiSelect({
 
   return (
     <div className="relative">
-      <div className="border-hairline bg-ink-950 flex min-h-10 flex-wrap gap-1 border p-1.5">
+      <div className="rounded-ui border-hairline bg-ink-850 focus-within:border-accent-400 flex min-h-10 flex-wrap gap-1.5 border p-1.5 transition-colors">
         {selected.map((option) => (
           <button
             key={option.id}
             type="button"
             disabled={disabled}
             onClick={() => toggle(option)}
-            className="bg-ink-700 text-paper-100 rounded-ui px-2 py-1 text-xs"
+            className="border-accent-500/50 bg-accent-400/10 text-accent-300 rounded-full border px-2.5 py-1 text-xs"
           >
             {option.label} ×
           </button>
@@ -100,16 +100,18 @@ export function MultiSelect({
         />
       </div>
       {open && !disabled ? (
-        <div className="border-hairline bg-ink-900 absolute z-30 mt-1 max-h-56 w-full overflow-y-auto border p-1">
+        <div className="rounded-ui border-hairline bg-ink-900 absolute z-30 mt-1 max-h-56 w-full overflow-y-auto border p-1 shadow-xl shadow-black/40">
           {filtered.map((option) => (
             <button
               key={option.id}
               type="button"
               onMouseDown={(event) => event.preventDefault()}
               onClick={() => toggle(option)}
-              className="hover:bg-ink-800 flex w-full items-center gap-2 px-2 py-2 text-left text-xs"
+              className="rounded-ui hover:bg-ink-850 flex w-full items-center gap-2 px-2 py-2 text-left text-xs"
             >
-              <span aria-hidden>{selectedIds.includes(option.id) ? "✓" : "○"}</span>
+              <span aria-hidden>
+                {selectedIds.includes(option.id) ? "✓" : "○"}
+              </span>
               <span className="text-paper-100 flex-1">{option.label}</span>
               {option.description ? (
                 <span className="text-paper-500">{option.description}</span>
@@ -122,7 +124,7 @@ export function MultiSelect({
               disabled={creating}
               onMouseDown={(event) => event.preventDefault()}
               onClick={() => void create()}
-              className="text-positive hover:bg-ink-800 w-full px-2 py-2 text-left text-xs"
+              className="text-accent-400 hover:bg-ink-850 rounded-ui w-full px-2 py-2 text-left text-xs"
             >
               {creating ? "Creating…" : `＋ Create “${query.trim()}”`}
             </button>

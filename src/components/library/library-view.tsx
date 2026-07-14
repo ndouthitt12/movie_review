@@ -7,6 +7,8 @@ import { useMemo, useState } from "react";
 import { Input } from "@/components/input";
 import { RcaChip } from "@/components/rca/rca-chip";
 import { RcaMultiselect } from "@/components/rca/rca-multiselect";
+import { Pill } from "@/components/ui/pill";
+import { Stars } from "@/components/ui/stars";
 import { rankFilms } from "@/lib/scoring";
 import { tmdbImage } from "@/lib/tmdb";
 import {
@@ -210,40 +212,40 @@ export function LibraryView({
 
   return (
     <div>
-      <div className="border-hairline flex flex-wrap gap-2 border-b pb-5">
+      <div className="flex flex-wrap gap-2">
         {[
           ["watched", "Watched"],
           ["rated", "All Rated"],
           ["to_watch", "To Watch"],
           ["to_rewatch", "To Re-Watch"],
         ].map(([value, label]) => (
-          <button
+          <Pill
             key={value}
+            active={status === value}
             onClick={() => setStatus(value)}
-            className={`rounded-ui border px-4 py-2 text-sm ${status === value ? "border-accent-400 text-paper-100" : "border-hairline text-paper-500 hover:text-paper-100"}`}
           >
             {label}
-          </button>
+          </Pill>
         ))}
         {isRatingView ? (
-          <div className="ml-auto flex gap-2">
-            <button
+          <div className="flex gap-2 sm:ml-auto">
+            <Pill
+              active={view === "table"}
               onClick={() => setDiscreteParam("view", "table")}
-              className={`px-3 text-sm ${view === "table" ? "text-accent-300" : "text-paper-500"}`}
             >
               Table
-            </button>
-            <button
+            </Pill>
+            <Pill
+              active={view === "grid"}
               onClick={() => setDiscreteParam("view", "grid")}
-              className={`px-3 text-sm ${view === "grid" ? "text-accent-300" : "text-paper-500"}`}
             >
               Posters
-            </button>
+            </Pill>
           </div>
         ) : null}
       </div>
 
-      <div className="border-hairline grid gap-3 border-b py-5 md:grid-cols-4 lg:grid-cols-8">
+      <div className="border-hairline bg-ink-900 rounded-card mt-5 grid gap-3 border p-4 md:grid-cols-4 lg:grid-cols-8">
         <Input
           value={params.get("q") ?? ""}
           onChange={(event) => setParam("q", event.target.value)}
@@ -323,7 +325,7 @@ export function LibraryView({
         {filtered.length} {filtered.length === 1 ? "film" : "films"}
       </p>
       {orderError ? (
-        <p className="text-accent-300 mb-4 text-sm">{orderError}</p>
+        <p className="text-accent-400 mb-4 text-sm">{orderError}</p>
       ) : null}
       {status === "to_watch" && hasFilters ? (
         <p className="text-paper-500 mb-4 text-xs">
@@ -372,7 +374,7 @@ function FilterSelect({
     <select
       value={value}
       onChange={(event) => onChange(event.target.value)}
-      className="rounded-ui border-hairline bg-ink-900 text-paper-300 h-10 border px-3 text-sm"
+      className="select-field bg-ink-850"
     >
       <option value="">{label}</option>
       {options.map((option) => (
@@ -410,9 +412,9 @@ function FilmTable({
     ["lastWatchDate", "Last watch"],
   ];
   return (
-    <div className="border-hairline max-h-[70vh] overflow-auto border-y">
+    <div className="border-hairline bg-ink-900 rounded-card max-h-[70vh] overflow-auto border">
       <table className="w-full min-w-[1100px] border-collapse text-left text-xs tabular-nums">
-        <thead className="bg-ink-900 text-paper-500 sticky top-0 z-10">
+        <thead className="bg-ink-850 text-paper-500 sticky top-0 z-10">
           <tr>
             {columns.map(([key, label]) => (
               <th
@@ -429,14 +431,14 @@ function FilmTable({
         </thead>
         <tbody>
           {films.map((film) => (
-            <tr key={film.id} className="hover:bg-ink-900">
+            <tr key={film.id} className="bg-ink-900 hover:bg-ink-850">
               <td className="border-hairline text-paper-500 border-b px-3 py-2 text-right">
                 {ranks.get(film.id) ?? "—"}
               </td>
               <td className="border-hairline border-b px-3 py-2">
                 <Link
                   href={`/films/${film.id}`}
-                  className="text-paper-100 hover:text-accent-300 font-medium"
+                  className="text-paper-100 hover:text-accent-400 font-medium"
                 >
                   {film.title}
                 </Link>
@@ -464,7 +466,7 @@ function FilmTable({
                   {film[key] ?? "—"}
                 </td>
               ))}
-              <td className="border-hairline text-score-high border-b px-3 py-2 text-right">
+              <td className="border-hairline text-accent-400 border-b px-3 py-2 text-right font-semibold">
                 {film.overall?.toFixed(3) ?? "—"}
               </td>
               <td className="border-hairline text-paper-500 border-b px-3 py-2">
@@ -497,10 +499,13 @@ function PosterGrid({ films }: { films: LibraryFilm[] }) {
                 {film.title}
               </div>
             )}
-            <div className="bg-ink-950/90 absolute inset-x-0 bottom-0 translate-y-full p-3 transition-transform duration-200 group-hover:translate-y-0 group-focus-visible:translate-y-0">
-              <p className="text-positive text-xl font-bold tabular-nums">
+            <div className="bg-ink-950/95 absolute inset-x-0 bottom-0 translate-y-full p-3 transition-transform duration-200 group-hover:translate-y-0 group-focus-visible:translate-y-0">
+              <p className="text-accent-400 text-xl font-bold tabular-nums">
                 {film.overall?.toFixed(3) ?? "Unrated"}
               </p>
+              {film.overall !== null ? (
+                <Stars value={film.overall / 2} className="mt-1 text-sm" />
+              ) : null}
               {film.rcaTags.length ? (
                 <div className="mt-2 flex flex-wrap gap-1">
                   {film.rcaTags.slice(0, 4).map((tag) => (
@@ -541,7 +546,7 @@ function WatchOrderList({
   onMove: (id: number, delta: -1 | 1) => void;
 }) {
   return (
-    <ol className="divide-hairline border-hairline divide-y border-y">
+    <ol className="divide-hairline border-hairline bg-ink-900 rounded-card divide-y overflow-hidden border">
       {films.map((film, index) => (
         <li
           key={film.id}
@@ -551,15 +556,15 @@ function WatchOrderList({
             if (draggable) event.preventDefault();
           }}
           onDrop={() => onDrop(film.id)}
-          className={`hover:bg-ink-900 grid grid-cols-[3rem_1fr_auto] items-center gap-3 px-3 py-3 ${draggable ? "cursor-grab" : ""}`}
+          className={`hover:bg-ink-850 grid grid-cols-[3rem_1fr_auto] items-center gap-3 px-4 py-3 ${draggable ? "cursor-grab" : ""}`}
         >
-          <span className="text-accent-300 text-sm tabular-nums">
+          <span className="text-accent-400 text-sm tabular-nums">
             {String(index + 1).padStart(2, "0")}
           </span>
           <div>
             <Link
               href={`/films/${film.id}`}
-              className="text-paper-100 hover:text-accent-300 font-medium"
+              className="text-paper-100 hover:text-accent-400 font-medium"
             >
               {film.title}
             </Link>
@@ -595,16 +600,16 @@ function WatchOrderList({
 
 function RewatchList({ films }: { films: LibraryFilm[] }) {
   return (
-    <ul className="divide-hairline border-hairline divide-y border-y">
+    <ul className="divide-hairline border-hairline bg-ink-900 rounded-card divide-y overflow-hidden border">
       {films.map((film) => (
         <li
           key={film.id}
-          className="grid gap-2 px-3 py-4 sm:grid-cols-[1fr_auto] sm:items-center"
+          className="hover:bg-ink-850 grid gap-2 px-4 py-4 sm:grid-cols-[1fr_auto] sm:items-center"
         >
           <div>
             <Link
               href={`/films/${film.id}`}
-              className="text-paper-100 hover:text-accent-300 font-medium"
+              className="text-paper-100 hover:text-accent-400 font-medium"
             >
               {film.title}
             </Link>
@@ -623,7 +628,7 @@ function RewatchList({ films }: { films: LibraryFilm[] }) {
 
 function EmptyState() {
   return (
-    <div className="border-hairline border-y py-16 text-center">
+    <div className="border-hairline bg-ink-900 rounded-card border py-16 text-center">
       <h2 className="text-paper-100 font-serif text-3xl">
         No films in this cut.
       </h2>

@@ -13,7 +13,7 @@ export function Dropdown({
 }) {
   return (
     <select
-      className="select-field w-full"
+      className="select-field bg-ink-850 w-full"
       value={value ?? ""}
       disabled={disabled}
       onChange={(event) =>

@@ -37,7 +37,7 @@ export function AdminLogin({ configured }: { configured: boolean }) {
         Enter admin
       </Button>
       {message ? (
-        <p className="text-accent-300 text-sm" role="alert">
+        <p className="text-accent-400 text-sm" role="alert">
           {message}
         </p>
       ) : null}

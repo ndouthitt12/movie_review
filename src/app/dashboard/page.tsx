@@ -28,8 +28,11 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Dashboard" };
 
 export default async function DashboardPage() {
-  const { films, watches, attributes: dashboardAttributes } =
-    await getDashboardData();
+  const {
+    films,
+    watches,
+    attributes: dashboardAttributes,
+  } = await getDashboardData();
   const today = dateInTimeZone();
   const headlines = headlineStats(films, watches, today);
   const streaks = computeStreaks(
@@ -48,10 +51,7 @@ export default async function DashboardPage() {
   );
   const decades = decadeBreakdown(films);
   const franchises = franchiseReportCards(films);
-  const correlations = attributeOverallCorrelations(
-    films,
-    dashboardAttributes,
-  );
+  const correlations = attributeOverallCorrelations(films, dashboardAttributes);
   const tags = rcaTagFrequencies(films);
   const strongest = correlations.find(
     ({ correlation }) => correlation !== null,
@@ -61,7 +61,7 @@ export default async function DashboardPage() {
     <PageShell>
       <header className="page-heading">
         <p className="eyebrow">Dashboard / trends</p>
-        <h1>Your viewing, in focus</h1>
+        <h1 className="font-serif">Your viewing, in focus</h1>
         <p>
           Distribution, habits, taste, and the reasons behind your ratings—all
           computed from the same film and watch records as the library.
@@ -70,7 +70,7 @@ export default async function DashboardPage() {
 
       <section
         aria-label="Headline statistics"
-        className="border-hairline grid border-y sm:grid-cols-3 lg:grid-cols-7"
+        className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-7"
       >
         <Headline label="Watched" value={headlines.totalWatched} />
         <Headline label="This month" value={headlines.thisMonth} />
@@ -183,7 +183,7 @@ export default async function DashboardPage() {
                 className="flex items-center justify-between px-5 py-3 sm:px-7"
               >
                 <span className="text-paper-300 text-sm">{row.label}</span>
-                <span className="text-paper-100 font-bold tabular-nums">
+                <span className="text-accent-400 font-bold tabular-nums">
                   {row.correlation === null
                     ? "—"
                     : formatCorrelation(row.correlation)}
@@ -278,8 +278,10 @@ function Headline({
   detail?: string;
 }) {
   return (
-    <div className="border-hairline border-b p-4 sm:border-r sm:border-b-0">
-      <p className="text-paper-100 text-2xl font-bold tabular-nums">{value}</p>
+    <div className="border-hairline bg-ink-850 rounded-ui border p-4">
+      <p className="text-accent-400 text-2xl font-semibold tabular-nums">
+        {value}
+      </p>
       <p className="text-paper-500 mt-1 text-[10px] font-semibold tracking-wider uppercase">
         {label}
       </p>
@@ -337,7 +339,7 @@ function RankedRows({
               {row.label}
             </span>
             <span className="text-paper-500 text-xs">{row.detail}</span>
-            <span className="text-accent-300 w-12 text-right font-bold tabular-nums">
+            <span className="text-accent-400 w-12 text-right font-bold tabular-nums">
               {row.value}
             </span>
           </a>
@@ -363,5 +365,7 @@ function attributeName(
   attributes: Array<{ key: string; label: string }>,
 ) {
   if (questionKey === "overall") return "Overall";
-  return attributes.find(({ key }) => key === questionKey)?.label ?? questionKey;
+  return (
+    attributes.find(({ key }) => key === questionKey)?.label ?? questionKey
+  );
 }

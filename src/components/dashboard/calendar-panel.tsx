@@ -63,7 +63,7 @@ export function CalendarPanel({
           Hover a cell to see the films watched that day.
         </p>
       </div>
-      <div className="border-hairline bg-ink-850/50 grid gap-4 border-t px-5 py-5 sm:grid-cols-[1fr_auto] sm:items-center sm:px-7">
+      <div className="border-hairline bg-ink-850 grid gap-4 border-t px-5 py-5 sm:grid-cols-[1fr_auto] sm:items-center sm:px-7">
         <div>
           <p className="text-paper-100 text-sm font-semibold">
             Optional weekly goal
@@ -80,6 +80,7 @@ export function CalendarPanel({
             type="checkbox"
             checked={goal !== null}
             onChange={(event) => setGoal(event.target.checked ? 3 : null)}
+            className="accent-accent-400 h-4 w-4"
           />
           <label
             htmlFor="weekly-goal-enabled"
@@ -97,7 +98,7 @@ export function CalendarPanel({
             onChange={(event) =>
               setGoal(Math.max(1, Number(event.target.value) || 1))
             }
-            className="border-hairline bg-ink-900 text-paper-100 rounded-ui h-9 w-16 border px-2 text-sm tabular-nums"
+            className="border-hairline bg-ink-900 text-paper-100 rounded-ui focus:border-accent-400 h-9 w-16 border px-2 text-sm tabular-nums outline-none"
           />
           <span className="text-paper-500 text-xs">films/week</span>
         </div>

@@ -5,6 +5,7 @@ import { FilmEditor } from "@/components/film/film-editor";
 import { RatingEditor } from "@/components/film/rating-editor";
 import { WatchLog } from "@/components/film/watch-log";
 import { PageShell } from "@/components/page-shell";
+import { Stars } from "@/components/ui/stars";
 import { getFilmDetail } from "@/lib/catalog";
 import { getPublishedRuntimeForm } from "@/lib/form-config";
 import { getRcaTagsWithUsage } from "@/lib/rca";
@@ -44,11 +45,11 @@ export default async function FilmPage({
     <PageShell>
       <Link
         href="/library"
-        className="text-paper-500 hover:text-accent-300 text-xs tracking-widest uppercase"
+        className="text-paper-500 hover:text-accent-400 text-xs tracking-widest uppercase transition-colors"
       >
         ← Library
       </Link>
-      <section className="border-hairline relative mt-5 min-h-[31rem] overflow-hidden border-y">
+      <section className="panel relative mt-5 min-h-[31rem] overflow-hidden">
         {backdrop ? (
           <Image
             src={backdrop}
@@ -56,19 +57,19 @@ export default async function FilmPage({
             fill
             priority
             sizes="100vw"
-            className="object-cover opacity-30"
+            className="object-cover opacity-25"
           />
         ) : null}
-        <div className="bg-ink-950/70 absolute inset-0" />
-        <div className="film-grain absolute inset-0 opacity-20" />
-        <div className="relative z-10 grid min-h-[31rem] items-end gap-8 p-6 sm:p-10 md:grid-cols-[13rem_1fr]">
-          <div className="rounded-ui border-hairline bg-ink-900 relative aspect-[2/3] w-36 overflow-hidden border sm:w-48 md:w-auto">
+        <div className="from-ink-950/95 via-ink-950/80 to-ink-950/65 absolute inset-0 bg-gradient-to-r" />
+        <div className="film-grain absolute inset-0 opacity-10" />
+        <div className="relative z-10 grid min-h-[31rem] items-center gap-8 p-6 sm:p-10 md:grid-cols-[14rem_1fr] lg:gap-12">
+          <div className="poster-frame relative aspect-[2/3] w-40 overflow-hidden sm:w-52 md:w-auto">
             {poster ? (
               <Image
                 src={poster}
                 alt={`${film.title} poster`}
                 fill
-                sizes="208px"
+                sizes="224px"
                 className="object-cover"
               />
             ) : (
@@ -77,44 +78,50 @@ export default async function FilmPage({
               </div>
             )}
           </div>
-          <div className="pb-2">
-            <p className="text-accent-300 text-xs tracking-[0.2em] uppercase">
+          <div>
+            <p className="text-accent-400 text-xs font-semibold tracking-[0.2em] uppercase">
               {film.status.replaceAll("_", " ")}
             </p>
-            <h1 className="text-paper-100 mt-3 max-w-4xl font-serif text-5xl leading-none tracking-tight sm:text-7xl">
+            <h1 className="text-paper-100 mt-3 max-w-4xl font-serif text-5xl leading-none tracking-[-0.04em] sm:text-7xl">
               {film.title}
             </h1>
-            <p className="text-paper-300 mt-5 text-sm">
+            <p className="text-paper-300 mt-5 text-sm sm:text-base">
               {[
-                film.releaseYear,
-                film.director,
-                film.runtime ? `${film.runtime} min` : null,
                 film.genrePrimary,
                 film.genreSecondary,
+                film.releaseYear,
+                film.runtime ? `${film.runtime} min` : null,
               ]
                 .filter(Boolean)
                 .join(" · ")}
             </p>
+            {film.director ? (
+              <p className="text-paper-500 mt-2 text-sm">
+                Directed by {film.director}
+              </p>
+            ) : null}
             {film.overview ? (
-              <p className="text-paper-300 mt-6 max-w-3xl text-sm leading-7">
+              <p className="border-hairline text-paper-300 mt-6 max-w-3xl border-t pt-5 text-sm leading-7 sm:text-base">
                 {film.overview}
               </p>
             ) : null}
             {rating ? (
-              <div className="mt-7 flex items-baseline gap-3">
-                <span className="text-score-high text-4xl tabular-nums">
-                  {rating.overall.toFixed(3)}
+              <div className="mt-7 flex flex-wrap items-center gap-x-3 gap-y-2">
+                <Stars
+                  value={rating.overall / 2}
+                  className="text-2xl sm:text-3xl"
+                />
+                <span className="text-paper-100 text-4xl font-semibold tabular-nums">
+                  {(rating.overall / 2).toFixed(1)}
                 </span>
-                <span className="text-paper-500 text-xs tracking-widest uppercase">
-                  Overall
-                </span>
+                <span className="text-paper-500 text-base">/ 5</span>
               </div>
             ) : null}
           </div>
         </div>
       </section>
 
-      <div className="mt-12 space-y-12">
+      <div className="mt-8 space-y-6">
         <RatingEditor
           filmId={film.id}
           status={film.status}

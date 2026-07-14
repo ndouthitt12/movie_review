@@ -9,6 +9,7 @@ import {
   RcaMultiselect,
   type RcaOption,
 } from "@/components/rca/rca-multiselect";
+import { Stars } from "@/components/ui/stars";
 import { dateInTimeZone } from "@/lib/dates";
 import type {
   RuntimeFormConfig,
@@ -103,7 +104,9 @@ export function RatingEditor({
       );
     });
     if (missing.length > 0) {
-      setMessage(`Answer required: ${missing.map(({ label }) => label).join(", ")}.`);
+      setMessage(
+        `Answer required: ${missing.map(({ label }) => label).join(", ")}.`,
+      );
       return;
     }
     if (!score) {
@@ -157,22 +160,25 @@ export function RatingEditor({
   if (!editing && ratedForm) {
     return (
       <section className="panel overflow-hidden">
-        <header className="border-hairline bg-ink-850 flex items-end justify-between border-b px-5 py-5 sm:px-7">
+        <header className="border-hairline flex items-end justify-between gap-5 border-b px-5 py-5 sm:px-7">
           <div>
             <p className="eyebrow">Your rating</p>
-            <h2 className="text-paper-100 mt-1 text-2xl font-bold">
+            <h2 className="text-paper-100 mt-1 font-serif text-3xl">
               The breakdown
             </h2>
             {ratedForm.id !== publishedForm.id ? (
-              <span className="text-accent-300 mt-2 inline-block text-xs">
+              <span className="text-accent-400 mt-2 inline-block text-xs">
                 rated under {ratedForm.label}
               </span>
             ) : null}
           </div>
           <div className="text-right">
-            <p className="text-positive text-3xl font-bold tabular-nums">
+            <p className="text-accent-400 text-3xl font-semibold tabular-nums">
               {initialOverall?.toFixed(3) ?? "—"}
             </p>
+            {initialOverall !== null ? (
+              <Stars value={initialOverall / 2} className="mt-1 text-sm" />
+            ) : null}
             <button
               type="button"
               onClick={() => setEditing(true)}
@@ -190,7 +196,7 @@ export function RatingEditor({
                 selectedIds.includes(tag.id),
             );
             return (
-              <div key={question.id} className="bg-ink-900 p-4">
+              <div key={question.id} className="bg-ink-850 p-4">
                 <div className="flex items-baseline justify-between gap-3">
                   <span className="text-paper-500 text-xs font-semibold tracking-wide uppercase">
                     {question.label}
@@ -216,21 +222,25 @@ export function RatingEditor({
 
   return (
     <section className="panel overflow-hidden">
-      <header className="border-hairline bg-ink-850 flex flex-col gap-4 border-b px-5 py-5 sm:flex-row sm:items-end sm:justify-between sm:px-7">
+      <header className="border-hairline flex flex-col gap-4 border-b px-5 py-5 sm:flex-row sm:items-end sm:justify-between sm:px-7">
         <div>
           <p className="eyebrow">Runtime form</p>
-          <h2 className="text-paper-100 mt-1 text-2xl font-bold">
+          <h2 className="text-paper-100 mt-1 font-serif text-3xl">
             {publishedForm.label}
           </h2>
         </div>
         <div className="flex gap-7 sm:text-right">
           <ScoreReadout label="Secondary" value={secondary} />
-          <ScoreReadout label="Live overall" value={score?.overall ?? null} large />
+          <ScoreReadout
+            label="Live overall"
+            value={score?.overall ?? null}
+            large
+          />
         </div>
       </header>
       {formSections(publishedForm).map((section) => (
         <div key={section.id}>
-          <div className="border-hairline bg-ink-950 border-y px-5 py-2 sm:px-7">
+          <div className="border-hairline bg-ink-850 border-y px-5 py-2.5 sm:px-7">
             <h3 className="text-paper-500 text-xs font-semibold tracking-widest uppercase">
               {section.title}
             </h3>
@@ -256,7 +266,11 @@ export function RatingEditor({
                 <div
                   key={question.id}
                   className={`grid gap-4 px-5 py-5 sm:px-7 lg:grid-cols-[12rem_minmax(14rem,1fr)_minmax(14rem,1fr)] ${state.enabled ? "" : "opacity-50"}`}
-                  title={state.enabled ? undefined : conditionDescription(question, publishedForm)}
+                  title={
+                    state.enabled
+                      ? undefined
+                      : conditionDescription(question, publishedForm)
+                  }
                 >
                   <div>
                     <label
@@ -265,7 +279,7 @@ export function RatingEditor({
                     >
                       {question.label}
                       {question.required ? (
-                        <span className="text-accent-300"> *</span>
+                        <span className="text-accent-400"> *</span>
                       ) : null}
                     </label>
                     {question.helpText ? (
@@ -274,7 +288,7 @@ export function RatingEditor({
                       </p>
                     ) : null}
                     {retained ? (
-                      <span className="text-accent-300 mt-2 inline-block text-[10px] uppercase">
+                      <span className="text-accent-400 mt-2 inline-block text-[10px] uppercase">
                         not counted
                       </span>
                     ) : null}
@@ -290,7 +304,8 @@ export function RatingEditor({
                       <p className="text-paper-500 mt-2 text-[10px] tabular-nums">
                         {term.counted
                           ? `${term.points.toFixed(3)} weighted points`
-                          : term.reason === "null_option" || term.reason === "na"
+                          : term.reason === "null_option" ||
+                              term.reason === "na"
                             ? "N/A — not counted"
                             : `${term.reason?.replaceAll("_", " ") ?? "not counted"}`}
                       </p>
@@ -320,13 +335,14 @@ export function RatingEditor({
           </div>
         </div>
       ))}
-      <div className="border-hairline bg-ink-850/40 grid gap-4 border-t px-5 py-5 sm:px-7 lg:grid-cols-[12rem_1fr]">
+      <div className="border-hairline bg-ink-850 grid gap-4 border-t px-5 py-5 sm:px-7 lg:grid-cols-[12rem_1fr]">
         <span className="text-paper-100 font-semibold">Overall why tags</span>
         <RcaMultiselect
           label="Overall why tags"
           options={tags.filter((tag) => tag.questionKey === "overall")}
           selectedIds={selectedIds.filter(
-            (id) => tags.find((tag) => tag.id === id)?.questionKey === "overall",
+            (id) =>
+              tags.find((tag) => tag.id === id)?.questionKey === "overall",
           )}
           onChange={(next) =>
             setSelectedIds((current) => [
@@ -381,9 +397,9 @@ function answersForPublishedForm(
 function answerPresent(answer: AnswerValue | undefined) {
   return Boolean(
     answer?.isNa ||
-      answer?.number != null ||
-      (answer?.text != null && answer.text.trim()) ||
-      answer?.optionIds?.length,
+    answer?.number != null ||
+    (answer?.text != null && answer.text.trim()) ||
+    answer?.optionIds?.length,
   );
 }
 
@@ -404,7 +420,8 @@ function formatAnswer(
 
 function secondaryScore(form: RuntimeFormConfig, answers: AnswerMap) {
   try {
-    return computeOverallFromForm(getSecondaryFormConfig(form), answers).overall;
+    return computeOverallFromForm(getSecondaryFormConfig(form), answers)
+      .overall;
   } catch {
     return null;
   }
@@ -423,7 +440,12 @@ function formSections(form: RuntimeFormConfig) {
   return unsectioned.length
     ? [
         ...sections,
-        { id: 0, title: "Other", sortOrder: Number.MAX_SAFE_INTEGER, questions: unsectioned },
+        {
+          id: 0,
+          title: "Other",
+          sortOrder: Number.MAX_SAFE_INTEGER,
+          questions: unsectioned,
+        },
       ]
     : sections;
 }
@@ -458,7 +480,7 @@ function ScoreReadout({
         {label}
       </p>
       <p
-        className={`${large ? "text-positive text-3xl" : "text-sky text-xl"} font-bold tabular-nums`}
+        className={`${large ? "text-accent-400 text-3xl" : "text-accent-400 text-xl"} font-bold tabular-nums`}
       >
         {value?.toFixed(3) ?? "—"}
       </p>
