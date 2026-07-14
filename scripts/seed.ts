@@ -1,8 +1,17 @@
 import "dotenv/config";
-import { createDb } from "../src/db";
+import { eq } from "drizzle-orm";
+import { db } from "../src/db";
+import {
+  formSections,
+  formVersions,
+  questionOptions,
+  questions,
+  rcaTags,
+  scaleLevels,
+} from "../src/db/schema";
 import { defaultRubric, starterRcaTags } from "../src/db/seed-data";
 
-const questions = [
+const questionSeeds = [
   { key: "story", label: "Story", weight: 5, offset: 0 },
   { key: "direction", label: "Direction", weight: 5, offset: 0 },
   { key: "writing", label: "Writing", weight: 5, offset: 0 },
@@ -18,101 +27,99 @@ const questions = [
   { key: "genre_fit", label: "Genre Fit", weight: 3, offset: 0 },
 ] as const;
 
-const { sqlite } = createDb();
-try {
-  sqlite.transaction(() => {
-    const versionCount = (
-      sqlite.prepare("select count(*) as count from form_versions").get() as {
-        count: number;
-      }
-    ).count;
-    if (versionCount === 0) seedForm();
+await db.transaction(async (tx) => {
+  const [existingVersion] = await tx.select({ id: formVersions.id }).from(formVersions).limit(1);
+  if (!existingVersion) await seedForm(tx);
 
-    const insertLevel = sqlite.prepare(
-      `insert into scale_levels (level, title, meaning, example_films)
-       values (?, '', ?, ?) on conflict(level) do nothing`,
-    );
-    for (const row of defaultRubric)
-      insertLevel.run(row.score, row.meaning, row.examples.join(", "));
+  for (const row of defaultRubric) {
+    await tx
+      .insert(scaleLevels)
+      .values({
+        level: row.score,
+        title: "",
+        meaning: row.meaning,
+        exampleFilms: row.examples.join(", "),
+      })
+      .onConflictDoNothing({ target: scaleLevels.level });
+  }
 
-    const rcaColumns = sqlite
-      .prepare("pragma table_info(rca_tags)")
-      .all() as Array<{ name: string }>;
-    const keyColumn = rcaColumns.some(({ name }) => name === "question_key")
-      ? "question_key"
-      : "attribute";
-    const insertTag = sqlite.prepare(
-      `insert or ignore into rca_tags (label, ${keyColumn}, polarity)
-       values (?, ?, ?)`,
-    );
-    for (const [questionKey, label, polarity] of starterRcaTags)
-      insertTag.run(label, questionKey, polarity);
-  })();
-  console.log("Form v1, rating scale, and RCA tags seeded.");
-} finally {
-  sqlite.close();
-}
+  for (const [questionKey, label, polarity] of starterRcaTags) {
+    await tx
+      .insert(rcaTags)
+      .values({ label, questionKey, polarity })
+      .onConflictDoNothing({ target: [rcaTags.label, rcaTags.questionKey] });
+  }
+});
 
-function seedForm() {
-  sqlite
-    .prepare(
-      `insert into form_versions
-       (id, label, status, divisor_mode, manual_divisor, published_at)
-       values (1, ?, 'published', 'manual', 334, CURRENT_TIMESTAMP)`,
-    )
-    .run("v1 — spreadsheet-era form");
-  const insertSection = sqlite.prepare(
-    "insert into form_sections (form_version_id, title, sort_order) values (1, ?, ?)",
-  );
-  const attributesSectionId = Number(
-    insertSection.run("Attributes", 0).lastInsertRowid,
-  );
-  const qualitySectionId = Number(
-    insertSection.run("Quality (secondary)", 1).lastInsertRowid,
-  );
-  const insertQuestion = sqlite.prepare(
-    `insert into questions
-     (form_version_id, key, label, type, section_id, sort_order, required,
-      scored, weight, min, max, offset, blank_policy, allow_na,
-      condition_logic, rca_enabled)
-     values (1, @key, @label, 'slider', @sectionId, @sortOrder, @required,
-      @scored, @weight, 0, 100, @offset, 'exclude_and_renormalize', 0,
-      'all', @rcaEnabled)`,
-  );
-  questions.forEach((question, sortOrder) =>
-    insertQuestion.run({
-      ...question,
-      sectionId: attributesSectionId,
+console.log("Form v1, rating scale, and RCA tags seeded.");
+
+async function seedForm(tx: Parameters<Parameters<typeof db.transaction>[0]>[0]) {
+  const [version] = await tx
+    .insert(formVersions)
+    .values({
+      label: "v1 — spreadsheet-era form",
+      status: "published",
+      divisorMode: "manual",
+      manualDivisor: 334,
+      secondaryDivisorMode: "manual",
+      secondaryManualDivisor: 100,
+      publishedAt: new Date().toISOString(),
+    })
+    .returning({ id: formVersions.id });
+  if (!version) throw new Error("Could not seed the published form.");
+
+  const [attributes] = await tx
+    .insert(formSections)
+    .values({ formVersionId: version.id, title: "Attributes", sortOrder: 0 })
+    .returning({ id: formSections.id });
+  const [quality] = await tx
+    .insert(formSections)
+    .values({ formVersionId: version.id, title: "Quality (secondary)", sortOrder: 1 })
+    .returning({ id: formSections.id });
+  if (!attributes || !quality) throw new Error("Could not seed form sections.");
+
+  for (const [sortOrder, question] of questionSeeds.entries()) {
+    await tx.insert(questions).values({
+      formVersionId: version.id,
+      key: question.key,
+      label: question.label,
+      type: "slider",
+      sectionId: attributes.id,
       sortOrder,
-      required: 1,
-      scored: 1,
-      rcaEnabled: 1,
-    }),
-  );
-  insertQuestion.run({
+      required: true,
+      scored: true,
+      weight: question.weight,
+      min: 0,
+      max: 100,
+      offset: question.offset,
+      blankPolicy: "exclude_and_renormalize",
+      allowNa: false,
+      conditionLogic: "all",
+      rcaEnabled: true,
+      secondaryScored: question.key === "rewatchability" || question.key === "genre_fit",
+      secondaryWeight:
+        question.key === "rewatchability" ? 4 : question.key === "genre_fit" ? 1 : null,
+    });
+  }
+
+  await tx.insert(questions).values({
+    formVersionId: version.id,
     key: "quality",
     label: "Quality",
-    sectionId: qualitySectionId,
-    sortOrder: questions.length,
-    required: 0,
-    scored: 0,
+    type: "slider",
+    sectionId: quality.id,
+    sortOrder: questionSeeds.length,
+    required: false,
+    scored: false,
     weight: null,
+    min: 0,
+    max: 100,
     offset: 0,
-    rcaEnabled: 0,
+    blankPolicy: "exclude_and_renormalize",
+    allowNa: false,
+    conditionLogic: "all",
+    rcaEnabled: false,
+    secondaryScored: true,
+    secondaryWeight: 5,
   });
-  sqlite
-    .prepare(
-      `update form_versions
-       set secondary_divisor_mode = 'manual', secondary_manual_divisor = 100
-       where id = 1`,
-    )
-    .run();
-  const setSecondaryTerm = sqlite.prepare(
-    `update questions
-     set secondary_scored = 1, secondary_weight = ?
-     where form_version_id = 1 and key = ?`,
-  );
-  setSecondaryTerm.run(5, "quality");
-  setSecondaryTerm.run(4, "rewatchability");
-  setSecondaryTerm.run(1, "genre_fit");
 }

@@ -37,17 +37,16 @@ export type RuntimeFormConfig = Omit<FormConfig, "questions"> & {
   questions: RuntimeQuestionConfig[];
 };
 
-function assembleForm(
+async function assembleForm(
   version: typeof formVersions.$inferSelect,
   includeArchived: boolean,
-): RuntimeFormConfig {
-  const sectionRows = db
+): Promise<RuntimeFormConfig> {
+  const sectionRows = await db
     .select()
     .from(formSections)
     .where(eq(formSections.formVersionId, version.id))
-    .orderBy(asc(formSections.sortOrder), asc(formSections.id))
-    .all();
-  const questionRows = db
+    .orderBy(asc(formSections.sortOrder), asc(formSections.id));
+  const questionRows = await db
     .select()
     .from(questions)
     .where(
@@ -58,11 +57,10 @@ function assembleForm(
             isNull(questions.archivedAt),
           ),
     )
-    .orderBy(asc(questions.sortOrder), asc(questions.id))
-    .all();
+    .orderBy(asc(questions.sortOrder), asc(questions.id));
   const questionIds = questionRows.map(({ id }) => id);
   const optionRows = questionIds.length
-    ? db
+    ? await db
         .select()
         .from(questionOptions)
         .where(
@@ -74,15 +72,13 @@ function assembleForm(
               ),
         )
         .orderBy(asc(questionOptions.sortOrder), asc(questionOptions.id))
-        .all()
     : [];
   const conditionRows = questionIds.length
-    ? db
+    ? await db
         .select()
         .from(questionConditions)
         .where(inArray(questionConditions.questionId, questionIds))
         .orderBy(asc(questionConditions.id))
-        .all()
     : [];
 
   return {
@@ -145,39 +141,38 @@ function assembleForm(
   };
 }
 
-function getFormByStatus(
+async function getFormByStatus(
   status: "published" | "draft",
-): RuntimeFormConfig | null {
-  const version = db
+): Promise<RuntimeFormConfig | null> {
+  const [version] = await db
     .select()
     .from(formVersions)
     .where(eq(formVersions.status, status))
-    .limit(1)
-    .get();
-  return version ? assembleForm(version, false) : null;
+    .limit(1);
+  return version ? await assembleForm(version, false) : null;
 }
 
-export function getPublishedForm(): Promise<FormConfig | null> {
-  return Promise.resolve(getFormByStatus("published"));
-}
-
-export function getDraftForm(): Promise<FormConfig | null> {
-  return Promise.resolve(getFormByStatus("draft"));
-}
-
-export function getPublishedRuntimeForm() {
+export async function getPublishedForm(): Promise<FormConfig | null> {
   return getFormByStatus("published");
 }
 
-export function getDraftRuntimeForm() {
+export async function getDraftForm(): Promise<FormConfig | null> {
   return getFormByStatus("draft");
 }
 
-export function getFormVersionConfig(versionId: number) {
-  const version = db
+export async function getPublishedRuntimeForm() {
+  return getFormByStatus("published");
+}
+
+export async function getDraftRuntimeForm() {
+  return getFormByStatus("draft");
+}
+
+export async function getFormVersionConfig(versionId: number) {
+  const [version] = await db
     .select()
     .from(formVersions)
     .where(eq(formVersions.id, versionId))
-    .get();
-  return version ? assembleForm(version, true) : null;
+    .limit(1);
+  return version ? await assembleForm(version, true) : null;
 }

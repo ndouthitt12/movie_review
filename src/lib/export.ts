@@ -17,22 +17,22 @@ import {
 } from "@/db/schema";
 import { getPublishedRuntimeForm } from "./form-config";
 
-export function buildJsonExport() {
+export async function buildJsonExport() {
   return {
     exported_at: new Date().toISOString(),
-    films: db.select().from(films).all(),
-    ratings: db.select().from(ratings).all(),
-    watch_log: db.select().from(watchLog).all(),
-    franchises: db.select().from(franchises).all(),
-    rca_tags: db.select().from(rcaTags).all(),
-    film_rca_tags: db.select().from(filmRcaTags).all(),
-    form_versions: db.select().from(formVersions).all(),
-    form_sections: db.select().from(formSections).all(),
-    questions: db.select().from(questions).all(),
-    question_options: db.select().from(questionOptions).all(),
-    question_conditions: db.select().from(questionConditions).all(),
-    answers: db.select().from(answers).all(),
-    scale_levels: db.select().from(scaleLevels).orderBy(asc(scaleLevels.level)).all(),
+    films: await db.select().from(films),
+    ratings: await db.select().from(ratings),
+    watch_log: await db.select().from(watchLog),
+    franchises: await db.select().from(franchises),
+    rca_tags: await db.select().from(rcaTags),
+    film_rca_tags: await db.select().from(filmRcaTags),
+    form_versions: await db.select().from(formVersions),
+    form_sections: await db.select().from(formSections),
+    questions: await db.select().from(questions),
+    question_options: await db.select().from(questionOptions),
+    question_conditions: await db.select().from(questionConditions),
+    answers: await db.select().from(answers),
+    scale_levels: await db.select().from(scaleLevels).orderBy(asc(scaleLevels.level)),
   };
 }
 
@@ -48,14 +48,14 @@ const v1Columns = [
   ["quality", "Quality"],
 ] as const;
 
-export function buildCsvExport() {
-  const filmRows = db.select().from(films).orderBy(asc(films.id)).all();
-  const ratingRows = db.select().from(ratings).all();
-  const franchiseRows = new Map(db.select().from(franchises).all().map((row) => [row.id, row.name]));
-  const answerRows = db.select().from(answers).all();
-  const questionRows = new Map(db.select().from(questions).all().map((row) => [row.id, row]));
-  const optionRows = new Map(db.select().from(questionOptions).all().map((row) => [row.id, row]));
-  const published = getPublishedRuntimeForm();
+export async function buildCsvExport() {
+  const filmRows = await db.select().from(films).orderBy(asc(films.id));
+  const ratingRows = await db.select().from(ratings);
+  const franchiseRows = new Map((await db.select().from(franchises)).map((row) => [row.id, row.name]));
+  const answerRows = await db.select().from(answers);
+  const questionRows = new Map((await db.select().from(questions)).map((row) => [row.id, row]));
+  const optionRows = new Map((await db.select().from(questionOptions)).map((row) => [row.id, row]));
+  const published = await getPublishedRuntimeForm();
   const v1Keys = new Set(v1Columns.map(([key]) => key));
   const customQuestions = (published?.questions ?? []).filter(({ key }) => !v1Keys.has(key as (typeof v1Columns)[number][0]));
   const headers = [

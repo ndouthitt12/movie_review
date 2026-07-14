@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { Button, QuietButton } from "@/components/button";
 import { QuestionRenderer } from "@/components/form/question-renderer";
+import { Markdown } from "@/components/markdown";
 import { RcaChip } from "@/components/rca/rca-chip";
 import {
   RcaMultiselect,
@@ -283,9 +284,7 @@ export function RatingEditor({
                       ) : null}
                     </label>
                     {question.helpText ? (
-                      <p className="text-paper-500 mt-1 text-xs">
-                        {question.helpText}
-                      </p>
+                      <Markdown className="mt-1">{question.helpText}</Markdown>
                     ) : null}
                     {retained ? (
                       <span className="text-accent-400 mt-2 inline-block text-[10px] uppercase">

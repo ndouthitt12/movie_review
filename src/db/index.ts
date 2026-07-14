@@ -1,22 +1,15 @@
-import fs from "node:fs";
-import path from "node:path";
-import Database from "better-sqlite3";
-import { drizzle } from "drizzle-orm/better-sqlite3";
+import { PGlite } from "@electric-sql/pglite";
+import { drizzle as netlifyDrizzle } from "drizzle-orm/netlify-db";
+import { drizzle as pgliteDrizzle } from "drizzle-orm/pglite";
 import * as schema from "./schema";
 
-export function resolveDatabasePath() {
-  return path.resolve(
-    /* turbopackIgnore: true */ process.cwd(),
-    process.env.DATABASE_URL ?? "data/movie-ratings.sqlite",
-  );
-}
+const createNetlifyDatabase = () => netlifyDrizzle({ schema });
+export type Database = ReturnType<typeof createNetlifyDatabase>;
 
-export function createDb(databasePath = resolveDatabasePath()) {
-  fs.mkdirSync(path.dirname(databasePath), { recursive: true });
-  const sqlite = new Database(databasePath);
-  sqlite.pragma("foreign_keys = ON");
-  sqlite.pragma("busy_timeout = 5000");
-  return { db: drizzle(sqlite, { schema }), sqlite };
-}
+const testClient = process.env.NODE_ENV === "test" ? new PGlite() : null;
 
-export const { db, sqlite } = createDb();
+export const db = (testClient
+  ? pgliteDrizzle({ client: testClient, schema })
+  : createNetlifyDatabase()) as Database;
+
+export { testClient };

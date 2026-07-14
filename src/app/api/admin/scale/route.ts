@@ -17,7 +17,7 @@ const scaleSchema = z.object({
 export async function GET() {
   const unauthorized = await requireAdminApi();
   if (unauthorized) return unauthorized;
-  return NextResponse.json({ levels: db.select().from(scaleLevels).orderBy(asc(scaleLevels.level)).all() });
+  return NextResponse.json({ levels: await db.select().from(scaleLevels).orderBy(asc(scaleLevels.level)) });
 }
 
 export async function PUT(request: Request) {
@@ -25,9 +25,9 @@ export async function PUT(request: Request) {
   if (unauthorized) return unauthorized;
   const parsed = scaleSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid scale." }, { status: 400 });
-  db.transaction((tx) => {
+  await db.transaction(async (tx) => {
     for (const level of parsed.data.levels)
-      tx.insert(scaleLevels).values(level).onConflictDoUpdate({ target: scaleLevels.level, set: { title: level.title, meaning: level.meaning, exampleFilms: level.exampleFilms } }).run();
+      await tx.insert(scaleLevels).values(level).onConflictDoUpdate({ target: scaleLevels.level, set: { title: level.title, meaning: level.meaning, exampleFilms: level.exampleFilms } });
   });
   return NextResponse.json({ levels: parsed.data.levels });
 }

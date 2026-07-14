@@ -29,6 +29,13 @@
       "when": 1783991758180,
       "tag": "0003_curious_the_hood",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1783998204835,
+      "tag": "0004_high_black_queen",
+      "breakpoints": true
     }
   ]
 }

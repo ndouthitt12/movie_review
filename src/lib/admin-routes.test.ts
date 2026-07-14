@@ -52,6 +52,11 @@ describe("admin form workflow", () => {
     expect(response.status).toBe(200);
     let body = (await response.json()) as { form: { questions: Array<{ id: number; key: string; options: Array<{ id: number; label: string }> }> } };
     const dropdown = body.form.questions.find(({ key }) => key === "watch_again")!;
+    response = await change({ action: "add_options", questionId: dropdown.id, labels: ["Theater", "Streaming", "Physical media"] });
+    expect(response.status).toBe(200);
+    body = await response.json();
+    dropdown.options = body.form.questions.find(({ key }) => key === "watch_again")!.options;
+    expect(dropdown.options.map(({ label }) => label)).toEqual(["Theater", "Streaming", "Physical media"]);
     for (const [label, score, isNull] of [["Absolutely", 100, false], ["Maybe someday", 50, false], ["Never again", 0, false], ["N/A", null, true]] as const) {
       response = await change({ action: "save_option", questionId: dropdown.id, data: { label, valueScore: score, isNull, sortOrder: dropdown.options.length * 10 + 10 } });
       expect(response.status).toBe(200);

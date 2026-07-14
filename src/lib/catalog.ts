@@ -1,5 +1,5 @@
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
-import { alias } from "drizzle-orm/sqlite-core";
+import { alias } from "drizzle-orm/pg-core";
 import { db } from "@/db";
 import {
   answers,
@@ -18,7 +18,7 @@ import type { DashboardFilm } from "./stats";
 
 export async function getLibraryFilms() {
   const subFranchises = alias(franchises, "sub_franchises");
-  const rows = db
+  const rows = await db
     .select({
       id: films.id,
       tmdbId: films.tmdbId,
@@ -41,10 +41,9 @@ export async function getLibraryFilms() {
     .leftJoin(ratings, eq(ratings.filmId, films.id))
     .leftJoin(franchises, eq(franchises.id, films.franchiseId))
     .leftJoin(subFranchises, eq(subFranchises.id, films.subFranchiseId))
-    .orderBy(asc(films.watchOrder), asc(films.title))
-    .all();
+    .orderBy(asc(films.watchOrder), asc(films.title));
   const tagRows = rows.length
-    ? db
+    ? await db
         .select({
           filmId: filmRcaTags.filmId,
           id: rcaTags.id,
@@ -62,7 +61,6 @@ export async function getLibraryFilms() {
           ),
         )
         .orderBy(asc(rcaTags.label))
-        .all()
     : [];
   const tagsByFilm = new Map<number, typeof tagRows>();
   for (const tag of tagRows) {
@@ -70,7 +68,7 @@ export async function getLibraryFilms() {
     list.push(tag);
     tagsByFilm.set(tag.filmId, list);
   }
-  const scoresByFilm = loadNumericAnswers(rows.map(({ id }) => id));
+  const scoresByFilm = await loadNumericAnswers(rows.map(({ id }) => id));
   return rows.map((film) => {
     const scores = scoresByFilm.get(film.id) ?? new Map<string, number>();
     return {
@@ -99,10 +97,9 @@ export async function getLibraryFilms() {
 export type LibraryFilm = Awaited<ReturnType<typeof getLibraryFilms>>[number];
 
 export async function getCatalogOptions() {
-  const filmRows = db
+  const filmRows = await db
     .select({ primary: films.genrePrimary, secondary: films.genreSecondary })
-    .from(films)
-    .all();
+    .from(films);
   const genreSet = new Set<string>();
   filmRows.forEach(({ primary, secondary }) => {
     if (primary) genreSet.add(primary);
@@ -110,33 +107,35 @@ export async function getCatalogOptions() {
   });
   return {
     genres: [...genreSet].sort(),
-    franchises: db
+    franchises: await db
       .select({
         id: franchises.id,
         name: franchises.name,
         parentId: franchises.parentId,
       })
       .from(franchises)
-      .orderBy(asc(franchises.name))
-      .all(),
+      .orderBy(asc(franchises.name)),
   };
 }
 
 export async function getFilmDetail(id: number) {
-  const film = db.select().from(films).where(eq(films.id, id)).get();
+  const [film] = await db.select().from(films).where(eq(films.id, id)).limit(1);
   if (!film) return null;
-  const rating =
-    db.select().from(ratings).where(eq(ratings.filmId, id)).get() ?? null;
-  const watches = db
+  const [ratingRow] = await db
+    .select()
+    .from(ratings)
+    .where(eq(ratings.filmId, id))
+    .limit(1);
+  const rating = ratingRow ?? null;
+  const watches = await db
     .select()
     .from(watchLog)
     .where(eq(watchLog.filmId, id))
-    .orderBy(desc(watchLog.watchedOn), desc(watchLog.id))
-    .all();
-  const form = rating ? getFormVersionConfig(rating.formVersionId) : null;
+    .orderBy(desc(watchLog.watchedOn), desc(watchLog.id));
+  const form = rating ? await getFormVersionConfig(rating.formVersionId) : null;
   const questionIds = form?.questions.map(({ id: questionId }) => questionId) ?? [];
   const answerRows = questionIds.length
-    ? db
+    ? await db
         .select()
         .from(answers)
         .where(
@@ -145,9 +144,8 @@ export async function getFilmDetail(id: number) {
             inArray(answers.questionId, questionIds),
           ),
         )
-        .all()
     : [];
-  const selectedRcaTags = db
+  const selectedRcaTags = await db
     .select({
       id: rcaTags.id,
       label: rcaTags.label,
@@ -158,8 +156,7 @@ export async function getFilmDetail(id: number) {
     .from(filmRcaTags)
     .innerJoin(rcaTags, eq(rcaTags.id, filmRcaTags.rcaTagId))
     .where(eq(filmRcaTags.filmId, id))
-    .orderBy(asc(rcaTags.questionKey), asc(rcaTags.label))
-    .all();
+    .orderBy(asc(rcaTags.questionKey), asc(rcaTags.label));
   return {
     film,
     rating,
@@ -171,7 +168,7 @@ export async function getFilmDetail(id: number) {
 }
 
 export async function getDashboardData() {
-  const publishedForm = getPublishedRuntimeForm();
+  const publishedForm = await getPublishedRuntimeForm();
   const attributes = (publishedForm?.questions ?? [])
     .filter(
       (question) =>
@@ -181,7 +178,7 @@ export async function getDashboardData() {
     )
     .map(({ key, label }) => ({ key, label }));
   const subFranchises = alias(franchises, "dashboard_sub_franchises");
-  const filmRows = db
+  const filmRows = await db
     .select({
       id: films.id,
       title: films.title,
@@ -196,9 +193,8 @@ export async function getDashboardData() {
     .from(films)
     .leftJoin(ratings, eq(ratings.filmId, films.id))
     .leftJoin(franchises, eq(franchises.id, films.franchiseId))
-    .leftJoin(subFranchises, eq(subFranchises.id, films.subFranchiseId))
-    .all();
-  const tagRows = db
+    .leftJoin(subFranchises, eq(subFranchises.id, films.subFranchiseId));
+  const tagRows = await db
     .select({
       filmId: filmRcaTags.filmId,
       id: rcaTags.id,
@@ -206,8 +202,7 @@ export async function getDashboardData() {
       questionKey: rcaTags.questionKey,
     })
     .from(filmRcaTags)
-    .innerJoin(rcaTags, eq(rcaTags.id, filmRcaTags.rcaTagId))
-    .all();
+    .innerJoin(rcaTags, eq(rcaTags.id, filmRcaTags.rcaTagId));
   const tagsByFilm = new Map<number, DashboardFilm["rcaTags"]>();
   for (const tag of tagRows) {
     const list = tagsByFilm.get(tag.filmId) ?? [];
@@ -218,7 +213,7 @@ export async function getDashboardData() {
     });
     tagsByFilm.set(tag.filmId, list);
   }
-  const scoresByFilm = loadDashboardScores(
+  const scoresByFilm = await loadDashboardScores(
     filmRows.map(({ id }) => id),
     new Set(attributes.map(({ key }) => key)),
   );
@@ -233,7 +228,7 @@ export async function getDashboardData() {
           };
     return { ...film, rating, rcaTags: tagsByFilm.get(film.id) ?? [] };
   });
-  const watches = db
+  const watches = await db
     .select({
       filmId: watchLog.filmId,
       watchedOn: watchLog.watchedOn,
@@ -241,31 +236,28 @@ export async function getDashboardData() {
     })
     .from(watchLog)
     .innerJoin(films, eq(films.id, watchLog.filmId))
-    .orderBy(asc(watchLog.watchedOn), asc(watchLog.id))
-    .all();
+    .orderBy(asc(watchLog.watchedOn), asc(watchLog.id));
   return { films: dashboardFilms, watches, attributes };
 }
 
 export async function getRubric() {
-  return db.select().from(scaleLevels).orderBy(desc(scaleLevels.level)).all();
+  return db.select().from(scaleLevels).orderBy(desc(scaleLevels.level));
 }
 
-function loadNumericAnswers(filmIds: number[]) {
+async function loadNumericAnswers(filmIds: number[]) {
   if (filmIds.length === 0) return new Map<number, Map<string, number>>();
-  const rows = db
+  const rows = await db
     .select({
       filmId: answers.filmId,
       questionId: answers.questionId,
       valueNumber: answers.valueNumber,
     })
     .from(answers)
-    .where(inArray(answers.filmId, filmIds))
-    .all();
+    .where(inArray(answers.filmId, filmIds));
   const questionKeys = new Map(
-    db
+    (await db
       .select({ id: questions.id, key: questions.key })
-      .from(questions)
-      .all()
+      .from(questions))
       .map(({ id, key }) => [id, key]),
   );
   const byFilm = new Map<number, Map<string, number>>();
@@ -279,10 +271,10 @@ function loadNumericAnswers(filmIds: number[]) {
   return byFilm;
 }
 
-function loadDashboardScores(filmIds: number[], publishedKeys: Set<string>) {
+async function loadDashboardScores(filmIds: number[], publishedKeys: Set<string>) {
   if (!filmIds.length || !publishedKeys.size)
     return new Map<number, Record<string, number>>();
-  const rows = db
+  const rows = await db
     .select({
       filmId: answers.filmId,
       questionId: answers.questionId,
@@ -291,12 +283,11 @@ function loadDashboardScores(filmIds: number[], publishedKeys: Set<string>) {
       isNa: answers.isNa,
     })
     .from(answers)
-    .where(inArray(answers.filmId, filmIds))
-    .all();
+    .where(inArray(answers.filmId, filmIds));
   const questionIds = [...new Set(rows.map(({ questionId }) => questionId))];
   const questionById = new Map(
     questionIds.length
-      ? db
+      ? (await db
           .select({
             id: questions.id,
             key: questions.key,
@@ -304,8 +295,7 @@ function loadDashboardScores(filmIds: number[], publishedKeys: Set<string>) {
             multiSelectScoring: questions.multiSelectScoring,
           })
           .from(questions)
-          .where(inArray(questions.id, questionIds))
-          .all()
+          .where(inArray(questions.id, questionIds)))
           .map((question) => [question.id, question] as const)
       : [],
   );
@@ -314,11 +304,10 @@ function loadDashboardScores(filmIds: number[], publishedKeys: Set<string>) {
   ];
   const optionScores = new Map(
     selectedOptionIds.length
-      ? db
+      ? (await db
           .select({ id: questionOptions.id, valueScore: questionOptions.valueScore, isNull: questionOptions.isNull })
           .from(questionOptions)
-          .where(inArray(questionOptions.id, selectedOptionIds))
-          .all()
+          .where(inArray(questionOptions.id, selectedOptionIds)))
           .map((option) => [option.id, option] as const)
       : [],
   );

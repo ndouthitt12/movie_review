@@ -3,6 +3,6 @@ import { ensureDraftForm } from "@/lib/admin-form";
 
 export const dynamic = "force-dynamic";
 
-export default function AdminScoringPage() {
-  return <ScoringAdmin initialForm={ensureDraftForm()} />;
+export default async function AdminScoringPage() {
+  return <ScoringAdmin initialForm={await ensureDraftForm()} />;
 }

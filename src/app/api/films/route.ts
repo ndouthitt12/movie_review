@@ -12,7 +12,7 @@ class DuplicateFilmError extends Error {
   }
 }
 
-function findOrCreateFranchise(
+async function findOrCreateFranchise(
   tx: Transaction,
   name: string,
   parentId: number | null,
@@ -21,19 +21,18 @@ function findOrCreateFranchise(
     parentId === null
       ? and(eq(franchises.name, name), isNull(franchises.parentId))
       : and(eq(franchises.name, name), eq(franchises.parentId, parentId));
-  const existing = tx
+  const [existing] = await tx
     .select({ id: franchises.id })
     .from(franchises)
     .where(condition)
-    .get();
-  return (
-    existing?.id ??
-    tx
-      .insert(franchises)
-      .values({ name, parentId })
-      .returning({ id: franchises.id })
-      .get().id
-  );
+    .limit(1);
+  if (existing) return existing.id;
+  const [created] = await tx
+    .insert(franchises)
+    .values({ name, parentId })
+    .returning({ id: franchises.id });
+  if (!created) throw new Error("Could not create franchise.");
+  return created.id;
 }
 
 export async function POST(request: Request) {
@@ -48,16 +47,16 @@ export async function POST(request: Request) {
   const input = parsed.data;
 
   try {
-    const created = db.transaction((tx) => {
+    const created = await db.transaction(async (tx) => {
       if (input.tmdbId) {
-        const tmdbDuplicate = tx
+        const [tmdbDuplicate] = await tx
           .select({ id: films.id })
           .from(films)
           .where(eq(films.tmdbId, input.tmdbId))
-          .get();
+          .limit(1);
         if (tmdbDuplicate) throw new DuplicateFilmError(tmdbDuplicate.id);
       }
-      const titleDuplicate = tx
+      const [titleDuplicate] = await tx
         .select({ id: films.id })
         .from(films)
         .where(
@@ -66,24 +65,23 @@ export async function POST(request: Request) {
             eq(films.releaseYear, input.releaseYear),
           ),
         )
-        .get();
+        .limit(1);
       if (titleDuplicate) throw new DuplicateFilmError(titleDuplicate.id);
 
       const franchiseId = input.franchiseName
-        ? findOrCreateFranchise(tx, input.franchiseName, null)
+        ? await findOrCreateFranchise(tx, input.franchiseName, null)
         : null;
       const subFranchiseId =
         input.subFranchiseName && franchiseId
-          ? findOrCreateFranchise(tx, input.subFranchiseName, franchiseId)
+          ? await findOrCreateFranchise(tx, input.subFranchiseName, franchiseId)
           : null;
       const nextOrder =
         input.status === "to_watch" && input.watchOrder == null
-          ? (tx
+          ? ((await tx
               .select({ value: max(films.watchOrder) })
-              .from(films)
-              .get()?.value ?? 0) + 1
+              .from(films))[0]?.value ?? 0) + 1
           : input.watchOrder;
-      return tx
+      const [film] = await tx
         .insert(films)
         .values({
           tmdbId: input.tmdbId,
@@ -103,8 +101,9 @@ export async function POST(request: Request) {
           overview: input.overview,
           tmdbGenres: input.tmdbGenres ?? [],
         })
-        .returning({ id: films.id })
-        .get();
+        .returning({ id: films.id });
+      if (!film) throw new Error("Could not create film.");
+      return film;
     });
     return NextResponse.json(created, { status: 201 });
   } catch (error) {

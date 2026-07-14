@@ -16,15 +16,15 @@ import {
 
 const optionTypes = new Set(["dropdown", "multiple_choice", "multi_select"]);
 
-export function ensureDraftForm(): RuntimeFormConfig {
-  const existing = getDraftRuntimeForm();
+export async function ensureDraftForm(): Promise<RuntimeFormConfig> {
+  const existing = await getDraftRuntimeForm();
   if (existing) return existing;
 
-  const published = getPublishedRuntimeForm();
+  const published = await getPublishedRuntimeForm();
   if (!published) throw new Error("A published form is required before creating a draft.");
 
-  db.transaction((tx) => {
-    const version = tx
+  await db.transaction(async (tx) => {
+    const [version] = await tx
       .insert(formVersions)
       .values({
         label: `${published.label} — draft`,
@@ -34,26 +34,26 @@ export function ensureDraftForm(): RuntimeFormConfig {
         secondaryDivisorMode: published.secondaryDivisorMode,
         secondaryManualDivisor: published.secondaryManualDivisor,
       })
-      .returning({ id: formVersions.id })
-      .get();
+      .returning({ id: formVersions.id });
+    if (!version) throw new Error("Could not create a draft form version.");
 
     const sectionIds = new Map<number, number>();
     for (const section of published.sections) {
-      const copied = tx
+      const [copied] = await tx
         .insert(formSections)
         .values({
           formVersionId: version.id,
           title: section.title,
           sortOrder: section.sortOrder,
         })
-        .returning({ id: formSections.id })
-        .get();
+        .returning({ id: formSections.id });
+      if (!copied) throw new Error("Could not copy a form section.");
       sectionIds.set(section.id, copied.id);
     }
 
     const questionIds = new Map<number, number>();
     for (const question of published.questions) {
-      const copied = tx
+      const [copied] = await tx
         .insert(questions)
         .values({
           formVersionId: version.id,
@@ -79,12 +79,12 @@ export function ensureDraftForm(): RuntimeFormConfig {
           conditionLogic: question.conditionLogic,
           rcaEnabled: question.rcaEnabled,
         })
-        .returning({ id: questions.id })
-        .get();
+        .returning({ id: questions.id });
+      if (!copied) throw new Error("Could not copy a form question.");
       questionIds.set(question.id, copied.id);
 
       if (question.options.length) {
-        tx.insert(questionOptions)
+        await tx.insert(questionOptions)
           .values(
             question.options.map((option) => ({
               questionId: copied.id,
@@ -93,15 +93,14 @@ export function ensureDraftForm(): RuntimeFormConfig {
               isNull: option.isNull,
               sortOrder: option.sortOrder,
             })),
-          )
-          .run();
+          );
       }
     }
 
     for (const question of published.questions) {
       const targetId = questionIds.get(question.id)!;
       if (question.conditions.length) {
-        tx.insert(questionConditions)
+        await tx.insert(questionConditions)
           .values(
             question.conditions.map((condition) => ({
               questionId: targetId,
@@ -110,13 +109,14 @@ export function ensureDraftForm(): RuntimeFormConfig {
               value: condition.value,
               effect: condition.effect,
             })),
-          )
-          .run();
+          );
       }
     }
   });
 
-  return getDraftRuntimeForm()!;
+  const draft = await getDraftRuntimeForm();
+  if (!draft) throw new Error("Could not load the new draft form.");
+  return draft;
 }
 
 export function validateFormForPublish(form: RuntimeFormConfig): string[] {
@@ -192,38 +192,36 @@ function validateDivisor(
     errors.push(`${name} auto divisor requires at least one scored question.`);
 }
 
-export function publishDraftForm() {
-  const draft = getDraftRuntimeForm();
+export async function publishDraftForm() {
+  const draft = await getDraftRuntimeForm();
   if (!draft) return { errors: ["No draft form exists."] };
   const errors = validateFormForPublish(draft);
   if (errors.length) return { errors };
 
   const now = new Date().toISOString();
-  db.transaction((tx) => {
-    tx.update(formVersions)
+  await db.transaction(async (tx) => {
+    await tx.update(formVersions)
       .set({ status: "archived" })
-      .where(and(eq(formVersions.status, "published"), ne(formVersions.id, draft.id)))
-      .run();
-    tx.update(formVersions)
+      .where(and(eq(formVersions.status, "published"), ne(formVersions.id, draft.id)));
+    await tx.update(formVersions)
       .set({ status: "published", publishedAt: now })
-      .where(eq(formVersions.id, draft.id))
-      .run();
+      .where(eq(formVersions.id, draft.id));
   });
-  return { errors: [], form: getPublishedRuntimeForm()! };
+  const form = await getPublishedRuntimeForm();
+  return { errors: [], form };
 }
 
-export function nextQuestionSortOrder(formVersionId: number) {
-  const rows = db
+export async function nextQuestionSortOrder(formVersionId: number) {
+  const rows = await db
     .select({ sortOrder: questions.sortOrder })
     .from(questions)
     .where(and(eq(questions.formVersionId, formVersionId), isNull(questions.archivedAt)))
-    .orderBy(asc(questions.sortOrder))
-    .all();
+    .orderBy(asc(questions.sortOrder));
   return rows.length ? rows[rows.length - 1]!.sortOrder + 10 : 10;
 }
 
-export function reorderDraftQuestions(orderedIds: number[]) {
-  const draft = ensureDraftForm();
+export async function reorderDraftQuestions(orderedIds: number[]) {
+  const draft = await ensureDraftForm();
   const activeIds = draft.questions.filter((q) => !q.archivedAt).map(({ id }) => id);
   if (orderedIds.length !== activeIds.length || orderedIds.some((id) => !activeIds.includes(id)))
     throw new Error("Reorder must include every active draft question exactly once.");
@@ -236,19 +234,20 @@ export function reorderDraftQuestions(orderedIds: number[]) {
         throw new Error(`Cannot move “${target.label}” before its condition source “${source?.label ?? "unknown"}”.`);
       }
 
-  db.transaction((tx) => {
+  await db.transaction(async (tx) => {
     for (const [id, sortOrder] of proposed)
-      tx.update(questions).set({ sortOrder }).where(eq(questions.id, id)).run();
+      await tx.update(questions).set({ sortOrder }).where(eq(questions.id, id));
   });
-  return getDraftRuntimeForm()!;
+  const reordered = await getDraftRuntimeForm();
+  if (!reordered) throw new Error("Could not reload the reordered draft form.");
+  return reordered;
 }
 
-export function draftQuestionIds(formVersionId: number, ids: number[]) {
+export async function draftQuestionIds(formVersionId: number, ids: number[]) {
   if (!ids.length) return [];
-  return db
+  return (await db
     .select({ id: questions.id })
     .from(questions)
-    .where(and(eq(questions.formVersionId, formVersionId), inArray(questions.id, ids)))
-    .all()
+    .where(and(eq(questions.formVersionId, formVersionId), inArray(questions.id, ids))))
     .map(({ id }) => id);
 }

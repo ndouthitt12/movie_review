@@ -36,15 +36,15 @@ export async function PUT(
       },
       { status: 400 },
     );
-  const film = db
+  const [film] = await db
     .select({ status: films.status })
     .from(films)
     .where(eq(films.id, id))
-    .get();
+    .limit(1);
   if (!film)
     return NextResponse.json({ error: "Film not found." }, { status: 404 });
 
-  const form = getPublishedRuntimeForm();
+  const form = await getPublishedRuntimeForm();
   if (!form || form.id !== parsed.data.formVersionId)
     return NextResponse.json(
       { error: "The published rating form changed. Reload before saving." },
@@ -103,11 +103,10 @@ export async function PUT(
   const secondary = secondaryScore(form, answerMap);
   const uniqueRcaTagIds = [...new Set(parsed.data.rcaTagIds)];
   const validTags = uniqueRcaTagIds.length
-    ? db
+    ? await db
         .select({ id: rcaTags.id })
         .from(rcaTags)
         .where(inArray(rcaTags.id, uniqueRcaTagIds))
-        .all()
     : [];
   if (validTags.length !== uniqueRcaTagIds.length)
     return NextResponse.json(
@@ -116,10 +115,10 @@ export async function PUT(
     );
 
   const now = new Date().toISOString();
-  db.transaction((tx) => {
-    tx.delete(answers).where(eq(answers.filmId, id)).run();
+  await db.transaction(async (tx) => {
+    await tx.delete(answers).where(eq(answers.filmId, id));
     if (parsed.data.answers.length)
-      tx.insert(answers)
+      await tx.insert(answers)
         .values(
           parsed.data.answers.map((answer) => ({
             filmId: id,
@@ -129,9 +128,8 @@ export async function PUT(
             valueOptionIds: answer.valueOptionIds ?? null,
             isNa: answer.isNa,
           })),
-        )
-        .run();
-    tx.insert(ratings)
+        );
+    await tx.insert(ratings)
       .values({
         filmId: id,
         formVersionId: form.id,
@@ -147,22 +145,18 @@ export async function PUT(
           overallSecondary: secondary,
           ratedAt: now,
         },
-      })
-      .run();
-    tx.delete(filmRcaTags).where(eq(filmRcaTags.filmId, id)).run();
+      });
+    await tx.delete(filmRcaTags).where(eq(filmRcaTags.filmId, id));
     if (uniqueRcaTagIds.length)
-      tx.insert(filmRcaTags)
-        .values(uniqueRcaTagIds.map((rcaTagId) => ({ filmId: id, rcaTagId })))
-        .run();
+      await tx
+        .insert(filmRcaTags)
+        .values(uniqueRcaTagIds.map((rcaTagId) => ({ filmId: id, rcaTagId })));
     if (film.status === "to_watch" && parsed.data.promoteToWatched) {
       const watchedOn = parsed.data.watchedOn!;
-      tx.update(films)
+      await tx.update(films)
         .set({ status: "watched", lastWatchDate: watchedOn, updatedAt: now })
-        .where(eq(films.id, id))
-        .run();
-      tx.insert(watchLog)
-        .values({ filmId: id, watchedOn, isRewatch: false })
-        .run();
+        .where(eq(films.id, id));
+      await tx.insert(watchLog).values({ filmId: id, watchedOn, isRewatch: false });
     }
   });
   return NextResponse.json({ overall, secondary });
@@ -216,7 +210,7 @@ function answerPresent(answer: AnswerMap[number]) {
 }
 
 function secondaryScore(
-  form: NonNullable<ReturnType<typeof getPublishedRuntimeForm>>,
+  form: NonNullable<Awaited<ReturnType<typeof getPublishedRuntimeForm>>>,
   answerMap: AnswerMap,
 ) {
   try {

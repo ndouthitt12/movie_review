@@ -15,24 +15,23 @@ type PreparedRating = {
   answerMap: AnswerMap;
 };
 
-export function preparePublishedRecompute(): { form: RuntimeFormConfig; rows: PreparedRating[] } {
-  const form = getPublishedRuntimeForm();
+export async function preparePublishedRecompute(): Promise<{ form: RuntimeFormConfig; rows: PreparedRating[] }> {
+  const form = await getPublishedRuntimeForm();
   if (!form) throw new Error("No published form exists.");
-  const ratingRows = db
+  const ratingRows = await db
     .select({ filmId: ratings.filmId, title: films.title, before: ratings.overall, secondaryBefore: ratings.overallSecondary })
     .from(ratings)
-    .innerJoin(films, eq(films.id, ratings.filmId))
-    .all();
+    .innerJoin(films, eq(films.id, ratings.filmId));
   const filmIds = ratingRows.map(({ filmId }) => filmId);
   const rawAnswers = filmIds.length
-    ? db.select().from(answers).where(inArray(answers.filmId, filmIds)).all()
+    ? await db.select().from(answers).where(inArray(answers.filmId, filmIds))
     : [];
   const oldQuestionIds = [...new Set(rawAnswers.map(({ questionId }) => questionId))];
   const oldQuestions = oldQuestionIds.length
-    ? db.select({ id: questions.id, key: questions.key }).from(questions).where(inArray(questions.id, oldQuestionIds)).all()
+    ? await db.select({ id: questions.id, key: questions.key }).from(questions).where(inArray(questions.id, oldQuestionIds))
     : [];
   const oldOptions = oldQuestionIds.length
-    ? db.select({ id: questionOptions.id, questionId: questionOptions.questionId, label: questionOptions.label, isNull: questionOptions.isNull }).from(questionOptions).where(inArray(questionOptions.questionId, oldQuestionIds)).all()
+    ? await db.select({ id: questionOptions.id, questionId: questionOptions.questionId, label: questionOptions.label, isNull: questionOptions.isNull }).from(questionOptions).where(inArray(questionOptions.questionId, oldQuestionIds))
     : [];
   const oldKey = new Map(oldQuestions.map(({ id, key }) => [id, key]));
   const oldOption = new Map(oldOptions.map((option) => [option.id, option]));
@@ -62,12 +61,12 @@ export function preparePublishedRecompute(): { form: RuntimeFormConfig; rows: Pr
   return { form, rows };
 }
 
-export function commitPublishedRecompute() {
-  const prepared = preparePublishedRecompute();
+export async function commitPublishedRecompute() {
+  const prepared = await preparePublishedRecompute();
   const now = new Date().toISOString();
-  db.transaction((tx) => {
+  await db.transaction(async (tx) => {
     for (const row of prepared.rows) {
-      tx.delete(answers).where(eq(answers.filmId, row.filmId)).run();
+      await tx.delete(answers).where(eq(answers.filmId, row.filmId));
       const answerRows = Object.entries(row.answerMap).map(([questionId, value]) => ({
         filmId: row.filmId,
         questionId: Number(questionId),
@@ -76,13 +75,13 @@ export function commitPublishedRecompute() {
         valueOptionIds: value?.optionIds ?? null,
         isNa: value?.isNa ?? false,
       }));
-      if (answerRows.length) tx.insert(answers).values(answerRows).run();
-      tx.update(ratings).set({
+      if (answerRows.length) await tx.insert(answers).values(answerRows);
+      await tx.update(ratings).set({
         formVersionId: prepared.form.id,
         overall: row.after,
         overallSecondary: row.secondaryAfter,
         ratedAt: now,
-      }).where(eq(ratings.filmId, row.filmId)).run();
+      }).where(eq(ratings.filmId, row.filmId));
     }
   });
   return prepared;

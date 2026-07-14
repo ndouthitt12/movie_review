@@ -21,14 +21,14 @@ export async function POST(request: Request) {
     );
   const allowedKeys = new Set([
     "overall",
-    ...ensureDraftForm().questions.map(({ key }) => key),
+    ...(await ensureDraftForm()).questions.map(({ key }) => key),
   ]);
   if (!allowedKeys.has(parsed.data.questionKey))
     return NextResponse.json(
       { error: "Question key is not part of the draft form." },
       { status: 400 },
     );
-  const duplicate = db
+  const [duplicate] = await db
     .select({ id: rcaTags.id })
     .from(rcaTags)
     .where(
@@ -37,14 +37,15 @@ export async function POST(request: Request) {
         sql`lower(${rcaTags.label}) = lower(${parsed.data.label})`,
       ),
     )
-    .get();
+    .limit(1);
   if (duplicate)
     return NextResponse.json(
       { error: "That label already exists for this attribute." },
       { status: 409 },
     );
   try {
-    const tag = db.insert(rcaTags).values(parsed.data).returning().get();
+    const [tag] = await db.insert(rcaTags).values(parsed.data).returning();
+    if (!tag) throw new Error("Could not create RCA tag.");
     return NextResponse.json({ ...tag, usageCount: 0 }, { status: 201 });
   } catch (error) {
     if (isUniqueConstraint(error))

@@ -15,11 +15,11 @@ export async function PATCH(
   );
   if (!Number.isInteger(id) || !parsed.success)
     return NextResponse.json({ error: "Invalid tag update." }, { status: 400 });
-  const existing = db.select().from(rcaTags).where(eq(rcaTags.id, id)).get();
+  const [existing] = await db.select().from(rcaTags).where(eq(rcaTags.id, id)).limit(1);
   if (!existing)
     return NextResponse.json({ error: "Tag not found." }, { status: 404 });
   if (parsed.data.label) {
-    const duplicate = db
+    const [duplicate] = await db
       .select({ id: rcaTags.id })
       .from(rcaTags)
       .where(
@@ -29,7 +29,7 @@ export async function PATCH(
           sql`lower(${rcaTags.label}) = lower(${parsed.data.label})`,
         ),
       )
-      .get();
+      .limit(1);
     if (duplicate)
       return NextResponse.json(
         { error: "That label already exists for this attribute." },
@@ -37,12 +37,11 @@ export async function PATCH(
       );
   }
   try {
-    const tag = db
+    const [tag] = await db
       .update(rcaTags)
       .set(parsed.data)
       .where(eq(rcaTags.id, id))
-      .returning()
-      .get();
+      .returning();
     return NextResponse.json(tag);
   } catch (error) {
     if (isUniqueConstraint(error))
@@ -61,14 +60,13 @@ export async function DELETE(
   const id = Number((await params).id);
   if (!Number.isInteger(id))
     return NextResponse.json({ error: "Invalid tag id." }, { status: 400 });
-  const tag = db.select().from(rcaTags).where(eq(rcaTags.id, id)).get();
+  const [tag] = await db.select().from(rcaTags).where(eq(rcaTags.id, id)).limit(1);
   if (!tag)
     return NextResponse.json({ error: "Tag not found." }, { status: 404 });
-  const usage = db
+  const [usageRow] = await db
     .select({ count: count() })
     .from(filmRcaTags)
-    .where(eq(filmRcaTags.rcaTagId, id))
-    .get()?.count;
-  db.delete(rcaTags).where(eq(rcaTags.id, id)).run();
-  return NextResponse.json({ deleted: true, usageCount: usage ?? 0 });
+    .where(eq(filmRcaTags.rcaTagId, id));
+  await db.delete(rcaTags).where(eq(rcaTags.id, id));
+  return NextResponse.json({ deleted: true, usageCount: usageRow?.count ?? 0 });
 }

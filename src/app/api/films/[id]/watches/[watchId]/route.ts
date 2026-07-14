@@ -6,19 +6,17 @@ import { watchSchema } from "@/lib/validation";
 
 type Context = { params: Promise<{ id: string; watchId: string }> };
 
-function updateLastWatch(
+async function updateLastWatch(
   filmId: number,
   tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
 ) {
-  const latest = tx
-    .select({ date: max(watchLog.watchedOn) })
+  const [latest] = await tx
+    .select({ date: max(watchLog.watchedOn).as("date") })
     .from(watchLog)
-    .where(eq(watchLog.filmId, filmId))
-    .get()?.date;
-  tx.update(films)
-    .set({ lastWatchDate: latest ?? null, updatedAt: new Date().toISOString() })
-    .where(eq(films.id, filmId))
-    .run();
+    .where(eq(watchLog.filmId, filmId));
+  await tx.update(films)
+    .set({ lastWatchDate: latest?.date ?? null, updatedAt: new Date().toISOString() })
+    .where(eq(films.id, filmId));
 }
 
 export async function PATCH(request: Request, { params }: Context) {
@@ -35,14 +33,13 @@ export async function PATCH(request: Request, { params }: Context) {
       { error: "Invalid watch entry." },
       { status: 400 },
     );
-  const updated = db.transaction((tx) => {
-    const row = tx
+  const updated = await db.transaction(async (tx) => {
+    const [row] = await tx
       .update(watchLog)
       .set(parsed.data)
       .where(and(eq(watchLog.id, watchId), eq(watchLog.filmId, filmId)))
-      .returning()
-      .get();
-    if (row) updateLastWatch(filmId, tx);
+      .returning();
+    if (row) await updateLastWatch(filmId, tx);
     return row;
   });
   return updated
@@ -59,13 +56,12 @@ export async function DELETE(_request: Request, { params }: Context) {
       { error: "Invalid watch entry." },
       { status: 400 },
     );
-  const deleted = db.transaction((tx) => {
-    const row = tx
+  const deleted = await db.transaction(async (tx) => {
+    const [row] = await tx
       .delete(watchLog)
       .where(and(eq(watchLog.id, watchId), eq(watchLog.filmId, filmId)))
-      .returning({ id: watchLog.id })
-      .get();
-    if (row) updateLastWatch(filmId, tx);
+      .returning({ id: watchLog.id });
+    if (row) await updateLastWatch(filmId, tx);
     return row;
   });
   return deleted

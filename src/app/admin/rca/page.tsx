@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 export default async function AdminRcaPage() {
   const tags = await getRcaTagsWithUsage();
-  const draft = ensureDraftForm();
+  const draft = await ensureDraftForm();
   const questionOptions = [
     ...draft.questions.map(({ key, label }) => ({ key, label })),
     { key: "overall", label: "Overall" },

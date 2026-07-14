@@ -1,15 +1,18 @@
 import { sql } from "drizzle-orm";
 import {
+  boolean,
   check,
   index,
   integer,
+  jsonb,
+  pgTable,
   primaryKey,
   real,
-  sqliteTable,
+  serial,
   text,
   uniqueIndex,
-  type AnySQLiteColumn,
-} from "drizzle-orm/sqlite-core";
+  type AnyPgColumn,
+} from "drizzle-orm/pg-core";
 
 export const filmStatuses = ["watched", "to_watch", "to_rewatch"] as const;
 export const rcaAttributes = [
@@ -59,13 +62,13 @@ export type BlankPolicy = (typeof blankPolicies)[number];
 export type MultiSelectScoring = (typeof multiSelectScorings)[number];
 export type DivisorMode = (typeof divisorModes)[number];
 
-export const franchises = sqliteTable(
+export const franchises = pgTable(
   "franchises",
   {
-    id: integer("id").primaryKey({ autoIncrement: true }),
+    id: serial("id").primaryKey(),
     name: text("name").notNull(),
     parentId: integer("parent_id").references(
-      (): AnySQLiteColumn => franchises.id,
+      (): AnyPgColumn => franchises.id,
       {
         onDelete: "cascade",
       },
@@ -77,10 +80,10 @@ export const franchises = sqliteTable(
   ],
 );
 
-export const films = sqliteTable(
+export const films = pgTable(
   "films",
   {
-    id: integer("id").primaryKey({ autoIncrement: true }),
+    id: serial("id").primaryKey(),
     tmdbId: integer("tmdb_id"),
     title: text("title").notNull(),
     releaseYear: integer("release_year").notNull(),
@@ -104,13 +107,13 @@ export const films = sqliteTable(
     runtime: integer("runtime"),
     director: text("director"),
     overview: text("overview"),
-    tmdbGenres: text("tmdb_genres", { mode: "json" }).$type<string[]>(),
+    tmdbGenres: jsonb("tmdb_genres").$type<string[]>(),
     createdAt: text("created_at")
       .notNull()
-      .default(sql`CURRENT_TIMESTAMP`),
+      .default(sql`CURRENT_TIMESTAMP::text`),
     updatedAt: text("updated_at")
       .notNull()
-      .default(sql`CURRENT_TIMESTAMP`),
+      .default(sql`CURRENT_TIMESTAMP::text`),
   },
   (table) => [
     check(
@@ -123,10 +126,10 @@ export const films = sqliteTable(
   ],
 );
 
-export const formVersions = sqliteTable(
+export const formVersions = pgTable(
   "form_versions",
   {
-    id: integer("id").primaryKey({ autoIncrement: true }),
+    id: serial("id").primaryKey(),
     label: text("label").notNull(),
     status: text("status", { enum: formVersionStatuses }).notNull(),
     divisorMode: text("divisor_mode", { enum: divisorModes })
@@ -141,7 +144,7 @@ export const formVersions = sqliteTable(
     secondaryManualDivisor: real("secondary_manual_divisor"),
     createdAt: text("created_at")
       .notNull()
-      .default(sql`CURRENT_TIMESTAMP`),
+      .default(sql`CURRENT_TIMESTAMP::text`),
     publishedAt: text("published_at"),
   },
   (table) => [
@@ -162,10 +165,10 @@ export const formVersions = sqliteTable(
   ],
 );
 
-export const formSections = sqliteTable(
+export const formSections = pgTable(
   "form_sections",
   {
-    id: integer("id").primaryKey({ autoIncrement: true }),
+    id: serial("id").primaryKey(),
     formVersionId: integer("form_version_id")
       .notNull()
       .references(() => formVersions.id, { onDelete: "cascade" }),
@@ -180,10 +183,10 @@ export const formSections = sqliteTable(
   ],
 );
 
-export const questions = sqliteTable(
+export const questions = pgTable(
   "questions",
   {
-    id: integer("id").primaryKey({ autoIncrement: true }),
+    id: serial("id").primaryKey(),
     formVersionId: integer("form_version_id")
       .notNull()
       .references(() => formVersions.id, { onDelete: "cascade" }),
@@ -195,10 +198,10 @@ export const questions = sqliteTable(
       onDelete: "set null",
     }),
     sortOrder: integer("sort_order").notNull(),
-    required: integer("required", { mode: "boolean" }).notNull().default(false),
-    scored: integer("scored", { mode: "boolean" }).notNull().default(false),
+    required: boolean("required").notNull().default(true),
+    scored: boolean("scored").notNull().default(false),
     weight: real("weight"),
-    secondaryScored: integer("secondary_scored", { mode: "boolean" })
+    secondaryScored: boolean("secondary_scored")
       .notNull()
       .default(false),
     secondaryWeight: real("secondary_weight"),
@@ -217,11 +220,11 @@ export const questions = sqliteTable(
     multiSelectScoring: text("multi_select_scoring", {
       enum: multiSelectScorings,
     }),
-    allowNa: integer("allow_na", { mode: "boolean" }).notNull().default(false),
+    allowNa: boolean("allow_na").notNull().default(false),
     conditionLogic: text("condition_logic", { enum: conditionLogics })
       .notNull()
       .default("all"),
-    rcaEnabled: integer("rca_enabled", { mode: "boolean" })
+    rcaEnabled: boolean("rca_enabled")
       .notNull()
       .default(false),
     archivedAt: text("archived_at"),
@@ -239,16 +242,16 @@ export const questions = sqliteTable(
   ],
 );
 
-export const questionOptions = sqliteTable(
+export const questionOptions = pgTable(
   "question_options",
   {
-    id: integer("id").primaryKey({ autoIncrement: true }),
+    id: serial("id").primaryKey(),
     questionId: integer("question_id")
       .notNull()
       .references(() => questions.id, { onDelete: "cascade" }),
     label: text("label").notNull(),
     valueScore: real("value_score"),
-    isNull: integer("is_null", { mode: "boolean" }).notNull().default(false),
+    isNull: boolean("is_null").notNull().default(false),
     sortOrder: integer("sort_order").notNull(),
     archivedAt: text("archived_at"),
   },
@@ -260,10 +263,10 @@ export const questionOptions = sqliteTable(
   ],
 );
 
-export const questionConditions = sqliteTable(
+export const questionConditions = pgTable(
   "question_conditions",
   {
-    id: integer("id").primaryKey({ autoIncrement: true }),
+    id: serial("id").primaryKey(),
     questionId: integer("question_id")
       .notNull()
       .references(() => questions.id, { onDelete: "cascade" }),
@@ -271,9 +274,7 @@ export const questionConditions = sqliteTable(
       .notNull()
       .references(() => questions.id, { onDelete: "cascade" }),
     operator: text("operator", { enum: conditionOperators }).notNull(),
-    value: text("value", { mode: "json" }).$type<
-      number | number[] | null
-    >(),
+    value: jsonb("value").$type<number | number[] | null>(),
     effect: text("effect", { enum: conditionEffects }).notNull(),
   },
   (table) => [
@@ -282,10 +283,10 @@ export const questionConditions = sqliteTable(
   ],
 );
 
-export const answers = sqliteTable(
+export const answers = pgTable(
   "answers",
   {
-    id: integer("id").primaryKey({ autoIncrement: true }),
+    id: serial("id").primaryKey(),
     filmId: integer("film_id")
       .notNull()
       .references(() => films.id, { onDelete: "cascade" }),
@@ -294,10 +295,10 @@ export const answers = sqliteTable(
       .references(() => questions.id, { onDelete: "cascade" }),
     valueNumber: real("value_number"),
     valueText: text("value_text"),
-    valueOptionIds: text("value_option_ids", { mode: "json" }).$type<
+    valueOptionIds: jsonb("value_option_ids").$type<
       number[]
     >(),
-    isNa: integer("is_na", { mode: "boolean" }).notNull().default(false),
+    isNa: boolean("is_na").notNull().default(false),
   },
   (table) => [
     uniqueIndex("answers_film_question_unique").on(
@@ -308,17 +309,17 @@ export const answers = sqliteTable(
   ],
 );
 
-export const scaleLevels = sqliteTable("scale_levels", {
+export const scaleLevels = pgTable("scale_levels", {
   level: integer("level").primaryKey(),
   title: text("title").notNull().default(""),
   meaning: text("meaning").notNull().default(""),
   exampleFilms: text("example_films").notNull().default(""),
 });
 
-export const ratings = sqliteTable(
+export const ratings = pgTable(
   "ratings",
   {
-    id: integer("id").primaryKey({ autoIncrement: true }),
+    id: serial("id").primaryKey(),
     filmId: integer("film_id")
       .notNull()
       .references(() => films.id, { onDelete: "cascade" }),
@@ -329,7 +330,7 @@ export const ratings = sqliteTable(
     overallSecondary: real("overall_secondary"),
     ratedAt: text("rated_at")
       .notNull()
-      .default(sql`CURRENT_TIMESTAMP`),
+      .default(sql`CURRENT_TIMESTAMP::text`),
   },
   (table) => [
     uniqueIndex("ratings_film_id_unique").on(table.filmId),
@@ -337,15 +338,15 @@ export const ratings = sqliteTable(
   ],
 );
 
-export const watchLog = sqliteTable(
+export const watchLog = pgTable(
   "watch_log",
   {
-    id: integer("id").primaryKey({ autoIncrement: true }),
+    id: serial("id").primaryKey(),
     filmId: integer("film_id")
       .notNull()
       .references(() => films.id, { onDelete: "cascade" }),
     watchedOn: text("watched_on").notNull(),
-    isRewatch: integer("is_rewatch", { mode: "boolean" })
+    isRewatch: boolean("is_rewatch")
       .notNull()
       .default(false),
   },
@@ -355,10 +356,10 @@ export const watchLog = sqliteTable(
   ],
 );
 
-export const rcaTags = sqliteTable(
+export const rcaTags = pgTable(
   "rca_tags",
   {
-    id: integer("id").primaryKey({ autoIncrement: true }),
+    id: serial("id").primaryKey(),
     label: text("label").notNull(),
     questionKey: text("question_key").notNull(),
     polarity: text("polarity", { enum: rcaPolarities }).notNull(),
@@ -376,7 +377,7 @@ export const rcaTags = sqliteTable(
   ],
 );
 
-export const filmRcaTags = sqliteTable(
+export const filmRcaTags = pgTable(
   "film_rca_tags",
   {
     filmId: integer("film_id")
@@ -389,17 +390,17 @@ export const filmRcaTags = sqliteTable(
   (table) => [primaryKey({ columns: [table.filmId, table.rcaTagId] })],
 );
 
-export const settings = sqliteTable("settings", {
+export const settings = pgTable("settings", {
   id: integer("id").primaryKey(),
-  weights: text("weights", { mode: "json" })
+  weights: jsonb("weights")
     .$type<Record<string, number>>()
     .notNull(),
-  rubric: text("rubric", { mode: "json" })
+  rubric: jsonb("rubric")
     .$type<Array<{ score: number; meaning: string; examples: string[] }>>()
     .notNull(),
   updatedAt: text("updated_at")
     .notNull()
-    .default(sql`CURRENT_TIMESTAMP`),
+    .default(sql`CURRENT_TIMESTAMP::text`),
 });
 
 export type Film = typeof films.$inferSelect;

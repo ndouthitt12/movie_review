@@ -25,7 +25,13 @@ import {
 
 const finite = z.number().finite();
 const questionFields = z.object({
-  key: z.string().trim().min(1).max(80).regex(/^[a-z][a-z0-9_]*$/).optional(),
+  key: z
+    .string()
+    .trim()
+    .min(1)
+    .max(80)
+    .regex(/^[a-z][a-z0-9_]*$/)
+    .optional(),
   label: z.string().trim().min(1).max(300).optional(),
   helpText: z.string().trim().max(2000).optional(),
   type: z.enum(questionTypes).optional(),
@@ -58,16 +64,33 @@ const actionSchema = z.discriminatedUnion("action", [
       secondaryManualDivisor: finite.nullable().optional(),
     }),
   }),
-  z.object({ action: z.literal("add_section"), data: z.object({ title: z.string().trim().min(1).max(200) }) }),
+  z.object({
+    action: z.literal("add_section"),
+    data: z.object({ title: z.string().trim().min(1).max(200) }),
+  }),
   z.object({
     action: z.literal("add_question"),
     data: questionFields.extend({
-      key: z.string().trim().min(1).max(80).regex(/^[a-z][a-z0-9_]*$/),
+      key: z
+        .string()
+        .trim()
+        .min(1)
+        .max(80)
+        .regex(/^[a-z][a-z0-9_]*$/),
       label: z.string().trim().min(1).max(300),
       type: z.enum(questionTypes),
     }),
   }),
-  z.object({ action: z.literal("update_question"), questionId: z.number().int().positive(), data: questionFields }),
+  z.object({
+    action: z.literal("update_question"),
+    questionId: z.number().int().positive(),
+    data: questionFields,
+  }),
+  z.object({
+    action: z.literal("add_options"),
+    questionId: z.number().int().positive(),
+    labels: z.array(z.string().trim().min(1).max(300)).min(1).max(100),
+  }),
   z.object({
     action: z.literal("save_option"),
     questionId: z.number().int().positive(),
@@ -79,26 +102,40 @@ const actionSchema = z.discriminatedUnion("action", [
       sortOrder: z.number().int().min(0),
     }),
   }),
-  z.object({ action: z.literal("archive_option"), optionId: z.number().int().positive() }),
+  z.object({
+    action: z.literal("archive_option"),
+    optionId: z.number().int().positive(),
+  }),
   z.object({
     action: z.literal("add_condition"),
     questionId: z.number().int().positive(),
     data: z.object({
       sourceQuestionId: z.number().int().positive(),
       operator: z.enum(conditionOperators),
-      value: z.union([finite, z.array(z.number().int().positive()).min(1)]).nullable(),
+      value: z
+        .union([finite, z.array(z.number().int().positive()).min(1)])
+        .nullable(),
       effect: z.enum(conditionEffects),
     }),
   }),
-  z.object({ action: z.literal("delete_condition"), conditionId: z.number().int().positive() }),
-  z.object({ action: z.literal("archive_question"), questionId: z.number().int().positive() }),
-  z.object({ action: z.literal("reorder"), orderedIds: z.array(z.number().int().positive()).min(1) }),
+  z.object({
+    action: z.literal("delete_condition"),
+    conditionId: z.number().int().positive(),
+  }),
+  z.object({
+    action: z.literal("archive_question"),
+    questionId: z.number().int().positive(),
+  }),
+  z.object({
+    action: z.literal("reorder"),
+    orderedIds: z.array(z.number().int().positive()).min(1),
+  }),
 ]);
 
 export async function GET() {
   const unauthorized = await requireAdminApi();
   if (unauthorized) return unauthorized;
-  return NextResponse.json({ form: ensureDraftForm() });
+  return NextResponse.json({ form: await ensureDraftForm() });
 }
 
 export async function POST(request: Request) {
@@ -106,54 +143,98 @@ export async function POST(request: Request) {
   if (unauthorized) return unauthorized;
   const parsed = actionSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success)
-    return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid form change." }, { status: 400 });
+    return NextResponse.json(
+      { error: parsed.error.issues[0]?.message ?? "Invalid form change." },
+      { status: 400 },
+    );
 
-  const draft = ensureDraftForm();
+  const draft = await ensureDraftForm();
   try {
     switch (parsed.data.action) {
       case "update_form":
-        db.update(formVersions).set(parsed.data.data).where(eq(formVersions.id, draft.id)).run();
+        await db.update(formVersions)
+          .set(parsed.data.data)
+          .where(eq(formVersions.id, draft.id));
         break;
       case "add_section": {
         const sortOrder = (draft.sections.at(-1)?.sortOrder ?? 0) + 10;
-        db.insert(formSections).values({ formVersionId: draft.id, title: parsed.data.data.title, sortOrder }).run();
+        await db.insert(formSections)
+          .values({
+            formVersionId: draft.id,
+            title: parsed.data.data.title,
+            sortOrder,
+          });
         break;
       }
       case "add_question": {
         const data = parsed.data.data;
-        if (data.sectionId && !draft.sections.some(({ id }) => id === data.sectionId))
+        if (
+          data.sectionId &&
+          !draft.sections.some(({ id }) => id === data.sectionId)
+        )
           throw new Error("Section does not belong to the draft form.");
-        db.insert(questions).values({
-          formVersionId: draft.id,
-          sortOrder: nextQuestionSortOrder(draft.id),
-          helpText: "",
-          required: false,
-          scored: false,
-          weight: null,
-          secondaryScored: false,
-          secondaryWeight: null,
-          min: data.type === "slider" ? 0 : null,
-          max: data.type === "slider" ? 100 : null,
-          offset: 0,
-          secondaryOffset: 0,
-          blankPolicy: "exclude_and_renormalize",
-          secondaryBlankPolicy: "exclude_and_renormalize",
-          multiSelectScoring: data.type === "multi_select" ? "avg" : null,
-          allowNa: false,
-          conditionLogic: "all",
-          rcaEnabled: false,
-          ...data,
-        }).run();
+        await db.insert(questions)
+          .values({
+            formVersionId: draft.id,
+            sortOrder: await nextQuestionSortOrder(draft.id),
+            helpText: "",
+            required: true,
+            scored: false,
+            weight: null,
+            secondaryScored: false,
+            secondaryWeight: null,
+            min: data.type === "slider" ? 0 : null,
+            max: data.type === "slider" ? 100 : null,
+            offset: 0,
+            secondaryOffset: 0,
+            blankPolicy: "exclude_and_renormalize",
+            secondaryBlankPolicy: "exclude_and_renormalize",
+            multiSelectScoring: data.type === "multi_select" ? "avg" : null,
+            allowNa: false,
+            conditionLogic: "all",
+            rcaEnabled: false,
+            ...data,
+          });
         break;
       }
       case "update_question": {
         const data = parsed.data.data;
         assertDraftQuestion(draft, parsed.data.questionId);
-        if (data.sectionId && !draft.sections.some(({ id }) => id === data.sectionId))
+        if (
+          data.sectionId &&
+          !draft.sections.some(({ id }) => id === data.sectionId)
+        )
           throw new Error("Section does not belong to the draft form.");
         if (data.min != null && data.max != null && data.min > data.max)
           throw new Error("Minimum must not exceed maximum.");
-        db.update(questions).set(data).where(eq(questions.id, parsed.data.questionId)).run();
+        await db.update(questions)
+          .set(data)
+          .where(eq(questions.id, parsed.data.questionId));
+        break;
+      }
+      case "add_options": {
+        const question = assertDraftQuestion(draft, parsed.data.questionId);
+        const existingLabels = new Set(
+          question.options.map(({ label }) => label.trim().toLocaleLowerCase()),
+        );
+        const labels = parsed.data.labels.filter((label) => {
+          const normalized = label.toLocaleLowerCase();
+          if (existingLabels.has(normalized)) return false;
+          existingLabels.add(normalized);
+          return true;
+        });
+        if (!labels.length) throw new Error("Those options already exist.");
+        const start = (question.options.at(-1)?.sortOrder ?? 0) + 10;
+        await db.insert(questionOptions)
+          .values(
+            labels.map((label, index) => ({
+              questionId: question.id,
+              label,
+              valueScore: 0,
+              isNull: false,
+              sortOrder: start + index * 10,
+            })),
+          );
         break;
       }
       case "save_option": {
@@ -162,46 +243,84 @@ export async function POST(request: Request) {
         if (parsed.data.data.isNull && parsed.data.data.valueScore != null)
           throw new Error("A null response option cannot have a score.");
         if (optionId) {
-          if (!question.options.some(({ id }) => id === optionId)) throw new Error("Option does not belong to the draft question.");
-          db.update(questionOptions).set(parsed.data.data).where(eq(questionOptions.id, optionId)).run();
-        } else db.insert(questionOptions).values({ questionId: question.id, ...parsed.data.data }).run();
+          if (!question.options.some(({ id }) => id === optionId))
+            throw new Error("Option does not belong to the draft question.");
+          await db.update(questionOptions)
+            .set(parsed.data.data)
+            .where(eq(questionOptions.id, optionId));
+        } else
+          await db
+            .insert(questionOptions)
+            .values({ questionId: question.id, ...parsed.data.data });
         break;
       }
       case "archive_option": {
-        const option = db.select({ questionId: questionOptions.questionId }).from(questionOptions).where(eq(questionOptions.id, parsed.data.optionId)).get();
+        const [option] = await db
+          .select({ questionId: questionOptions.questionId })
+          .from(questionOptions)
+          .where(eq(questionOptions.id, parsed.data.optionId))
+          .limit(1);
         if (!option) throw new Error("Option not found.");
         assertDraftQuestion(draft, option.questionId);
-        db.update(questionOptions).set({ archivedAt: new Date().toISOString() }).where(eq(questionOptions.id, parsed.data.optionId)).run();
+        await db.update(questionOptions)
+          .set({ archivedAt: new Date().toISOString() })
+          .where(eq(questionOptions.id, parsed.data.optionId));
         break;
       }
       case "add_condition": {
         const target = assertDraftQuestion(draft, parsed.data.questionId);
-        const source = assertDraftQuestion(draft, parsed.data.data.sourceQuestionId);
-        if (source.sortOrder >= target.sortOrder) throw new Error("A condition source must appear before its target question.");
-        db.insert(questionConditions).values({ questionId: target.id, ...parsed.data.data }).run();
+        const source = assertDraftQuestion(
+          draft,
+          parsed.data.data.sourceQuestionId,
+        );
+        if (source.sortOrder >= target.sortOrder)
+          throw new Error(
+            "A condition source must appear before its target question.",
+          );
+        await db.insert(questionConditions)
+          .values({ questionId: target.id, ...parsed.data.data });
         break;
       }
       case "delete_condition": {
-        const condition = db.select({ questionId: questionConditions.questionId }).from(questionConditions).where(eq(questionConditions.id, parsed.data.conditionId)).get();
+        const [condition] = await db
+          .select({ questionId: questionConditions.questionId })
+          .from(questionConditions)
+          .where(eq(questionConditions.id, parsed.data.conditionId))
+          .limit(1);
         if (!condition) throw new Error("Condition not found.");
         assertDraftQuestion(draft, condition.questionId);
-        db.delete(questionConditions).where(eq(questionConditions.id, parsed.data.conditionId)).run();
+        await db
+          .delete(questionConditions)
+          .where(eq(questionConditions.id, parsed.data.conditionId));
         break;
       }
       case "archive_question":
         assertDraftQuestion(draft, parsed.data.questionId);
-        db.update(questions).set({ archivedAt: new Date().toISOString() }).where(eq(questions.id, parsed.data.questionId)).run();
+        await db.update(questions)
+          .set({ archivedAt: new Date().toISOString() })
+          .where(eq(questions.id, parsed.data.questionId));
         break;
       case "reorder":
-        return NextResponse.json({ form: reorderDraftQuestions(parsed.data.orderedIds) });
+        return NextResponse.json({
+          form: await reorderDraftQuestions(parsed.data.orderedIds),
+        });
     }
-    return NextResponse.json({ form: ensureDraftForm() });
+    return NextResponse.json({ form: await ensureDraftForm() });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Could not update draft." }, { status: 400 });
+    return NextResponse.json(
+      {
+        error:
+          error instanceof Error ? error.message : "Could not update draft.",
+      },
+      { status: 400 },
+    );
   }
 }
 
-function assertDraftQuestion(draft: ReturnType<typeof ensureDraftForm>, id: number) {
+function assertDraftQuestion(
+  draft: Awaited<ReturnType<typeof ensureDraftForm>>,
+  id: number,
+) {
   const question = draft.questions.find((candidate) => candidate.id === id);
   if (!question) throw new Error("Question does not belong to the draft form.");
   return question;

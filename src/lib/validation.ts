@@ -60,7 +60,7 @@ export const questionSchema = z
     type: z.enum(questionTypes),
     sectionId: z.number().int().positive().nullable().optional(),
     sortOrder: z.number().int().min(0),
-    required: z.boolean().default(false),
+    required: z.boolean().default(true),
     scored: z.boolean().default(false),
     weight: finiteNumber.nullable().default(null),
     secondaryScored: z.boolean().default(false),
@@ -69,9 +69,7 @@ export const questionSchema = z
     max: finiteNumber.nullable().default(null),
     offset: finiteNumber.default(0),
     secondaryOffset: finiteNumber.default(0),
-    blankPolicy: z
-      .enum(blankPolicies)
-      .default("exclude_and_renormalize"),
+    blankPolicy: z.enum(blankPolicies).default("exclude_and_renormalize"),
     secondaryBlankPolicy: z
       .enum(blankPolicies)
       .default("exclude_and_renormalize"),
@@ -250,7 +248,8 @@ export const ratingSchema = z
       .max(500)
       .refine(
         (rows) =>
-          new Set(rows.map(({ questionId }) => questionId)).size === rows.length,
+          new Set(rows.map(({ questionId }) => questionId)).size ===
+          rows.length,
         "Each question may only be answered once.",
       ),
     promoteToWatched: z.boolean().optional().default(false),

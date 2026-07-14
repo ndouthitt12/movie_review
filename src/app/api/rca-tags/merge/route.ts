@@ -13,16 +13,16 @@ export async function POST(request: Request) {
       { error: "Choose two different tags." },
       { status: 400 },
     );
-  const source = db
+  const [source] = await db
     .select()
     .from(rcaTags)
     .where(eq(rcaTags.id, parsed.data.sourceId))
-    .get();
-  const target = db
+    .limit(1);
+  const [target] = await db
     .select()
     .from(rcaTags)
     .where(eq(rcaTags.id, parsed.data.targetId))
-    .get();
+    .limit(1);
   if (!source || !target)
     return NextResponse.json({ error: "Tag not found." }, { status: 404 });
   if (source.questionKey !== target.questionKey)
@@ -31,14 +31,13 @@ export async function POST(request: Request) {
       { status: 409 },
     );
 
-  db.transaction((tx) => {
-    const uses = tx
+  await db.transaction(async (tx) => {
+    const uses = await tx
       .select({ filmId: filmRcaTags.filmId })
       .from(filmRcaTags)
-      .where(eq(filmRcaTags.rcaTagId, source.id))
-      .all();
+      .where(eq(filmRcaTags.rcaTagId, source.id));
     for (const { filmId } of uses) {
-      const exists = tx
+      const [exists] = await tx
         .select({ filmId: filmRcaTags.filmId })
         .from(filmRcaTags)
         .where(
@@ -47,11 +46,11 @@ export async function POST(request: Request) {
             eq(filmRcaTags.rcaTagId, target.id),
           ),
         )
-        .get();
+        .limit(1);
       if (!exists)
-        tx.insert(filmRcaTags).values({ filmId, rcaTagId: target.id }).run();
+        await tx.insert(filmRcaTags).values({ filmId, rcaTagId: target.id });
     }
-    tx.delete(rcaTags).where(eq(rcaTags.id, source.id)).run();
+    await tx.delete(rcaTags).where(eq(rcaTags.id, source.id));
   });
   return NextResponse.json({ merged: true, targetId: target.id });
 }

@@ -15,31 +15,28 @@ export async function POST(
       { error: "Invalid watch entry." },
       { status: 400 },
     );
-  const exists = db
+  const [exists] = await db
     .select({ id: films.id })
     .from(films)
     .where(eq(films.id, filmId))
-    .get();
+    .limit(1);
   if (!exists)
     return NextResponse.json({ error: "Film not found." }, { status: 404 });
-  const created = db.transaction((tx) => {
-    const row = tx
+  const created = await db.transaction(async (tx) => {
+    const [row] = await tx
       .insert(watchLog)
       .values({ filmId, ...parsed.data })
-      .returning()
-      .get();
-    const latest = tx
-      .select({ date: max(watchLog.watchedOn) })
+      .returning();
+    const [latest] = await tx
+      .select({ date: max(watchLog.watchedOn).as("date") })
       .from(watchLog)
-      .where(eq(watchLog.filmId, filmId))
-      .get()?.date;
-    tx.update(films)
+      .where(eq(watchLog.filmId, filmId));
+    await tx.update(films)
       .set({
-        lastWatchDate: latest ?? null,
+        lastWatchDate: latest?.date ?? null,
         updatedAt: new Date().toISOString(),
       })
-      .where(eq(films.id, filmId))
-      .run();
+      .where(eq(films.id, filmId));
     return row;
   });
   return NextResponse.json(created, { status: 201 });

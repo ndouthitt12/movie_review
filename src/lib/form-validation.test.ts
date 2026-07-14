@@ -17,7 +17,7 @@ const baseQuestion = {
 describe("form configuration validation", () => {
   it("applies slider bounds and rejects scored questions without weights", () => {
     const parsed = questionSchema.parse(baseQuestion);
-    expect(parsed).toMatchObject({ min: 0, max: 100 });
+    expect(parsed).toMatchObject({ min: 0, max: 100, required: true });
     expect(
       questionSchema.safeParse({ ...baseQuestion, scored: true }).success,
     ).toBe(false);

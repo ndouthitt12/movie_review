@@ -17,12 +17,11 @@ export async function PATCH(
       { error: "Invalid film update." },
       { status: 400 },
     );
-  const updated = db
+  const [updated] = await db
     .update(films)
     .set({ ...parsed.data, updatedAt: new Date().toISOString() })
     .where(eq(films.id, id))
-    .returning({ id: films.id })
-    .get();
+    .returning({ id: films.id });
   return updated
     ? NextResponse.json(updated)
     : NextResponse.json({ error: "Film not found." }, { status: 404 });

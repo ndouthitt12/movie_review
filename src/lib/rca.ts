@@ -15,8 +15,7 @@ export async function getRcaTagsWithUsage() {
     .from(rcaTags)
     .leftJoin(filmRcaTags, eq(filmRcaTags.rcaTagId, rcaTags.id))
     .groupBy(rcaTags.id)
-    .orderBy(asc(rcaTags.questionKey), asc(rcaTags.label))
-    .all();
+    .orderBy(asc(rcaTags.questionKey), asc(rcaTags.label));
 }
 
 export type RcaTagWithUsage = Awaited<
@@ -27,6 +26,7 @@ export function isUniqueConstraint(error: unknown) {
   return (
     error instanceof Error &&
     (error.message.includes("UNIQUE constraint failed") ||
-      error.message.includes("SQLITE_CONSTRAINT_UNIQUE"))
+      error.message.includes("SQLITE_CONSTRAINT_UNIQUE") ||
+      error.message.includes("duplicate key value violates unique constraint"))
   );
 }
