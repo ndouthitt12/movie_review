@@ -44,6 +44,35 @@ const scoreFields = [
   "genreFit",
 ] as const;
 
+export const v1AnswerKeys = [
+  "story",
+  "direction",
+  "writing",
+  "acting",
+  "music",
+  "impact",
+  "rewatchability",
+  "genre_fit",
+  "quality",
+] as const;
+
+export function importedAnswerValues(film: ImportedFilm) {
+  if (!film.scores) return [];
+  const values = [
+    { key: "story", valueNumber: film.scores.story },
+    { key: "direction", valueNumber: film.scores.direction },
+    { key: "writing", valueNumber: film.scores.writing },
+    { key: "acting", valueNumber: film.scores.acting },
+    { key: "music", valueNumber: film.scores.music },
+    { key: "impact", valueNumber: film.scores.impact },
+    { key: "rewatchability", valueNumber: film.scores.rewatchability },
+    { key: "genre_fit", valueNumber: film.scores.genreFit },
+  ];
+  if (film.quality != null)
+    values.push({ key: "quality", valueNumber: film.quality });
+  return values;
+}
+
 const aliases: Record<string, string[]> = {
   title: ["movie title", "title", "film"],
   releaseYear: ["release year", "year"],

@@ -6,6 +6,7 @@ import { RatingEditor } from "@/components/film/rating-editor";
 import { WatchLog } from "@/components/film/watch-log";
 import { PageShell } from "@/components/page-shell";
 import { getFilmDetail } from "@/lib/catalog";
+import { getPublishedRuntimeForm } from "@/lib/form-config";
 import { getRcaTagsWithUsage } from "@/lib/rca";
 import { tmdbImage } from "@/lib/tmdb";
 
@@ -18,25 +19,24 @@ export default async function FilmPage({
 }) {
   const id = Number((await params).id);
   if (!Number.isInteger(id)) notFound();
-  const [detail, rcaTags] = await Promise.all([
+  const [detail, rcaTags, publishedForm] = await Promise.all([
     getFilmDetail(id),
     getRcaTagsWithUsage(),
+    Promise.resolve(getPublishedRuntimeForm()),
   ]);
-  if (!detail) notFound();
-  const { film, rating, watches, weights, selectedRcaTags } = detail;
-  const initialRating = rating
-    ? {
-        story: rating.story,
-        direction: rating.direction,
-        writing: rating.writing,
-        acting: rating.acting,
-        music: rating.music,
-        impact: rating.impact,
-        rewatchability: rating.rewatchability,
-        genreFit: rating.genreFit,
-        quality: rating.quality,
-      }
-    : null;
+  if (!detail || !publishedForm) notFound();
+  const { film, rating, answers, form, watches, selectedRcaTags } = detail;
+  const initialAnswers = Object.fromEntries(
+    answers.map((answer) => [
+      answer.questionId,
+      {
+        number: answer.valueNumber,
+        text: answer.valueText,
+        optionIds: answer.valueOptionIds,
+        isNa: answer.isNa,
+      },
+    ]),
+  );
   const backdrop = tmdbImage(film.backdropPath, "original");
   const poster = tmdbImage(film.posterPath, "w500");
 
@@ -118,8 +118,10 @@ export default async function FilmPage({
         <RatingEditor
           filmId={film.id}
           status={film.status}
-          initial={initialRating}
-          weights={weights}
+          publishedForm={publishedForm}
+          ratedForm={form}
+          initialAnswers={initialAnswers}
+          initialOverall={rating?.overall ?? null}
           allRcaTags={rcaTags}
           initialRcaTags={selectedRcaTags}
         />

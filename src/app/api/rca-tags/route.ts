@@ -1,7 +1,9 @@
+import { and, eq, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { rcaTags } from "@/db/schema";
 import { getRcaTagsWithUsage, isUniqueConstraint } from "@/lib/rca";
+import { ensureDraftForm } from "@/lib/admin-form";
 import { rcaTagCreateSchema } from "@/lib/validation";
 
 export async function GET() {
@@ -17,12 +19,21 @@ export async function POST(request: Request) {
       { error: parsed.error.issues[0]?.message ?? "Invalid tag." },
       { status: 400 },
     );
+  const allowedKeys = new Set([
+    "overall",
+    ...ensureDraftForm().questions.map(({ key }) => key),
+  ]);
+  if (!allowedKeys.has(parsed.data.questionKey))
+    return NextResponse.json(
+      { error: "Question key is not part of the draft form." },
+      { status: 400 },
+    );
   const duplicate = db
     .select({ id: rcaTags.id })
     .from(rcaTags)
     .where(
       and(
-        eq(rcaTags.attribute, parsed.data.attribute),
+        eq(rcaTags.questionKey, parsed.data.questionKey),
         sql`lower(${rcaTags.label}) = lower(${parsed.data.label})`,
       ),
     )
@@ -44,4 +55,3 @@ export async function POST(request: Request) {
     throw error;
   }
 }
-import { and, eq, sql } from "drizzle-orm";

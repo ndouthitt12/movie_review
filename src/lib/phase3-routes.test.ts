@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { defaultRubric, starterRcaTags } from "@/db/seed-data";
 import { rcaAttributes } from "@/db/schema";
 
@@ -22,7 +22,9 @@ let saveRating: (
   request: Request,
   context: { params: Promise<{ id: string }> },
 ) => Promise<Response>;
-let updateRubric: (request: Request) => Promise<Response>;
+let updateScale: (request: Request) => Promise<Response>;
+
+vi.mock("@/lib/admin-auth", () => ({ requireAdminApi: async () => null }));
 
 beforeAll(async () => {
   directory = await fs.mkdtemp(path.join(os.tmpdir(), "picture-house-phase3-"));
@@ -46,8 +48,9 @@ beforeAll(async () => {
         genreFit: 3,
         divisor: 334,
       }),
-      "[]",
+      JSON.stringify(defaultRubric),
     );
+  await import("../../scripts/migrate-to-forms");
   sqlite
     .prepare(
       "insert into films (title, release_year, status) values ('Arrival', 2016, 'watched')",
@@ -61,7 +64,7 @@ beforeAll(async () => {
   deleteTag = item.DELETE;
   mergeTags = (await import("@/app/api/rca-tags/merge/route")).POST;
   saveRating = (await import("@/app/api/films/[id]/rating/route")).PUT;
-  updateRubric = (await import("@/app/api/settings/rubric/route")).PUT;
+  updateScale = (await import("@/app/api/admin/scale/route")).PUT;
 });
 
 afterAll(async () => {
@@ -80,7 +83,7 @@ describe("Phase 3 RCA integration", () => {
   it("creates, counts, renames, merges, persists, and cascade-deletes tags", async () => {
     const sourceResponse = await postTag({
       label: "Emotional ending",
-      attribute: "impact",
+      questionKey: "impact",
       polarity: "positive",
       color: null,
     });
@@ -88,14 +91,14 @@ describe("Phase 3 RCA integration", () => {
     const source = (await sourceResponse.json()) as { id: number };
     const duplicate = await postTag({
       label: "emotional ENDING",
-      attribute: "impact",
+      questionKey: "impact",
       polarity: "negative",
       color: null,
     });
     expect(duplicate.status).toBe(409);
     const targetResponse = await postTag({
       label: "Emotionally resonant",
-      attribute: "impact",
+      questionKey: "impact",
       polarity: "positive",
       color: "#00e054",
     });
@@ -111,15 +114,16 @@ describe("Phase 3 RCA integration", () => {
 
     const rating = await saveRating(
       jsonRequest("http://test/api/films/1/rating", "PUT", {
-        story: 90,
-        direction: 89,
-        writing: 88,
-        acting: 87,
-        music: 86,
-        impact: 95,
-        rewatchability: 85,
-        genreFit: 92,
-        quality: 90,
+        formVersionId: 1,
+        answers: (
+          sqlite
+            .prepare("select id, key from questions where form_version_id = 1")
+            .all() as Array<{ id: number; key: string }>
+        ).map(({ id, key }) => ({
+          questionId: id,
+          valueNumber:
+            key === "impact" ? 95 : key === "rewatchability" ? 85 : 90,
+        })),
         rcaTagIds: [source.id],
       }),
       { params: Promise.resolve({ id: "1" }) },
@@ -159,22 +163,25 @@ describe("Phase 3 RCA integration", () => {
 
     const invalidRating = await saveRating(
       jsonRequest("http://test/api/films/1/rating", "PUT", {
-        story: 10,
-        direction: 10,
-        writing: 10,
-        acting: 10,
-        music: 10,
-        impact: 10,
-        rewatchability: 10,
-        genreFit: 10,
-        quality: 10,
+        formVersionId: 1,
+        answers: (
+          sqlite
+            .prepare("select id from questions where form_version_id = 1")
+            .all() as Array<{ id: number }>
+        ).map(({ id }) => ({ questionId: id, valueNumber: 10 })),
         rcaTagIds: [999999],
       }),
       { params: Promise.resolve({ id: "1" }) },
     );
     expect(invalidRating.status).toBe(409);
     expect(
-      sqlite.prepare("select impact from ratings where film_id = 1").get(),
+      sqlite
+        .prepare(
+          `select answers.value_number as impact
+           from answers join questions on questions.id = answers.question_id
+           where answers.film_id = 1 and questions.key = 'impact'`,
+        )
+        .get(),
     ).toEqual({ impact: 95 });
 
     const deleted = await deleteTag(
@@ -190,36 +197,37 @@ describe("Phase 3 RCA integration", () => {
   });
 });
 
-describe("Phase 4 rubric integration", () => {
-  it("validates and persists all eleven rubric levels", async () => {
-    const invalid = await updateRubric(
-      jsonRequest("http://test/api/settings/rubric", "PUT", {
-        rubric: defaultRubric.slice(0, 10),
+describe("Phase 4 scale integration", () => {
+  it("validates and persists all eleven scale levels", async () => {
+    const levels = defaultRubric.map((row) => ({
+      level: row.score,
+      title: "",
+      meaning: row.meaning,
+      exampleFilms: row.examples.join(", "),
+    }));
+    const invalid = await updateScale(
+      jsonRequest("http://test/api/admin/scale", "PUT", {
+        levels: levels.slice(0, 10),
       }),
     );
     expect(invalid.status).toBe(400);
 
-    const rubric = defaultRubric.map((row) =>
-      row.score === 7
-        ? { ...row, meaning: "A personal favorite", examples: ["Arrival"] }
+    const updated = levels.map((row) =>
+      row.level === 7
+        ? { ...row, meaning: "A personal favorite", exampleFilms: "Arrival" }
         : row,
     );
-    const response = await updateRubric(
-      jsonRequest("http://test/api/settings/rubric", "PUT", { rubric }),
+    const response = await updateScale(
+      jsonRequest("http://test/api/admin/scale", "PUT", { levels: updated }),
     );
     expect(response.status).toBe(200);
     expect(
-      JSON.parse(
-        (
-          sqlite.prepare("select rubric from settings where id = 1").get() as {
-            rubric: string;
-          }
-        ).rubric,
-      ).find((row: { score: number }) => row.score === 7),
+      sqlite.prepare("select level, title, meaning, example_films as exampleFilms from scale_levels where level = 7").get(),
     ).toEqual({
-      score: 7,
+      level: 7,
+      title: "",
       meaning: "A personal favorite",
-      examples: ["Arrival"],
+      exampleFilms: "Arrival",
     });
   });
 });

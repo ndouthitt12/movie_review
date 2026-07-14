@@ -41,7 +41,7 @@ export function PageShell({ children }: { children: ReactNode }) {
               Rubric
             </Link>
             <Link
-              href="/settings/rca"
+              href="/admin/rca"
               className="hover:text-paper-100 hidden transition-colors duration-150 md:block"
             >
               Why tags

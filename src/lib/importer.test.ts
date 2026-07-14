@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import { defaultWeights } from "@/db/seed-data";
 import {
   excelDateToIso,
+  importedAnswerValues,
   parseWorkbook,
   splitGenre,
   verifyImport,
@@ -24,20 +25,26 @@ describe("spreadsheet parsing helpers", () => {
 });
 
 describe("import verification", () => {
+  it("maps a rated row to the v1 answer keys", () => {
+    const film = fixtureFilm();
+    expect(importedAnswerValues(film).map(({ key }) => key)).toEqual([
+      "story",
+      "direction",
+      "writing",
+      "acting",
+      "music",
+      "impact",
+      "rewatchability",
+      "genre_fit",
+      "quality",
+    ]);
+    expect(importedAnswerValues({ ...film, quality: null })).toHaveLength(8);
+    expect(importedAnswerValues({ ...film, scores: null })).toEqual([]);
+  });
+
   it("reports stored score and competition-rank mismatches", () => {
     const base: ImportedFilm = {
-      rowNumber: 2,
-      title: "Fixture",
-      releaseYear: 1993,
-      status: "watched",
-      watchOrder: null,
-      lastWatchDate: null,
-      genrePrimary: "Drama",
-      genreSecondary: null,
-      upperFranchise: null,
-      lowerFranchise: null,
-      notes: "",
-      scores: scores(80),
+      ...fixtureFilm(),
       quality: null,
       storedOverall: 1,
       storedSecondary: null,
@@ -154,6 +161,27 @@ function scores(value: number) {
     impact: value,
     rewatchability: value,
     genreFit: value,
+  };
+}
+
+function fixtureFilm(): ImportedFilm {
+  return {
+    rowNumber: 2,
+    title: "Fixture",
+    releaseYear: 1993,
+    status: "watched",
+    watchOrder: null,
+    lastWatchDate: null,
+    genrePrimary: "Drama",
+    genreSecondary: null,
+    upperFranchise: null,
+    lowerFranchise: null,
+    notes: "",
+    scores: scores(80),
+    quality: 75,
+    storedOverall: null,
+    storedSecondary: null,
+    storedRank: null,
   };
 }
 

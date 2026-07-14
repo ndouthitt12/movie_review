@@ -24,7 +24,7 @@ export async function PATCH(
       .from(rcaTags)
       .where(
         and(
-          eq(rcaTags.attribute, existing.attribute),
+          eq(rcaTags.questionKey, existing.questionKey),
           ne(rcaTags.id, id),
           sql`lower(${rcaTags.label}) = lower(${parsed.data.label})`,
         ),

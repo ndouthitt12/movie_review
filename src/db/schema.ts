@@ -24,6 +24,40 @@ export const rcaAttributes = [
   "overall",
 ] as const;
 export const rcaPolarities = ["positive", "negative", "neutral"] as const;
+export const formVersionStatuses = ["draft", "published", "archived"] as const;
+export const questionTypes = [
+  "slider",
+  "short_text",
+  "paragraph",
+  "dropdown",
+  "multi_select",
+  "multiple_choice",
+  "integer",
+] as const;
+export const conditionOperators = [
+  "equals",
+  "not_equals",
+  "in",
+  "answered",
+  "gte",
+  "lte",
+] as const;
+export const conditionEffects = ["show", "disable"] as const;
+export const conditionLogics = ["all", "any"] as const;
+export const blankPolicies = [
+  "treat_as_zero",
+  "exclude_and_renormalize",
+] as const;
+export const multiSelectScorings = ["sum", "avg"] as const;
+export const divisorModes = ["auto", "manual"] as const;
+
+export type QuestionType = (typeof questionTypes)[number];
+export type ConditionOperator = (typeof conditionOperators)[number];
+export type ConditionEffect = (typeof conditionEffects)[number];
+export type ConditionLogic = (typeof conditionLogics)[number];
+export type BlankPolicy = (typeof blankPolicies)[number];
+export type MultiSelectScoring = (typeof multiSelectScorings)[number];
+export type DivisorMode = (typeof divisorModes)[number];
 
 export const franchises = sqliteTable(
   "franchises",
@@ -89,6 +123,198 @@ export const films = sqliteTable(
   ],
 );
 
+export const formVersions = sqliteTable(
+  "form_versions",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    label: text("label").notNull(),
+    status: text("status", { enum: formVersionStatuses }).notNull(),
+    divisorMode: text("divisor_mode", { enum: divisorModes })
+      .notNull()
+      .default("manual"),
+    manualDivisor: real("manual_divisor"),
+    secondaryDivisorMode: text("secondary_divisor_mode", {
+      enum: divisorModes,
+    })
+      .notNull()
+      .default("manual"),
+    secondaryManualDivisor: real("secondary_manual_divisor"),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+    publishedAt: text("published_at"),
+  },
+  (table) => [
+    check(
+      "form_versions_status_check",
+      sql`${table.status} in ('draft', 'published', 'archived')`,
+    ),
+    check(
+      "form_versions_divisor_mode_check",
+      sql`${table.divisorMode} in ('auto', 'manual')`,
+    ),
+    uniqueIndex("form_versions_one_published")
+      .on(table.status)
+      .where(sql`${table.status} = 'published'`),
+    uniqueIndex("form_versions_one_draft")
+      .on(table.status)
+      .where(sql`${table.status} = 'draft'`),
+  ],
+);
+
+export const formSections = sqliteTable(
+  "form_sections",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    formVersionId: integer("form_version_id")
+      .notNull()
+      .references(() => formVersions.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    sortOrder: integer("sort_order").notNull(),
+  },
+  (table) => [
+    index("form_sections_version_order_idx").on(
+      table.formVersionId,
+      table.sortOrder,
+    ),
+  ],
+);
+
+export const questions = sqliteTable(
+  "questions",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    formVersionId: integer("form_version_id")
+      .notNull()
+      .references(() => formVersions.id, { onDelete: "cascade" }),
+    key: text("key").notNull(),
+    label: text("label").notNull(),
+    helpText: text("help_text").notNull().default(""),
+    type: text("type", { enum: questionTypes }).notNull(),
+    sectionId: integer("section_id").references(() => formSections.id, {
+      onDelete: "set null",
+    }),
+    sortOrder: integer("sort_order").notNull(),
+    required: integer("required", { mode: "boolean" }).notNull().default(false),
+    scored: integer("scored", { mode: "boolean" }).notNull().default(false),
+    weight: real("weight"),
+    secondaryScored: integer("secondary_scored", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    secondaryWeight: real("secondary_weight"),
+    min: real("min"),
+    max: real("max"),
+    offset: real("offset").notNull().default(0),
+    secondaryOffset: real("secondary_offset").notNull().default(0),
+    blankPolicy: text("blank_policy", { enum: blankPolicies })
+      .notNull()
+      .default("exclude_and_renormalize"),
+    secondaryBlankPolicy: text("secondary_blank_policy", {
+      enum: blankPolicies,
+    })
+      .notNull()
+      .default("exclude_and_renormalize"),
+    multiSelectScoring: text("multi_select_scoring", {
+      enum: multiSelectScorings,
+    }),
+    allowNa: integer("allow_na", { mode: "boolean" }).notNull().default(false),
+    conditionLogic: text("condition_logic", { enum: conditionLogics })
+      .notNull()
+      .default("all"),
+    rcaEnabled: integer("rca_enabled", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    archivedAt: text("archived_at"),
+  },
+  (table) => [
+    uniqueIndex("questions_version_key_unique").on(
+      table.formVersionId,
+      table.key,
+    ),
+    index("questions_version_order_idx").on(
+      table.formVersionId,
+      table.sortOrder,
+    ),
+    index("questions_section_idx").on(table.sectionId),
+  ],
+);
+
+export const questionOptions = sqliteTable(
+  "question_options",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    questionId: integer("question_id")
+      .notNull()
+      .references(() => questions.id, { onDelete: "cascade" }),
+    label: text("label").notNull(),
+    valueScore: real("value_score"),
+    isNull: integer("is_null", { mode: "boolean" }).notNull().default(false),
+    sortOrder: integer("sort_order").notNull(),
+    archivedAt: text("archived_at"),
+  },
+  (table) => [
+    index("question_options_question_order_idx").on(
+      table.questionId,
+      table.sortOrder,
+    ),
+  ],
+);
+
+export const questionConditions = sqliteTable(
+  "question_conditions",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    questionId: integer("question_id")
+      .notNull()
+      .references(() => questions.id, { onDelete: "cascade" }),
+    sourceQuestionId: integer("source_question_id")
+      .notNull()
+      .references(() => questions.id, { onDelete: "cascade" }),
+    operator: text("operator", { enum: conditionOperators }).notNull(),
+    value: text("value", { mode: "json" }).$type<
+      number | number[] | null
+    >(),
+    effect: text("effect", { enum: conditionEffects }).notNull(),
+  },
+  (table) => [
+    index("question_conditions_target_idx").on(table.questionId),
+    index("question_conditions_source_idx").on(table.sourceQuestionId),
+  ],
+);
+
+export const answers = sqliteTable(
+  "answers",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    filmId: integer("film_id")
+      .notNull()
+      .references(() => films.id, { onDelete: "cascade" }),
+    questionId: integer("question_id")
+      .notNull()
+      .references(() => questions.id, { onDelete: "cascade" }),
+    valueNumber: real("value_number"),
+    valueText: text("value_text"),
+    valueOptionIds: text("value_option_ids", { mode: "json" }).$type<
+      number[]
+    >(),
+    isNa: integer("is_na", { mode: "boolean" }).notNull().default(false),
+  },
+  (table) => [
+    uniqueIndex("answers_film_question_unique").on(
+      table.filmId,
+      table.questionId,
+    ),
+    index("answers_question_idx").on(table.questionId),
+  ],
+);
+
+export const scaleLevels = sqliteTable("scale_levels", {
+  level: integer("level").primaryKey(),
+  title: text("title").notNull().default(""),
+  meaning: text("meaning").notNull().default(""),
+  exampleFilms: text("example_films").notNull().default(""),
+});
+
 export const ratings = sqliteTable(
   "ratings",
   {
@@ -96,15 +322,9 @@ export const ratings = sqliteTable(
     filmId: integer("film_id")
       .notNull()
       .references(() => films.id, { onDelete: "cascade" }),
-    story: integer("story").notNull(),
-    direction: integer("direction").notNull(),
-    writing: integer("writing").notNull(),
-    acting: integer("acting").notNull(),
-    music: integer("music").notNull(),
-    impact: integer("impact").notNull(),
-    rewatchability: integer("rewatchability").notNull(),
-    genreFit: integer("genre_fit").notNull(),
-    quality: integer("quality"),
+    formVersionId: integer("form_version_id")
+      .notNull()
+      .references(() => formVersions.id),
     overall: real("overall").notNull(),
     overallSecondary: real("overall_secondary"),
     ratedAt: text("rated_at")
@@ -114,22 +334,6 @@ export const ratings = sqliteTable(
   (table) => [
     uniqueIndex("ratings_film_id_unique").on(table.filmId),
     index("ratings_overall_idx").on(table.overall),
-    ...[
-      table.story,
-      table.direction,
-      table.writing,
-      table.acting,
-      table.music,
-      table.impact,
-      table.rewatchability,
-      table.genreFit,
-      table.quality,
-    ].map((column, position) =>
-      check(
-        `ratings_score_${position}_check`,
-        sql`${column} is null or ${column} between 0 and 100`,
-      ),
-    ),
   ],
 );
 
@@ -156,22 +360,18 @@ export const rcaTags = sqliteTable(
   {
     id: integer("id").primaryKey({ autoIncrement: true }),
     label: text("label").notNull(),
-    attribute: text("attribute", { enum: rcaAttributes }).notNull(),
+    questionKey: text("question_key").notNull(),
     polarity: text("polarity", { enum: rcaPolarities }).notNull(),
     color: text("color"),
   },
   (table) => [
     check(
-      "rca_tags_attribute_check",
-      sql`${table.attribute} in ('story','direction','writing','acting','music','impact','rewatchability','genre_fit','overall')`,
-    ),
-    check(
       "rca_tags_polarity_check",
       sql`${table.polarity} in ('positive','negative','neutral')`,
     ),
-    uniqueIndex("rca_tags_label_attribute_unique").on(
+    uniqueIndex("rca_tags_label_question_key_unique").on(
       table.label,
-      table.attribute,
+      table.questionKey,
     ),
   ],
 );

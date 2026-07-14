@@ -28,7 +28,8 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Dashboard" };
 
 export default async function DashboardPage() {
-  const { films, watches } = await getDashboardData();
+  const { films, watches, attributes: dashboardAttributes } =
+    await getDashboardData();
   const today = dateInTimeZone();
   const headlines = headlineStats(films, watches, today);
   const streaks = computeStreaks(
@@ -40,14 +41,17 @@ export default async function DashboardPage() {
   );
   const monthly = watchesPerMonth(watches, 3, today.slice(0, 7)).slice(-24);
   const yearly = watchesPerYear(watches);
-  const attributes = attributeAverages(films);
+  const attributes = attributeAverages(films, dashboardAttributes);
   const genres = genreBreakdown(films).sort(
     (left, right) =>
       right.count - left.count || left.label.localeCompare(right.label),
   );
   const decades = decadeBreakdown(films);
   const franchises = franchiseReportCards(films);
-  const correlations = attributeOverallCorrelations(films);
+  const correlations = attributeOverallCorrelations(
+    films,
+    dashboardAttributes,
+  );
   const tags = rcaTagFrequencies(films);
   const strongest = correlations.find(
     ({ correlation }) => correlation !== null,
@@ -254,7 +258,7 @@ export default async function DashboardPage() {
             rows={tags.slice(0, 12).map((tag) => ({
               label: tag.label,
               value: String(tag.count),
-              detail: `${attributeName(tag.attribute)} avg ${tag.averageScore === null ? "—" : tag.attribute === "overall" ? tag.averageScore.toFixed(2) : tag.averageScore.toFixed(0)}`,
+              detail: `${attributeName(tag.questionKey, dashboardAttributes)} avg ${tag.averageScore === null ? "—" : tag.questionKey === "overall" ? tag.averageScore.toFixed(2) : tag.averageScore.toFixed(0)}`,
               href: libraryHref({ rca: tag.id }),
             }))}
           />
@@ -354,7 +358,10 @@ function formatCorrelation(value: number) {
   return `${value >= 0 ? "+" : ""}${value.toFixed(2)}`;
 }
 
-function attributeName(attribute: string) {
-  if (attribute === "genre_fit") return "Genre fit";
-  return attribute[0].toUpperCase() + attribute.slice(1);
+function attributeName(
+  questionKey: string,
+  attributes: Array<{ key: string; label: string }>,
+) {
+  if (questionKey === "overall") return "Overall";
+  return attributes.find(({ key }) => key === questionKey)?.label ?? questionKey;
 }

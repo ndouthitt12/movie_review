@@ -22,7 +22,7 @@ const films: DashboardFilm[] = [
     genreSecondary: "Thriller",
     franchise: "Compass",
     rating: rating(80, 8),
-    rcaTags: [{ id: 4, label: "Sharp dialogue", attribute: "writing" }],
+    rcaTags: [{ id: 4, label: "Sharp dialogue", questionKey: "writing" }],
   }),
   fixtureFilm({
     id: 2,
@@ -32,7 +32,7 @@ const films: DashboardFilm[] = [
     genreSecondary: null,
     franchise: "Compass",
     rating: rating(60, 6),
-    rcaTags: [{ id: 4, label: "Sharp dialogue", attribute: "writing" }],
+    rcaTags: [{ id: 4, label: "Sharp dialogue", questionKey: "writing" }],
   }),
   fixtureFilm({
     id: 3,
@@ -41,8 +41,13 @@ const films: DashboardFilm[] = [
     status: "to_watch",
     genrePrimary: "Drama",
     rating: rating(100, 10),
-    rcaTags: [{ id: 5, label: "Not watched yet", attribute: "overall" }],
+    rcaTags: [{ id: 5, label: "Not watched yet", questionKey: "overall" }],
   }),
+];
+const attributes = [
+  { key: "story", label: "Story" },
+  { key: "writing", label: "Writing" },
+  { key: "custom", label: "Custom score" },
 ];
 
 describe("dashboard statistics", () => {
@@ -80,7 +85,7 @@ describe("dashboard statistics", () => {
   });
 
   it("computes hand-checked profile, group, and correlation values", () => {
-    expect(attributeAverages(films)[0].average).toBe(80);
+    expect(attributeAverages(films, attributes)[0].average).toBe(80);
     expect(genreBreakdown(films)).toEqual([
       { label: "Drama", count: 3, average: 8 },
       { label: "Thriller", count: 1, average: 8 },
@@ -93,7 +98,9 @@ describe("dashboard statistics", () => {
     expect(franchiseReportCards(films)).toEqual([
       { label: "Compass", count: 2, average: 7 },
     ]);
-    expect(attributeOverallCorrelations(films)[0].correlation).toBeCloseTo(1);
+    expect(
+      attributeOverallCorrelations(films, attributes)[0].correlation,
+    ).toBeCloseTo(1);
     expect(headlineStats(films, [], "2026-01-01")).toMatchObject({
       totalWatched: 2,
       meanOverall: 8,
@@ -105,14 +112,14 @@ describe("dashboard statistics", () => {
       {
         id: 4,
         label: "Sharp dialogue",
-        attribute: "writing",
+        questionKey: "writing",
         count: 2,
         averageScore: 70,
       },
       {
         id: 5,
         label: "Not watched yet",
-        attribute: "overall",
+        questionKey: "overall",
         count: 1,
         averageScore: 10,
       },
@@ -138,14 +145,11 @@ function fixtureFilm(
 
 function rating(attributeScore: number, overall: number) {
   return {
-    story: attributeScore,
-    direction: attributeScore,
-    writing: attributeScore,
-    acting: attributeScore,
-    music: attributeScore,
-    impact: attributeScore,
-    rewatchability: attributeScore,
-    genreFit: attributeScore,
+    values: {
+      story: attributeScore,
+      writing: attributeScore,
+      custom: attributeScore,
+    },
     overall,
   };
 }

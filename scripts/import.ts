@@ -1,24 +1,18 @@
 import "dotenv/config";
 import fs from "node:fs";
 import path from "node:path";
-import { eq } from "drizzle-orm";
 import { createDb } from "../src/db";
 import { defaultWeights } from "../src/db/seed-data";
-import {
-  films,
-  franchises,
-  ratings,
-  settings,
-  watchLog,
-} from "../src/db/schema";
+import { films, franchises, watchLog } from "../src/db/schema";
 import {
   computeOverall,
   computeSecondary,
-  type RatingWeights,
 } from "../src/lib/scoring";
 import {
+  importedAnswerValues,
   parseWorkbook,
   verifyImport,
+  v1AnswerKeys,
   type ImportedFilm,
 } from "../src/lib/importer";
 
@@ -43,26 +37,10 @@ await main();
 
 async function main() {
   const parsed = await parseWorkbook(workbookPath);
-  let weights = defaultWeights;
   const connection = dryRun ? null : createDb();
 
   try {
-    if (connection) {
-      const setting = connection.db
-        .select()
-        .from(settings)
-        .where(eq(settings.id, 1))
-        .get();
-      if (!setting)
-        throw new Error(
-          "Settings row is missing. Run npm run db:seed before importing.",
-        );
-      if (!isRatingWeights(setting.weights))
-        throw new Error("Stored rating weights are invalid.");
-      weights = setting.weights;
-    }
-
-    const verification = verifyImport(parsed.films, weights);
+    const verification = verifyImport(parsed.films, defaultWeights);
     const franchiseTree = new Map<string, Set<string>>();
     for (const film of parsed.films) {
       if (!film.upperFranchise) continue;
@@ -79,7 +57,7 @@ async function main() {
       `Statuses: watched=${verification.counts.watched}, to_watch=${verification.counts.to_watch}, to_rewatch=${verification.counts.to_rewatch}`,
     );
     console.log(
-      `Weights: ${dryRun ? "canonical spreadsheet defaults" : "active database settings"}`,
+      "Weights: canonical spreadsheet v1 configuration",
     );
     console.log("Franchise tree:");
     for (const [parent, children] of franchiseTree) {
@@ -116,7 +94,8 @@ async function main() {
       return;
     }
 
-    const { db } = connection!;
+    const { db, sqlite } = connection!;
+    const form = loadV1Form(sqlite);
     const existing = db.select({ id: films.id }).from(films).limit(1).all();
     if (existing.length)
       throw new Error(
@@ -139,13 +118,19 @@ async function main() {
       };
 
       for (const film of parsed.films)
-        insertFilm(tx, film, weights, createFranchise);
+        insertFilm(tx, sqlite, film, form, createFranchise);
 
       const filmCount = tx.select({ id: films.id }).from(films).all().length;
-      const ratingCount = tx
-        .select({ id: ratings.id })
-        .from(ratings)
-        .all().length;
+      const ratingCount = (
+        sqlite.prepare("select count(*) as count from ratings").get() as {
+          count: number;
+        }
+      ).count;
+      const answerCount = (
+        sqlite.prepare("select count(*) as count from answers").get() as {
+          count: number;
+        }
+      ).count;
       const watchCount = tx
         .select({ id: watchLog.id })
         .from(watchLog)
@@ -156,13 +141,18 @@ async function main() {
       const expectedWatches = parsed.films.filter(
         (film) => film.lastWatchDate !== null,
       ).length;
+      const expectedAnswers = parsed.films.reduce(
+        (count, film) => count + importedAnswerValues(film).length,
+        0,
+      );
       if (
         filmCount !== parsed.films.length ||
         ratingCount !== expectedRatings ||
-        watchCount !== expectedWatches
+        watchCount !== expectedWatches ||
+        answerCount !== expectedAnswers
       )
         throw new Error(
-          "Persisted film/rating/watch counts failed verification; transaction rolled back.",
+          "Persisted film/rating/answer/watch counts failed verification; transaction rolled back.",
         );
       return filmCount;
     });
@@ -175,31 +165,15 @@ async function main() {
   }
 }
 
-function isRatingWeights(
-  value: Record<string, number>,
-): value is RatingWeights {
-  const keys: Array<keyof RatingWeights> = [
-    "story",
-    "direction",
-    "writing",
-    "acting",
-    "music",
-    "impact",
-    "rewatchability",
-    "rewatchabilityOffset",
-    "genreFit",
-    "divisor",
-  ];
-  return keys.every((key) => Number.isFinite(value[key])) && value.divisor > 0;
-}
-
 type AppDb = ReturnType<typeof createDb>["db"];
 type Transaction = Parameters<Parameters<AppDb["transaction"]>[0]>[0];
+type V1Form = { id: number; questionIds: Map<string, number> };
 
 function insertFilm(
   tx: Transaction,
+  sqlite: import("better-sqlite3").Database,
   film: ImportedFilm,
-  weights: RatingWeights,
+  form: V1Form,
   createFranchise: (name: string, parentId: number | null) => number,
 ) {
   const franchiseId = film.upperFranchise
@@ -227,22 +201,34 @@ function insertFilm(
     .get();
 
   if (film.scores) {
-    tx.insert(ratings)
-      .values({
-        filmId: inserted.id,
-        ...film.scores,
-        quality: film.quality,
-        overall: computeOverall(film.scores, weights),
-        overallSecondary:
-          film.quality === null
-            ? null
-            : computeSecondary(
-                film.quality,
-                film.scores.rewatchability,
-                film.scores.genreFit,
-              ),
-      })
-      .run();
+    const insertAnswer = sqlite.prepare(
+      `insert into answers (film_id, question_id, value_number, is_na)
+       values (?, ?, ?, 0)`,
+    );
+    for (const answer of importedAnswerValues(film)) {
+      const questionId = form.questionIds.get(answer.key);
+      if (!questionId)
+        throw new Error(`Published v1 form is missing question ${answer.key}.`);
+      insertAnswer.run(inserted.id, questionId, answer.valueNumber);
+    }
+    sqlite
+      .prepare(
+        `insert into ratings
+         (film_id, form_version_id, overall, overall_secondary)
+         values (?, ?, ?, ?)`,
+      )
+      .run(
+        inserted.id,
+        form.id,
+        computeOverall(film.scores, defaultWeights),
+        film.quality === null
+          ? null
+          : computeSecondary(
+              film.quality,
+              film.scores.rewatchability,
+              film.scores.genreFit,
+            ),
+      );
   }
   if (film.lastWatchDate)
     tx.insert(watchLog)
@@ -252,4 +238,34 @@ function insertFilm(
         isRewatch: false,
       })
       .run();
+}
+
+function loadV1Form(sqlite: import("better-sqlite3").Database): V1Form {
+  const ratingColumns = sqlite
+    .prepare("pragma table_info(ratings)")
+    .all() as Array<{ name: string }>;
+  if (!ratingColumns.some(({ name }) => name === "form_version_id")) {
+    throw new Error(
+      "Forms migration has not been applied. Run npm run db:forms-migrate before importing.",
+    );
+  }
+  const version = sqlite
+    .prepare(
+      "select id from form_versions where status = 'published' order by id desc limit 1",
+    )
+    .get() as { id: number } | undefined;
+  if (!version)
+    throw new Error("A published form is required before importing films.");
+  const rows = sqlite
+    .prepare(
+      "select id, key from questions where form_version_id = ? and archived_at is null",
+    )
+    .all(version.id) as Array<{ id: number; key: string }>;
+  const questionIds = new Map(rows.map(({ id, key }) => [key, id]));
+  const missing = v1AnswerKeys.filter((key) => !questionIds.has(key));
+  if (missing.length > 0)
+    throw new Error(
+      `Published form is missing v1 import questions: ${missing.join(", ")}.`,
+    );
+  return { id: version.id, questionIds };
 }

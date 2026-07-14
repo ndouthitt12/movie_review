@@ -25,7 +25,7 @@ export async function POST(request: Request) {
     .get();
   if (!source || !target)
     return NextResponse.json({ error: "Tag not found." }, { status: 404 });
-  if (source.attribute !== target.attribute)
+  if (source.questionKey !== target.questionKey)
     return NextResponse.json(
       { error: "Only tags for the same attribute can be merged." },
       { status: 409 },

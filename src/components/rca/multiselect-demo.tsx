@@ -10,28 +10,28 @@ const fixtures: RcaOption[] = [
   {
     id: 1,
     label: "Compelling premise",
-    attribute: "story",
+    questionKey: "story",
     polarity: "positive",
     color: null,
   },
   {
     id: 2,
     label: "Strong character arc",
-    attribute: "story",
+    questionKey: "story",
     polarity: "positive",
     color: null,
   },
   {
     id: 3,
     label: "Predictable plotting",
-    attribute: "story",
+    questionKey: "story",
     polarity: "negative",
     color: null,
   },
   {
     id: 4,
     label: "Weak third act",
-    attribute: "story",
+    questionKey: "story",
     polarity: "negative",
     color: null,
   },
@@ -50,7 +50,7 @@ export function MultiselectDemo() {
         const tag: RcaOption = {
           id: Date.now(),
           label,
-          attribute: "story",
+          questionKey: "story",
           polarity: "neutral",
           color: null,
         };

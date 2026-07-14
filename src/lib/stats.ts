@@ -1,13 +1,14 @@
-import { scoreAttributes, type ScoreAttribute } from "./scoring";
+export type DashboardAttribute = { key: string; label: string };
 
-export type DashboardRating = Record<ScoreAttribute, number> & {
+export type DashboardRating = {
+  values: Record<string, number>;
   overall: number;
 };
 
 export type DashboardTag = {
   id: number;
   label: string;
-  attribute: ScoreAttribute | "genre_fit" | "overall";
+  questionKey: string;
 };
 
 export type DashboardFilm = {
@@ -27,17 +28,6 @@ export type DashboardWatch = {
   filmId: number;
   watchedOn: string;
   title?: string;
-};
-
-export const attributeLabels: Record<ScoreAttribute, string> = {
-  story: "Story",
-  direction: "Direction",
-  writing: "Writing",
-  acting: "Acting",
-  music: "Music",
-  impact: "Impact",
-  rewatchability: "Rewatchability",
-  genreFit: "Genre fit",
 };
 
 export function overallHistogram(
@@ -135,12 +125,21 @@ export function watchesPerYear(watches: readonly DashboardWatch[]) {
     .map(([period, count]) => ({ period, count }));
 }
 
-export function attributeAverages(films: readonly DashboardFilm[]) {
+export function attributeAverages(
+  films: readonly DashboardFilm[],
+  attributes: readonly DashboardAttribute[],
+) {
   const ratings = films.flatMap(({ rating }) => (rating ? [rating] : []));
-  return scoreAttributes.map((attribute) => ({
-    attribute,
-    label: attributeLabels[attribute],
-    average: average(ratings.map((rating) => rating[attribute])),
+  return attributes.map((attribute) => ({
+    attribute: attribute.key,
+    label: attribute.label,
+    average: average(
+      ratings.flatMap((rating) =>
+        rating.values[attribute.key] == null
+          ? []
+          : [rating.values[attribute.key]],
+      ),
+    ),
   }));
 }
 
@@ -194,15 +193,22 @@ export function franchiseReportCards(films: readonly DashboardFilm[]) {
   );
 }
 
-export function attributeOverallCorrelations(films: readonly DashboardFilm[]) {
+export function attributeOverallCorrelations(
+  films: readonly DashboardFilm[],
+  attributes: readonly DashboardAttribute[],
+) {
   const ratings = films.flatMap(({ rating }) => (rating ? [rating] : []));
-  return scoreAttributes
+  return attributes
     .map((attribute) => ({
-      attribute,
-      label: attributeLabels[attribute],
+      attribute: attribute.key,
+      label: attribute.label,
       correlation: pearson(
-        ratings.map((rating) => rating[attribute]),
-        ratings.map((rating) => rating.overall),
+        ratings
+          .filter((rating) => rating.values[attribute.key] != null)
+          .map((rating) => rating.values[attribute.key]),
+        ratings
+          .filter((rating) => rating.values[attribute.key] != null)
+          .map((rating) => rating.overall),
       ),
     }))
     .sort(
@@ -217,24 +223,27 @@ export function rcaTagFrequencies(films: readonly DashboardFilm[]) {
     {
       id: number;
       label: string;
-      attribute: DashboardTag["attribute"];
+      questionKey: DashboardTag["questionKey"];
+      count: number;
       scores: number[];
     }
   >();
   for (const film of films) {
     if (!film.rating) continue;
     for (const tag of film.rcaTags) {
-      const key = tag.attribute === "genre_fit" ? "genreFit" : tag.attribute;
-      const score = key === "overall" ? film.rating.overall : film.rating[key];
-      const group = groups.get(tag.id) ?? { ...tag, scores: [] };
-      group.scores.push(score);
+      const score =
+        tag.questionKey === "overall"
+          ? film.rating.overall
+          : film.rating.values[tag.questionKey];
+      const group = groups.get(tag.id) ?? { ...tag, count: 0, scores: [] };
+      group.count += 1;
+      if (score != null) group.scores.push(score);
       groups.set(tag.id, group);
     }
   }
   return [...groups.values()]
     .map(({ scores, ...tag }) => ({
       ...tag,
-      count: scores.length,
       averageScore: average(scores),
     }))
     .sort(

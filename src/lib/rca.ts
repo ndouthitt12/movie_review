@@ -7,7 +7,7 @@ export async function getRcaTagsWithUsage() {
     .select({
       id: rcaTags.id,
       label: rcaTags.label,
-      attribute: rcaTags.attribute,
+      questionKey: rcaTags.questionKey,
       polarity: rcaTags.polarity,
       color: rcaTags.color,
       usageCount: count(filmRcaTags.filmId),
@@ -15,7 +15,7 @@ export async function getRcaTagsWithUsage() {
     .from(rcaTags)
     .leftJoin(filmRcaTags, eq(filmRcaTags.rcaTagId, rcaTags.id))
     .groupBy(rcaTags.id)
-    .orderBy(asc(rcaTags.attribute), asc(rcaTags.label))
+    .orderBy(asc(rcaTags.questionKey), asc(rcaTags.label))
     .all();
 }
 

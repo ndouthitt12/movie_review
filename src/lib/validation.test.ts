@@ -19,7 +19,7 @@ describe("Phase 2 mutation validation", () => {
     ).toBe(true);
   });
 
-  it("rejects incomplete films and scores outside 0-100", () => {
+  it("rejects incomplete films and duplicate form answers", () => {
     expect(
       filmCreateSchema.safeParse({
         title: "",
@@ -29,15 +29,11 @@ describe("Phase 2 mutation validation", () => {
     ).toBe(false);
     expect(
       ratingSchema.safeParse({
-        story: 101,
-        direction: 50,
-        writing: 50,
-        acting: 50,
-        music: 50,
-        impact: 50,
-        rewatchability: 50,
-        genreFit: 50,
-        quality: 50,
+        formVersionId: 1,
+        answers: [
+          { questionId: 1, valueNumber: 50 },
+          { questionId: 1, valueNumber: 60 },
+        ],
       }).success,
     ).toBe(false);
   });

@@ -1,17 +1,19 @@
-import { asc, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { alias } from "drizzle-orm/sqlite-core";
 import { db } from "@/db";
 import {
+  answers,
   filmRcaTags,
   films,
   franchises,
+  questionOptions,
+  questions,
   ratings,
   rcaTags,
-  settings,
+  scaleLevels,
   watchLog,
 } from "@/db/schema";
-import { defaultWeights } from "@/db/seed-data";
-import type { RatingWeights } from "./scoring";
+import { getFormVersionConfig, getPublishedRuntimeForm } from "./form-config";
 import type { DashboardFilm } from "./stats";
 
 export async function getLibraryFilms() {
@@ -32,14 +34,7 @@ export async function getLibraryFilms() {
       director: films.director,
       franchise: franchises.name,
       subFranchise: subFranchises.name,
-      story: ratings.story,
-      direction: ratings.direction,
-      writing: ratings.writing,
-      acting: ratings.acting,
-      music: ratings.music,
-      impact: ratings.impact,
-      rewatchability: ratings.rewatchability,
-      genreFit: ratings.genreFit,
+      formVersionId: ratings.formVersionId,
       overall: ratings.overall,
     })
     .from(films)
@@ -54,7 +49,7 @@ export async function getLibraryFilms() {
           filmId: filmRcaTags.filmId,
           id: rcaTags.id,
           label: rcaTags.label,
-          attribute: rcaTags.attribute,
+          attribute: rcaTags.questionKey,
           polarity: rcaTags.polarity,
           color: rcaTags.color,
         })
@@ -75,9 +70,20 @@ export async function getLibraryFilms() {
     list.push(tag);
     tagsByFilm.set(tag.filmId, list);
   }
-  return rows.map((film) => ({
-    ...film,
-    rcaTags: (tagsByFilm.get(film.id) ?? []).map(
+  const scoresByFilm = loadNumericAnswers(rows.map(({ id }) => id));
+  return rows.map((film) => {
+    const scores = scoresByFilm.get(film.id) ?? new Map<string, number>();
+    return {
+      ...film,
+      story: scores.get("story") ?? null,
+      direction: scores.get("direction") ?? null,
+      writing: scores.get("writing") ?? null,
+      acting: scores.get("acting") ?? null,
+      music: scores.get("music") ?? null,
+      impact: scores.get("impact") ?? null,
+      rewatchability: scores.get("rewatchability") ?? null,
+      genreFit: scores.get("genre_fit") ?? null,
+      rcaTags: (tagsByFilm.get(film.id) ?? []).map(
       ({ id, label, attribute, polarity, color }) => ({
         id,
         label,
@@ -85,8 +91,9 @@ export async function getLibraryFilms() {
         polarity,
         color,
       }),
-    ),
-  }));
+      ),
+    };
+  });
 }
 
 export type LibraryFilm = Awaited<ReturnType<typeof getLibraryFilms>>[number];
@@ -126,30 +133,53 @@ export async function getFilmDetail(id: number) {
     .where(eq(watchLog.filmId, id))
     .orderBy(desc(watchLog.watchedOn), desc(watchLog.id))
     .all();
-  const setting = db.select().from(settings).where(eq(settings.id, 1)).get();
+  const form = rating ? getFormVersionConfig(rating.formVersionId) : null;
+  const questionIds = form?.questions.map(({ id: questionId }) => questionId) ?? [];
+  const answerRows = questionIds.length
+    ? db
+        .select()
+        .from(answers)
+        .where(
+          and(
+            eq(answers.filmId, id),
+            inArray(answers.questionId, questionIds),
+          ),
+        )
+        .all()
+    : [];
   const selectedRcaTags = db
     .select({
       id: rcaTags.id,
       label: rcaTags.label,
-      attribute: rcaTags.attribute,
+      questionKey: rcaTags.questionKey,
       polarity: rcaTags.polarity,
       color: rcaTags.color,
     })
     .from(filmRcaTags)
     .innerJoin(rcaTags, eq(rcaTags.id, filmRcaTags.rcaTagId))
     .where(eq(filmRcaTags.filmId, id))
-    .orderBy(asc(rcaTags.attribute), asc(rcaTags.label))
+    .orderBy(asc(rcaTags.questionKey), asc(rcaTags.label))
     .all();
   return {
     film,
     rating,
+    answers: answerRows,
+    form,
     watches,
-    weights: (setting?.weights ?? defaultWeights) as RatingWeights,
     selectedRcaTags,
   };
 }
 
 export async function getDashboardData() {
+  const publishedForm = getPublishedRuntimeForm();
+  const attributes = (publishedForm?.questions ?? [])
+    .filter(
+      (question) =>
+        question.scored &&
+        question.type !== "short_text" &&
+        question.type !== "paragraph",
+    )
+    .map(({ key, label }) => ({ key, label }));
   const subFranchises = alias(franchises, "dashboard_sub_franchises");
   const filmRows = db
     .select({
@@ -161,14 +191,6 @@ export async function getDashboardData() {
       genreSecondary: films.genreSecondary,
       franchise: franchises.name,
       subFranchise: subFranchises.name,
-      story: ratings.story,
-      direction: ratings.direction,
-      writing: ratings.writing,
-      acting: ratings.acting,
-      music: ratings.music,
-      impact: ratings.impact,
-      rewatchability: ratings.rewatchability,
-      genreFit: ratings.genreFit,
       overall: ratings.overall,
     })
     .from(films)
@@ -181,7 +203,7 @@ export async function getDashboardData() {
       filmId: filmRcaTags.filmId,
       id: rcaTags.id,
       label: rcaTags.label,
-      attribute: rcaTags.attribute,
+      questionKey: rcaTags.questionKey,
     })
     .from(filmRcaTags)
     .innerJoin(rcaTags, eq(rcaTags.id, filmRcaTags.rcaTagId))
@@ -189,22 +211,24 @@ export async function getDashboardData() {
   const tagsByFilm = new Map<number, DashboardFilm["rcaTags"]>();
   for (const tag of tagRows) {
     const list = tagsByFilm.get(tag.filmId) ?? [];
-    list.push({ id: tag.id, label: tag.label, attribute: tag.attribute });
+    list.push({
+      id: tag.id,
+      label: tag.label,
+      questionKey: tag.questionKey,
+    });
     tagsByFilm.set(tag.filmId, list);
   }
+  const scoresByFilm = loadDashboardScores(
+    filmRows.map(({ id }) => id),
+    new Set(attributes.map(({ key }) => key)),
+  );
   const dashboardFilms: DashboardFilm[] = filmRows.map((film) => {
+    const values = scoresByFilm.get(film.id) ?? {};
     const rating =
-      film.overall === null || film.story === null
+      film.overall === null
         ? null
         : {
-            story: film.story,
-            direction: film.direction!,
-            writing: film.writing!,
-            acting: film.acting!,
-            music: film.music!,
-            impact: film.impact!,
-            rewatchability: film.rewatchability!,
-            genreFit: film.genreFit!,
+            values,
             overall: film.overall,
           };
     return { ...film, rating, rcaTags: tagsByFilm.get(film.id) ?? [] };
@@ -219,10 +243,106 @@ export async function getDashboardData() {
     .innerJoin(films, eq(films.id, watchLog.filmId))
     .orderBy(asc(watchLog.watchedOn), asc(watchLog.id))
     .all();
-  return { films: dashboardFilms, watches };
+  return { films: dashboardFilms, watches, attributes };
 }
 
 export async function getRubric() {
-  const setting = db.select().from(settings).where(eq(settings.id, 1)).get();
-  return setting?.rubric ?? [];
+  return db.select().from(scaleLevels).orderBy(desc(scaleLevels.level)).all();
+}
+
+function loadNumericAnswers(filmIds: number[]) {
+  if (filmIds.length === 0) return new Map<number, Map<string, number>>();
+  const rows = db
+    .select({
+      filmId: answers.filmId,
+      questionId: answers.questionId,
+      valueNumber: answers.valueNumber,
+    })
+    .from(answers)
+    .where(inArray(answers.filmId, filmIds))
+    .all();
+  const questionKeys = new Map(
+    db
+      .select({ id: questions.id, key: questions.key })
+      .from(questions)
+      .all()
+      .map(({ id, key }) => [id, key]),
+  );
+  const byFilm = new Map<number, Map<string, number>>();
+  for (const row of rows) {
+    const key = questionKeys.get(row.questionId);
+    if (!key || row.valueNumber == null) continue;
+    const values = byFilm.get(row.filmId) ?? new Map<string, number>();
+    values.set(key, row.valueNumber);
+    byFilm.set(row.filmId, values);
+  }
+  return byFilm;
+}
+
+function loadDashboardScores(filmIds: number[], publishedKeys: Set<string>) {
+  if (!filmIds.length || !publishedKeys.size)
+    return new Map<number, Record<string, number>>();
+  const rows = db
+    .select({
+      filmId: answers.filmId,
+      questionId: answers.questionId,
+      valueNumber: answers.valueNumber,
+      valueOptionIds: answers.valueOptionIds,
+      isNa: answers.isNa,
+    })
+    .from(answers)
+    .where(inArray(answers.filmId, filmIds))
+    .all();
+  const questionIds = [...new Set(rows.map(({ questionId }) => questionId))];
+  const questionById = new Map(
+    questionIds.length
+      ? db
+          .select({
+            id: questions.id,
+            key: questions.key,
+            type: questions.type,
+            multiSelectScoring: questions.multiSelectScoring,
+          })
+          .from(questions)
+          .where(inArray(questions.id, questionIds))
+          .all()
+          .map((question) => [question.id, question] as const)
+      : [],
+  );
+  const selectedOptionIds = [
+    ...new Set(rows.flatMap(({ valueOptionIds }) => valueOptionIds ?? [])),
+  ];
+  const optionScores = new Map(
+    selectedOptionIds.length
+      ? db
+          .select({ id: questionOptions.id, valueScore: questionOptions.valueScore, isNull: questionOptions.isNull })
+          .from(questionOptions)
+          .where(inArray(questionOptions.id, selectedOptionIds))
+          .all()
+          .map((option) => [option.id, option] as const)
+      : [],
+  );
+  const byFilm = new Map<number, Record<string, number>>();
+  for (const row of rows) {
+    if (row.isNa) continue;
+    const question = questionById.get(row.questionId);
+    if (!question || !publishedKeys.has(question.key)) continue;
+    let score = row.valueNumber;
+    if (score == null && row.valueOptionIds?.length) {
+      const selected = row.valueOptionIds
+        .map((id) => optionScores.get(id))
+        .filter((option) => option && !option.isNull && option.valueScore != null)
+        .map((option) => option!.valueScore!);
+      if (selected.length)
+        score =
+          question.type === "multi_select" && question.multiSelectScoring === "sum"
+            ? selected.reduce((sum, value) => sum + value, 0)
+            : selected.reduce((sum, value) => sum + value, 0) / selected.length;
+    }
+    if (score == null) continue;
+    const values = byFilm.get(row.filmId) ?? {};
+    values[question.key] = score;
+    byFilm.set(row.filmId, values);
+  }
+  return byFilm;
 }

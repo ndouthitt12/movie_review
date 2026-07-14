@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { PageShell } from "@/components/page-shell";
-import { RubricEditor } from "@/components/rubric-editor";
 import { getRubric } from "@/lib/catalog";
 
 export const dynamic = "force-dynamic";
@@ -18,7 +17,14 @@ export default async function RubricPage() {
           touchstone films for every point.
         </p>
       </header>
-      <RubricEditor initial={rubric} />
+      <section className="panel divide-y divide-hairline overflow-hidden">
+        {rubric.map((row) => (
+          <div key={row.level} className="grid gap-3 px-5 py-5 sm:grid-cols-[4rem_1fr] sm:px-7">
+            <p className="text-accent-300 text-4xl font-bold tabular-nums">{row.level}</p>
+            <div><p className="text-paper-100 text-lg font-semibold">{row.title || row.meaning}</p>{row.title && row.meaning ? <p className="text-paper-300 mt-1 text-sm">{row.meaning}</p> : null}<p className="text-paper-500 mt-2 text-sm italic">{row.exampleFilms || "No example films yet"}</p></div>
+          </div>
+        ))}
+      </section>
     </PageShell>
   );
 }

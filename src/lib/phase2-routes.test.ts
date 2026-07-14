@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { defaultRubric } from "@/db/seed-data";
 
 let directory: string;
 let sqlite: import("better-sqlite3").Database;
@@ -46,8 +47,9 @@ beforeAll(async () => {
         genreFit: 3,
         divisor: 334,
       }),
-      "[]",
+      JSON.stringify(defaultRubric),
     );
+  await import("../../scripts/migrate-to-forms");
   createFilm = (await import("@/app/api/films/route")).POST;
   reorderFilms = (await import("@/app/api/films/reorder/route")).PATCH;
   saveRating = (await import("@/app/api/films/[id]/rating/route")).PUT;
@@ -125,20 +127,19 @@ describe("Phase 2 route integration", () => {
         .all(),
     ).toEqual([{ id: secondId }, { id: firstId }]);
 
-    const scores = {
-      story: 90,
-      direction: 90,
-      writing: 90,
-      acting: 90,
-      music: 90,
-      impact: 90,
-      rewatchability: 90,
-      genreFit: 90,
-      quality: 90,
-    };
+    const questionRows = (
+      sqlite
+        .prepare("select id, key from questions where form_version_id = 1")
+        .all() as Array<{ id: number; key: string }>
+    );
+    const answers = questionRows.map(({ id }) => ({
+      questionId: id,
+      valueNumber: 90,
+    }));
     const rating = await saveRating(
       jsonRequest(`http://test/api/films/${firstId}/rating`, "PUT", {
-        ...scores,
+        formVersionId: 1,
+        answers,
         promoteToWatched: true,
         watchedOn: "2026-07-12",
       }),
@@ -150,6 +151,50 @@ describe("Phase 2 route integration", () => {
         .prepare("select status, last_watch_date from films where id = ?")
         .get(firstId),
     ).toEqual({ status: "watched", last_watch_date: "2026-07-12" });
+
+    const story = questionRows.find(({ key }) => key === "story")!;
+    const updatedRating = await saveRating(
+      jsonRequest(`http://test/api/films/${firstId}/rating`, "PUT", {
+        formVersionId: 1,
+        answers: answers.map((answer) =>
+          answer.questionId === story.id
+            ? { ...answer, valueNumber: 80 }
+            : answer,
+        ),
+      }),
+      { params: Promise.resolve({ id: String(firstId) }) },
+    );
+    expect(updatedRating.status).toBe(200);
+    expect(
+      sqlite.prepare("select count(*) as count from ratings").get(),
+    ).toEqual({ count: 1 });
+    expect(
+      sqlite
+        .prepare(
+          "select value_number as value from answers where film_id = ? and question_id = ?",
+        )
+        .get(firstId, story.id),
+    ).toEqual({ value: 80 });
+
+    const invalidRating = await saveRating(
+      jsonRequest(`http://test/api/films/${firstId}/rating`, "PUT", {
+        formVersionId: 1,
+        answers: answers.map((answer) =>
+          answer.questionId === story.id
+            ? { ...answer, valueNumber: 101 }
+            : answer,
+        ),
+      }),
+      { params: Promise.resolve({ id: String(firstId) }) },
+    );
+    expect(invalidRating.status).toBe(400);
+    expect(
+      sqlite
+        .prepare(
+          "select value_number as value from answers where film_id = ? and question_id = ?",
+        )
+        .get(firstId, story.id),
+    ).toEqual({ value: 80 });
 
     const added = await addWatch(
       jsonRequest(`http://test/api/films/${firstId}/watches`, "POST", {

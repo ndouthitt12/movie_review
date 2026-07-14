@@ -3,26 +3,22 @@
 import { useMemo, useState } from "react";
 import { Button, QuietButton } from "@/components/button";
 import { Input } from "@/components/input";
-import { rcaAttributes, rcaPolarities } from "@/db/schema";
+import { rcaPolarities } from "@/db/schema";
 import type { RcaTagWithUsage } from "@/lib/rca";
-
-const labels = Object.fromEntries(
-  rcaAttributes.map((attribute) => [
-    attribute,
-    attribute === "genre_fit"
-      ? "Genre fit"
-      : attribute[0].toUpperCase() + attribute.slice(1),
-  ]),
-) as Record<(typeof rcaAttributes)[number], string>;
 
 export function RcaManager({
   initialTags,
+  questionOptions,
 }: {
   initialTags: RcaTagWithUsage[];
+  questionOptions: Array<{ key: string; label: string }>;
 }) {
   const [tags, setTags] = useState(initialTags);
-  const [attribute, setAttribute] =
-    useState<(typeof rcaAttributes)[number]>("story");
+  const [questionKey, setQuestionKey] = useState(questionOptions[0]?.key ?? "overall");
+  const labels = useMemo(
+    () => Object.fromEntries(questionOptions.map(({ key, label }) => [key, label])),
+    [questionOptions],
+  );
   const [label, setLabel] = useState("");
   const [polarity, setPolarity] =
     useState<(typeof rcaPolarities)[number]>("positive");
@@ -40,8 +36,8 @@ export function RcaManager({
       tags.filter(
         (tag) =>
           !sourceId ||
-          tag.attribute ===
-            tags.find(({ id }) => id === Number(sourceId))?.attribute,
+          tag.questionKey ===
+            tags.find(({ id }) => id === Number(sourceId))?.questionKey,
       ),
     [sourceId, tags],
   );
@@ -59,7 +55,7 @@ export function RcaManager({
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         label,
-        attribute,
+        questionKey,
         polarity,
         color: color.trim() || null,
       }),
@@ -152,15 +148,13 @@ export function RcaManager({
               required
             />
             <select
-              value={attribute}
-              onChange={(event) =>
-                setAttribute(event.target.value as typeof attribute)
-              }
+              value={questionKey}
+              onChange={(event) => setQuestionKey(event.target.value)}
               className="select-field"
             >
-              {rcaAttributes.map((value) => (
-                <option key={value} value={value}>
-                  {labels[value]}
+              {questionOptions.map(({ key, label: optionLabel }) => (
+                <option key={key} value={key}>
+                  {optionLabel}
                 </option>
               ))}
             </select>
@@ -200,7 +194,7 @@ export function RcaManager({
               <option value="">Source tag</option>
               {tags.map((tag) => (
                 <option key={tag.id} value={tag.id}>
-                  {labels[tag.attribute]} · {tag.label}
+                  {labels[tag.questionKey] ?? tag.questionKey} · {tag.label}
                 </option>
               ))}
             </select>
@@ -233,13 +227,13 @@ export function RcaManager({
       </section>
 
       <div className="grid gap-8 lg:grid-cols-2">
-        {rcaAttributes.map((group) => {
-          const groupTags = tags.filter((tag) => tag.attribute === group);
+        {questionOptions.map(({ key: group, label: groupLabel }) => {
+          const groupTags = tags.filter((tag) => tag.questionKey === group);
           return (
             <section key={group} className="panel overflow-hidden">
               <header className="border-hairline bg-ink-850 flex items-center justify-between border-b px-5 py-4">
                 <h2 className="text-paper-100 font-semibold">
-                  {labels[group]}
+                  {groupLabel}
                 </h2>
                 <span className="text-paper-500 text-xs">
                   {groupTags.length} tags

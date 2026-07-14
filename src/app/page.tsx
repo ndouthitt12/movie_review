@@ -43,7 +43,7 @@ export default async function Home() {
             Open dashboard
           </Link>
           <Link
-            href="/settings/rca"
+            href="/admin/rca"
             className="border-hairline bg-ink-850 text-paper-100 hover:border-paper-500 rounded-ui border px-6 py-3 text-sm font-bold"
           >
             Manage why tags
