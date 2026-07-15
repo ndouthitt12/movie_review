@@ -3,7 +3,7 @@ import postgres from "postgres";
 import * as schema from "./schema";
 
 const connectionString =
-  process.env.DATABASE_URL ?? "postgresql://localhost/movie_ratings";
+  process.env.DATABASE_URL || "postgresql://localhost/movie_ratings";
 const postgresClient = postgres(connectionString, {
   max: 1,
   prepare: false,

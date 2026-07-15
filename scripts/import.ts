@@ -1,4 +1,4 @@
-import "dotenv/config";
+import "./env";
 import fs from "node:fs";
 import path from "node:path";
 import { and, count, desc, eq, isNull } from "drizzle-orm";

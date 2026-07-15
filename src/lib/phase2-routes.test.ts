@@ -25,7 +25,7 @@ let deleteWatch: (
 beforeAll(async () => {
   const database = await import("@/db");
   await resetTestDatabase();
-  await (await import("../../scripts/seed")).seedDatabase(database.db);
+  await (await import("@/db/seed")).seedDatabase(database.db);
   await database.db.insert(settings).values({
     id: 1,
     weights: {
