@@ -20,6 +20,7 @@ import {
   recencyWeight,
   type TasteProfile,
 } from "./recs/taste-profile";
+import { rankTrending, type TrendingItem } from "./recs/trending";
 import {
   discoverTmdbMovies,
   getTmdbMovie,
@@ -39,10 +40,10 @@ export type RecommendationPayload = RecommendationResult & {
   error?: string;
 };
 
-export type RawTrendingPayload = {
+export type TrendingPayload = {
   available: boolean;
   generatedAt: string;
-  items: TmdbMovieSummary[];
+  items: TrendingItem[];
   error?: string;
 };
 
@@ -52,22 +53,22 @@ const getCachedRecommendations = unstable_cache(
   { revalidate: 21_600, tags: [RECOMMENDATIONS_CACHE_TAG] },
 );
 
-const getCachedRawTrending = unstable_cache(
-  buildRawTrendingPayload,
-  ["recommendations-trending-v1"],
+const getCachedTrending = unstable_cache(
+  buildTrendingPayload,
+  ["recommendations-trending-v2"],
   { revalidate: 21_600, tags: [RECOMMENDATIONS_CACHE_TAG] },
 );
 
 const getRecommendationPayload = cache(() => getCachedRecommendations());
-const getRawTrendingPayload = cache(() => getCachedRawTrending());
+const getTrendingPayload = cache(() => getCachedTrending());
 
 export async function getRecommendations(limit = 20) {
   const payload = await getRecommendationPayload();
   return { ...payload, items: payload.items.slice(0, clampLimit(limit)) };
 }
 
-export async function getRawTrending(limit = 100) {
-  const payload = await getRawTrendingPayload();
+export async function getTrending(limit = 100) {
+  const payload = await getTrendingPayload();
   return { ...payload, items: payload.items.slice(0, clampLimit(limit)) };
 }
 
@@ -124,13 +125,24 @@ async function buildRecommendationPayload(): Promise<RecommendationPayload> {
   }
 }
 
-async function buildRawTrendingPayload(): Promise<RawTrendingPayload> {
+async function buildTrendingPayload(): Promise<TrendingPayload> {
   const generatedAt = new Date().toISOString();
   try {
+    const films = await getLibraryFilms().catch(() => [] as LibraryFilm[]);
+    let profile: TasteProfile;
+    try {
+      profile = buildTasteProfile(films);
+    } catch {
+      profile = neutralTasteProfile();
+    }
     return {
       available: true,
       generatedAt,
-      items: (await getTmdbTrending("week")).results,
+      items: rankTrending(
+        await getTmdbTrending("week"),
+        profile,
+        makeLibraryIndex(films),
+      ),
     };
   } catch {
     return {

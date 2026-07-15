@@ -1,17 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { getRecommendations, getRawTrending } = vi.hoisted(() => ({
+const { getRecommendations, getTrendingData } = vi.hoisted(() => ({
   getRecommendations: vi.fn(),
-  getRawTrending: vi.fn(),
+  getTrendingData: vi.fn(),
 }));
 
 vi.mock("@/lib/recs-server", () => ({
   getRecommendations,
-  getRawTrending,
+  getTrending: getTrendingData,
 }));
 
 import { GET as getRecs } from "@/app/api/recs/route";
-import { GET as getTrending } from "@/app/api/recs/trending/route";
+import { GET as getTrendingRoute } from "@/app/api/recs/trending/route";
 
 beforeEach(() => {
   getRecommendations.mockResolvedValue({
@@ -21,7 +21,7 @@ beforeEach(() => {
     generatedAt: "2026-07-15T00:00:00.000Z",
     items: [],
   });
-  getRawTrending.mockResolvedValue({
+  getTrendingData.mockResolvedValue({
     available: true,
     generatedAt: "2026-07-15T00:00:00.000Z",
     items: [],
@@ -42,11 +42,11 @@ describe("recommendation API routes", () => {
   });
 
   it("returns trending data and forwards the requested limit", async () => {
-    const response = await getTrending(
+    const response = await getTrendingRoute(
       new Request("http://test/api/recs/trending?limit=16"),
     );
     expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({ available: true, items: [] });
-    expect(getRawTrending).toHaveBeenCalledWith(16);
+    expect(getTrendingData).toHaveBeenCalledWith(16);
   });
 });
