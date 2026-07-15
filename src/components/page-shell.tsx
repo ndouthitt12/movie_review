@@ -2,54 +2,58 @@ import Link from "next/link";
 import Image from "next/image";
 import { Suspense, type ReactNode } from "react";
 import { BottomNav } from "@/components/ui/bottom-nav";
+import { BellIcon, ChevronDownIcon, SearchIcon } from "@/components/ui/icons";
 import { Wordmark } from "@/components/ui/wordmark";
+import styles from "./page-shell.module.css";
 
 export function PageShell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen pb-20 md:pb-0">
-      <header className="border-hairline bg-ink-950/95 sticky top-0 z-50 border-b">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5 sm:px-8">
-          <Link
-            href="/"
-            aria-label="Picture House home"
-            className="transition-opacity hover:opacity-80"
-          >
+      <header className={styles.header}>
+        <div className={styles.headerInner}>
+          <Link href="/" aria-label="Reeler home" className={styles.brand}>
             <Wordmark />
           </Link>
-          <nav
-            aria-label="Primary navigation"
-            className="text-paper-300 hidden items-center gap-6 text-xs font-semibold tracking-wide uppercase md:flex"
-          >
-            <Link
-              href="/dashboard"
-              className="hover:text-accent-400 transition-colors duration-150"
-            >
-              Dashboard
+          <nav aria-label="Primary navigation" className={styles.nav}>
+            <Link href="/" className={styles.activeNavLink}>
+              Discover
             </Link>
-            <Link
-              href="/library"
-              className="hover:text-accent-400 transition-colors duration-150"
-            >
-              Library
-            </Link>
-            <Link
-              href="/rubric"
-              className="hover:text-accent-400 transition-colors duration-150"
-            >
-              Rubric
-            </Link>
-            <Link
-              href="/admin/rca"
-              className="hover:text-accent-400 transition-colors duration-150"
-            >
-              Why tags
-            </Link>
+            <Link href="/library">Reviews</Link>
+            <Link href="/library?status=to_watch">Watchlist</Link>
+            <Link href="/library">Lists</Link>
+            <Link href="/dashboard">News</Link>
           </nav>
+
+          <form action="/library" className={styles.search} role="search">
+            <SearchIcon className="h-5 w-5" />
+            <input
+              name="q"
+              aria-label="Search movies, reviews, and people"
+              placeholder="Search movies, reviews, people..."
+            />
+          </form>
+
+          <div className={styles.accountArea}>
+            <button
+              type="button"
+              className={styles.iconButton}
+              aria-label="Notifications"
+            >
+              <BellIcon className="h-5 w-5" />
+            </button>
+            <button
+              type="button"
+              className={styles.userChip}
+              aria-label="Open account menu"
+            >
+              <span className={styles.avatar}>AM</span>
+              <span>Ava Morgan</span>
+              <ChevronDownIcon className="h-4 w-4" />
+            </button>
+          </div>
         </div>
       </header>
-      <main className="mx-auto w-full max-w-7xl px-5 py-8 sm:px-8 sm:py-12">
-        {children}
-      </main>
+      <main className={styles.main}>{children}</main>
       <footer className="border-hairline mt-12 border-t">
         <div className="text-paper-500 mx-auto flex max-w-7xl flex-col gap-4 px-5 py-8 text-xs leading-5 sm:px-8 md:flex-row md:items-center">
           <a

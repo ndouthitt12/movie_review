@@ -31,6 +31,10 @@ export async function getLibraryFilms() {
       genreSecondary: films.genreSecondary,
       notes: films.notes,
       posterPath: films.posterPath,
+      backdropPath: films.backdropPath,
+      runtime: films.runtime,
+      overview: films.overview,
+      tmdbGenres: films.tmdbGenres,
       director: films.director,
       franchise: franchises.name,
       subFranchise: subFranchises.name,
@@ -82,13 +86,13 @@ export async function getLibraryFilms() {
       rewatchability: scores.get("rewatchability") ?? null,
       genreFit: scores.get("genre_fit") ?? null,
       rcaTags: (tagsByFilm.get(film.id) ?? []).map(
-      ({ id, label, attribute, polarity, color }) => ({
-        id,
-        label,
-        attribute,
-        polarity,
-        color,
-      }),
+        ({ id, label, attribute, polarity, color }) => ({
+          id,
+          label,
+          attribute,
+          polarity,
+          color,
+        }),
       ),
     };
   });
@@ -133,16 +137,14 @@ export async function getFilmDetail(id: number) {
     .where(eq(watchLog.filmId, id))
     .orderBy(desc(watchLog.watchedOn), desc(watchLog.id));
   const form = rating ? await getFormVersionConfig(rating.formVersionId) : null;
-  const questionIds = form?.questions.map(({ id: questionId }) => questionId) ?? [];
+  const questionIds =
+    form?.questions.map(({ id: questionId }) => questionId) ?? [];
   const answerRows = questionIds.length
     ? await db
         .select()
         .from(answers)
         .where(
-          and(
-            eq(answers.filmId, id),
-            inArray(answers.questionId, questionIds),
-          ),
+          and(eq(answers.filmId, id), inArray(answers.questionId, questionIds)),
         )
     : [];
   const selectedRcaTags = await db
@@ -255,10 +257,9 @@ async function loadNumericAnswers(filmIds: number[]) {
     .from(answers)
     .where(inArray(answers.filmId, filmIds));
   const questionKeys = new Map(
-    (await db
-      .select({ id: questions.id, key: questions.key })
-      .from(questions))
-      .map(({ id, key }) => [id, key]),
+    (
+      await db.select({ id: questions.id, key: questions.key }).from(questions)
+    ).map(({ id, key }) => [id, key]),
   );
   const byFilm = new Map<number, Map<string, number>>();
   for (const row of rows) {
@@ -271,7 +272,10 @@ async function loadNumericAnswers(filmIds: number[]) {
   return byFilm;
 }
 
-async function loadDashboardScores(filmIds: number[], publishedKeys: Set<string>) {
+async function loadDashboardScores(
+  filmIds: number[],
+  publishedKeys: Set<string>,
+) {
   if (!filmIds.length || !publishedKeys.size)
     return new Map<number, Record<string, number>>();
   const rows = await db
@@ -287,16 +291,17 @@ async function loadDashboardScores(filmIds: number[], publishedKeys: Set<string>
   const questionIds = [...new Set(rows.map(({ questionId }) => questionId))];
   const questionById = new Map(
     questionIds.length
-      ? (await db
-          .select({
-            id: questions.id,
-            key: questions.key,
-            type: questions.type,
-            multiSelectScoring: questions.multiSelectScoring,
-          })
-          .from(questions)
-          .where(inArray(questions.id, questionIds)))
-          .map((question) => [question.id, question] as const)
+      ? (
+          await db
+            .select({
+              id: questions.id,
+              key: questions.key,
+              type: questions.type,
+              multiSelectScoring: questions.multiSelectScoring,
+            })
+            .from(questions)
+            .where(inArray(questions.id, questionIds))
+        ).map((question) => [question.id, question] as const)
       : [],
   );
   const selectedOptionIds = [
@@ -304,11 +309,16 @@ async function loadDashboardScores(filmIds: number[], publishedKeys: Set<string>
   ];
   const optionScores = new Map(
     selectedOptionIds.length
-      ? (await db
-          .select({ id: questionOptions.id, valueScore: questionOptions.valueScore, isNull: questionOptions.isNull })
-          .from(questionOptions)
-          .where(inArray(questionOptions.id, selectedOptionIds)))
-          .map((option) => [option.id, option] as const)
+      ? (
+          await db
+            .select({
+              id: questionOptions.id,
+              valueScore: questionOptions.valueScore,
+              isNull: questionOptions.isNull,
+            })
+            .from(questionOptions)
+            .where(inArray(questionOptions.id, selectedOptionIds))
+        ).map((option) => [option.id, option] as const)
       : [],
   );
   const byFilm = new Map<number, Record<string, number>>();
@@ -320,11 +330,14 @@ async function loadDashboardScores(filmIds: number[], publishedKeys: Set<string>
     if (score == null && row.valueOptionIds?.length) {
       const selected = row.valueOptionIds
         .map((id) => optionScores.get(id))
-        .filter((option) => option && !option.isNull && option.valueScore != null)
+        .filter(
+          (option) => option && !option.isNull && option.valueScore != null,
+        )
         .map((option) => option!.valueScore!);
       if (selected.length)
         score =
-          question.type === "multi_select" && question.multiSelectScoring === "sum"
+          question.type === "multi_select" &&
+          question.multiSelectScoring === "sum"
             ? selected.reduce((sum, value) => sum + value, 0)
             : selected.reduce((sum, value) => sum + value, 0) / selected.length;
     }

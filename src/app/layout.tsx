@@ -16,7 +16,7 @@ const display = Source_Serif_4({
 });
 
 export const metadata: Metadata = {
-  title: { default: "Picture House", template: "%s — Picture House" },
+  title: { default: "Reeler", template: "%s — Reeler" },
   description: "A private film library, rating notebook, and watch journal.",
 };
 
