@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { films } from "@/db/schema";
 import { filmUpdateSchema } from "@/lib/validation";
+import { invalidateRecommendations } from "@/lib/recs-cache";
 
 export async function PATCH(
   request: Request,
@@ -22,6 +23,7 @@ export async function PATCH(
     .set({ ...parsed.data, updatedAt: new Date().toISOString() })
     .where(eq(films.id, id))
     .returning({ id: films.id });
+  if (updated) invalidateRecommendations();
   return updated
     ? NextResponse.json(updated)
     : NextResponse.json({ error: "Film not found." }, { status: 404 });

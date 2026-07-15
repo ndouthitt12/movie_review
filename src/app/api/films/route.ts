@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { films, franchises } from "@/db/schema";
 import { filmCreateSchema } from "@/lib/validation";
+import { invalidateRecommendations } from "@/lib/recs-cache";
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -105,6 +106,7 @@ export async function POST(request: Request) {
       if (!film) throw new Error("Could not create film.");
       return film;
     });
+    invalidateRecommendations();
     return NextResponse.json(created, { status: 201 });
   } catch (error) {
     if (error instanceof DuplicateFilmError)

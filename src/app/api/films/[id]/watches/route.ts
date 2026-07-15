@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { films, watchLog } from "@/db/schema";
 import { watchSchema } from "@/lib/validation";
+import { invalidateRecommendations } from "@/lib/recs-cache";
 
 export async function POST(
   request: Request,
@@ -39,5 +40,6 @@ export async function POST(
       .where(eq(films.id, filmId));
     return row;
   });
+  invalidateRecommendations();
   return NextResponse.json(created, { status: 201 });
 }

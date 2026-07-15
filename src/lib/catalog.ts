@@ -29,6 +29,8 @@ export async function getLibraryFilms() {
       lastWatchDate: films.lastWatchDate,
       genrePrimary: films.genrePrimary,
       genreSecondary: films.genreSecondary,
+      franchiseId: films.franchiseId,
+      subFranchiseId: films.subFranchiseId,
       notes: films.notes,
       posterPath: films.posterPath,
       backdropPath: films.backdropPath,

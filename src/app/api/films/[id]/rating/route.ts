@@ -20,6 +20,7 @@ import {
   type AnswerMap,
 } from "@/lib/scoring";
 import { ratingSchema } from "@/lib/validation";
+import { invalidateRecommendations } from "@/lib/recs-cache";
 
 export async function PUT(
   request: Request,
@@ -159,6 +160,7 @@ export async function PUT(
       await tx.insert(watchLog).values({ filmId: id, watchedOn, isRewatch: false });
     }
   });
+  invalidateRecommendations();
   return NextResponse.json({ overall, secondary });
 }
 

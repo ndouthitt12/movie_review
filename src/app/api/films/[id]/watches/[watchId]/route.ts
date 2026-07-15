@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { films, watchLog } from "@/db/schema";
 import { watchSchema } from "@/lib/validation";
+import { invalidateRecommendations } from "@/lib/recs-cache";
 
 type Context = { params: Promise<{ id: string; watchId: string }> };
 
@@ -42,6 +43,7 @@ export async function PATCH(request: Request, { params }: Context) {
     if (row) await updateLastWatch(filmId, tx);
     return row;
   });
+  if (updated) invalidateRecommendations();
   return updated
     ? NextResponse.json(updated)
     : NextResponse.json({ error: "Watch entry not found." }, { status: 404 });
@@ -64,6 +66,7 @@ export async function DELETE(_request: Request, { params }: Context) {
     if (row) await updateLastWatch(filmId, tx);
     return row;
   });
+  if (deleted) invalidateRecommendations();
   return deleted
     ? NextResponse.json(deleted)
     : NextResponse.json({ error: "Watch entry not found." }, { status: 404 });
