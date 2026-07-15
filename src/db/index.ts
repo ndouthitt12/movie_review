@@ -1,15 +1,19 @@
-import { PGlite } from "@electric-sql/pglite";
-import { drizzle as netlifyDrizzle } from "drizzle-orm/netlify-db";
-import { drizzle as pgliteDrizzle } from "drizzle-orm/pglite";
+import { drizzle as postgresDrizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
 import * as schema from "./schema";
 
-const createNetlifyDatabase = () => netlifyDrizzle({ schema });
-export type Database = ReturnType<typeof createNetlifyDatabase>;
+const connectionString =
+  process.env.DATABASE_URL ?? "postgresql://localhost/movie_ratings";
+const postgresClient = postgres(connectionString, {
+  max: 1,
+  prepare: false,
+  connect_timeout: 10,
+  idle_timeout: 20,
+});
+const createPostgresDatabase = () =>
+  postgresDrizzle({ client: postgresClient, schema });
+export type Database = ReturnType<typeof createPostgresDatabase>;
 
-const testClient = process.env.NODE_ENV === "test" ? new PGlite() : null;
+export const db = createPostgresDatabase();
 
-export const db = (testClient
-  ? pgliteDrizzle({ client: testClient, schema })
-  : createNetlifyDatabase()) as Database;
-
-export { testClient };
+export { postgresClient };

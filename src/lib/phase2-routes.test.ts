@@ -1,11 +1,8 @@
-import fs from "node:fs/promises";
-import os from "node:os";
-import path from "node:path";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import { defaultRubric } from "@/db/seed-data";
+import { settings } from "@/db/schema";
+import { queryRow, queryRows, resetTestDatabase } from "@/test/database";
 
-let directory: string;
-let sqlite: import("better-sqlite3").Database;
 let createFilm: (request: Request) => Promise<Response>;
 let reorderFilms: (request: Request) => Promise<Response>;
 let saveRating: (
@@ -26,30 +23,25 @@ let deleteWatch: (
 ) => Promise<Response>;
 
 beforeAll(async () => {
-  directory = await fs.mkdtemp(path.join(os.tmpdir(), "picture-house-phase2-"));
-  process.env.DATABASE_URL = path.join(directory, "routes.sqlite");
   const database = await import("@/db");
-  const { migrate } = await import("drizzle-orm/better-sqlite3/migrator");
-  migrate(database.db, { migrationsFolder: path.resolve("drizzle") });
-  sqlite = database.sqlite;
-  sqlite
-    .prepare("insert into settings (id, weights, rubric) values (1, ?, ?)")
-    .run(
-      JSON.stringify({
-        story: 5,
-        direction: 5,
-        writing: 5,
-        acting: 5,
-        music: 2,
-        impact: 4,
-        rewatchability: 10,
-        rewatchabilityOffset: -50,
-        genreFit: 3,
-        divisor: 334,
-      }),
-      JSON.stringify(defaultRubric),
-    );
-  await import("../../scripts/migrate-to-forms");
+  await resetTestDatabase();
+  await (await import("../../scripts/seed")).seedDatabase(database.db);
+  await database.db.insert(settings).values({
+    id: 1,
+    weights: {
+      story: 5,
+      direction: 5,
+      writing: 5,
+      acting: 5,
+      music: 2,
+      impact: 4,
+      rewatchability: 10,
+      rewatchabilityOffset: -50,
+      genreFit: 3,
+      divisor: 334,
+    },
+    rubric: defaultRubric,
+  });
   createFilm = (await import("@/app/api/films/route")).POST;
   reorderFilms = (await import("@/app/api/films/reorder/route")).PATCH;
   saveRating = (await import("@/app/api/films/[id]/rating/route")).PUT;
@@ -58,11 +50,6 @@ beforeAll(async () => {
     await import("@/app/api/films/[id]/watches/[watchId]/route");
   editWatch = watchRoute.PATCH;
   deleteWatch = watchRoute.DELETE;
-});
-
-afterAll(async () => {
-  sqlite?.close();
-  if (directory) await fs.rm(directory, { recursive: true, force: true });
 });
 
 describe("Phase 2 route integration", () => {
@@ -87,7 +74,7 @@ describe("Phase 2 route integration", () => {
     });
     expect(crossSourceDuplicate.status).toBe(409);
     expect(
-      sqlite.prepare("select count(*) as count from franchises").get(),
+      await queryRow("select count(*)::int as count from franchises"),
     ).toEqual({ count: 1 });
 
     const second = await postFilm({
@@ -103,11 +90,9 @@ describe("Phase 2 route integration", () => {
       }),
     );
     expect(partialReorder.status).toBe(409);
-    const before = sqlite
-      .prepare(
-        "select id, watch_order from films where status = 'to_watch' order by id",
-      )
-      .all();
+    const before = await queryRows<{ id: number; watch_order: number }>(
+      "select id, watch_order from films where status = 'to_watch' order by id",
+    );
     expect(
       new Set(before.map((row) => (row as { watch_order: number }).watch_order))
         .size,
@@ -120,17 +105,13 @@ describe("Phase 2 route integration", () => {
     );
     expect(completeReorder.status).toBe(200);
     expect(
-      sqlite
-        .prepare(
-          "select id from films where status = 'to_watch' order by watch_order",
-        )
-        .all(),
+      await queryRows(
+        "select id from films where status = 'to_watch' order by watch_order",
+      ),
     ).toEqual([{ id: secondId }, { id: firstId }]);
 
-    const questionRows = (
-      sqlite
-        .prepare("select id, key from questions where form_version_id = 1")
-        .all() as Array<{ id: number; key: string }>
+    const questionRows = await queryRows<{ id: number; key: string }>(
+      "select id, key from questions where form_version_id = 1",
     );
     const answers = questionRows.map(({ id }) => ({
       questionId: id,
@@ -147,9 +128,10 @@ describe("Phase 2 route integration", () => {
     );
     expect(rating.status).toBe(200);
     expect(
-      sqlite
-        .prepare("select status, last_watch_date from films where id = ?")
-        .get(firstId),
+      await queryRow(
+        "select status, last_watch_date from films where id = $1",
+        [firstId],
+      ),
     ).toEqual({ status: "watched", last_watch_date: "2026-07-12" });
 
     const story = questionRows.find(({ key }) => key === "story")!;
@@ -166,14 +148,13 @@ describe("Phase 2 route integration", () => {
     );
     expect(updatedRating.status).toBe(200);
     expect(
-      sqlite.prepare("select count(*) as count from ratings").get(),
+      await queryRow("select count(*)::int as count from ratings"),
     ).toEqual({ count: 1 });
     expect(
-      sqlite
-        .prepare(
-          "select value_number as value from answers where film_id = ? and question_id = ?",
-        )
-        .get(firstId, story.id),
+      await queryRow(
+        "select value_number as value from answers where film_id = $1 and question_id = $2",
+        [firstId, story.id],
+      ),
     ).toEqual({ value: 80 });
 
     const invalidRating = await saveRating(
@@ -189,11 +170,10 @@ describe("Phase 2 route integration", () => {
     );
     expect(invalidRating.status).toBe(400);
     expect(
-      sqlite
-        .prepare(
-          "select value_number as value from answers where film_id = ? and question_id = ?",
-        )
-        .get(firstId, story.id),
+      await queryRow(
+        "select value_number as value from answers where film_id = $1 and question_id = $2",
+        [firstId, story.id],
+      ),
     ).toEqual({ value: 80 });
 
     const added = await addWatch(
@@ -218,9 +198,9 @@ describe("Phase 2 route integration", () => {
       },
     );
     expect(
-      sqlite
-        .prepare("select last_watch_date from films where id = ?")
-        .get(firstId),
+      await queryRow("select last_watch_date from films where id = $1", [
+        firstId,
+      ]),
     ).toEqual({ last_watch_date: "2026-07-15" });
     await deleteWatch(
       new Request(`http://test/api/films/${firstId}/watches/${watchId}`, {
@@ -234,9 +214,9 @@ describe("Phase 2 route integration", () => {
       },
     );
     expect(
-      sqlite
-        .prepare("select last_watch_date from films where id = ?")
-        .get(firstId),
+      await queryRow("select last_watch_date from films where id = $1", [
+        firstId,
+      ]),
     ).toEqual({ last_watch_date: "2026-07-12" });
   });
 });

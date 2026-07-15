@@ -1,12 +1,8 @@
-import fs from "node:fs/promises";
-import os from "node:os";
-import path from "node:path";
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import { defaultRubric, starterRcaTags } from "@/db/seed-data";
-import { rcaAttributes } from "@/db/schema";
+import { films, rcaAttributes, settings } from "@/db/schema";
+import { queryRow, queryRows, resetTestDatabase } from "@/test/database";
 
-let directory: string;
-let sqlite: import("better-sqlite3").Database;
 let createTag: (request: Request) => Promise<Response>;
 let listTags: () => Promise<Response>;
 let updateTag: (
@@ -27,35 +23,30 @@ let updateScale: (request: Request) => Promise<Response>;
 vi.mock("@/lib/admin-auth", () => ({ requireAdminApi: async () => null }));
 
 beforeAll(async () => {
-  directory = await fs.mkdtemp(path.join(os.tmpdir(), "picture-house-phase3-"));
-  process.env.DATABASE_URL = path.join(directory, "routes.sqlite");
   const database = await import("@/db");
-  const { migrate } = await import("drizzle-orm/better-sqlite3/migrator");
-  migrate(database.db, { migrationsFolder: path.resolve("drizzle") });
-  sqlite = database.sqlite;
-  sqlite
-    .prepare("insert into settings (id, weights, rubric) values (1, ?, ?)")
-    .run(
-      JSON.stringify({
-        story: 5,
-        direction: 5,
-        writing: 5,
-        acting: 5,
-        music: 2,
-        impact: 4,
-        rewatchability: 10,
-        rewatchabilityOffset: -50,
-        genreFit: 3,
-        divisor: 334,
-      }),
-      JSON.stringify(defaultRubric),
-    );
-  await import("../../scripts/migrate-to-forms");
-  sqlite
-    .prepare(
-      "insert into films (title, release_year, status) values ('Arrival', 2016, 'watched')",
-    )
-    .run();
+  await resetTestDatabase();
+  await (await import("../../scripts/seed")).seedDatabase(database.db);
+  await database.db.insert(settings).values({
+    id: 1,
+    weights: {
+      story: 5,
+      direction: 5,
+      writing: 5,
+      acting: 5,
+      music: 2,
+      impact: 4,
+      rewatchability: 10,
+      rewatchabilityOffset: -50,
+      genreFit: 3,
+      divisor: 334,
+    },
+    rubric: defaultRubric,
+  });
+  await database.db.insert(films).values({
+    title: "Arrival",
+    releaseYear: 2016,
+    status: "watched",
+  });
   const collection = await import("@/app/api/rca-tags/route");
   createTag = collection.POST;
   listTags = collection.GET;
@@ -65,11 +56,6 @@ beforeAll(async () => {
   mergeTags = (await import("@/app/api/rca-tags/merge/route")).POST;
   saveRating = (await import("@/app/api/films/[id]/rating/route")).PUT;
   updateScale = (await import("@/app/api/admin/scale/route")).PUT;
-});
-
-afterAll(async () => {
-  sqlite?.close();
-  if (directory) await fs.rm(directory, { recursive: true, force: true });
 });
 
 describe("Phase 3 RCA integration", () => {
@@ -97,7 +83,7 @@ describe("Phase 3 RCA integration", () => {
     });
     expect(duplicate.status).toBe(409);
     const targetResponse = await postTag({
-      label: "Emotionally resonant",
+      label: "Deeply moving",
       questionKey: "impact",
       polarity: "positive",
       color: "#00e054",
@@ -106,7 +92,7 @@ describe("Phase 3 RCA integration", () => {
 
     const duplicateRename = await updateTag(
       jsonRequest(`http://test/api/rca-tags/${source.id}`, "PATCH", {
-        label: "EMOTIONALLY RESONANT",
+        label: "DEEPLY MOVING",
       }),
       { params: Promise.resolve({ id: String(source.id) }) },
     );
@@ -116,9 +102,9 @@ describe("Phase 3 RCA integration", () => {
       jsonRequest("http://test/api/films/1/rating", "PUT", {
         formVersionId: 1,
         answers: (
-          sqlite
-            .prepare("select id, key from questions where form_version_id = 1")
-            .all() as Array<{ id: number; key: string }>
+          await queryRows<{ id: number; key: string }>(
+            "select id, key from questions where form_version_id = 1",
+          )
         ).map(({ id, key }) => ({
           questionId: id,
           valueNumber:
@@ -156,18 +142,16 @@ describe("Phase 3 RCA integration", () => {
     );
     expect(merged.status).toBe(200);
     expect(
-      sqlite
-        .prepare("select rca_tag_id from film_rca_tags where film_id = 1")
-        .all(),
+      await queryRows("select rca_tag_id from film_rca_tags where film_id = 1"),
     ).toEqual([{ rca_tag_id: target.id }]);
 
     const invalidRating = await saveRating(
       jsonRequest("http://test/api/films/1/rating", "PUT", {
         formVersionId: 1,
         answers: (
-          sqlite
-            .prepare("select id from questions where form_version_id = 1")
-            .all() as Array<{ id: number }>
+          await queryRows<{ id: number }>(
+            "select id from questions where form_version_id = 1",
+          )
         ).map(({ id }) => ({ questionId: id, valueNumber: 10 })),
         rcaTagIds: [999999],
       }),
@@ -175,13 +159,11 @@ describe("Phase 3 RCA integration", () => {
     );
     expect(invalidRating.status).toBe(409);
     expect(
-      sqlite
-        .prepare(
-          `select answers.value_number as impact
-           from answers join questions on questions.id = answers.question_id
-           where answers.film_id = 1 and questions.key = 'impact'`,
-        )
-        .get(),
+      await queryRow(
+        `select answers.value_number as impact
+         from answers join questions on questions.id = answers.question_id
+         where answers.film_id = 1 and questions.key = 'impact'`,
+      ),
     ).toEqual({ impact: 95 });
 
     const deleted = await deleteTag(
@@ -192,7 +174,7 @@ describe("Phase 3 RCA integration", () => {
     );
     expect(await deleted.json()).toEqual({ deleted: true, usageCount: 1 });
     expect(
-      sqlite.prepare("select count(*) as count from film_rca_tags").get(),
+      await queryRow("select count(*)::int as count from film_rca_tags"),
     ).toEqual({ count: 0 });
   });
 });
@@ -222,7 +204,9 @@ describe("Phase 4 scale integration", () => {
     );
     expect(response.status).toBe(200);
     expect(
-      sqlite.prepare("select level, title, meaning, example_films as exampleFilms from scale_levels where level = 7").get(),
+      await queryRow(
+        'select level, title, meaning, example_films as "exampleFilms" from scale_levels where level = 7',
+      ),
     ).toEqual({
       level: 7,
       title: "",

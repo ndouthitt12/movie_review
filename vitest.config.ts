@@ -5,6 +5,11 @@ import { defineConfig } from "vitest/config";
 const root = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
-  resolve: { alias: { "@": path.resolve(root, "src") } },
+  resolve: {
+    alias: [
+      { find: /^@\/db$/, replacement: path.resolve(root, "src/test/db.ts") },
+      { find: "@", replacement: path.resolve(root, "src") },
+    ],
+  },
   test: { environment: "node" },
 });

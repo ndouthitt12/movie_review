@@ -1,10 +1,8 @@
 import "dotenv/config";
-import { eq } from "drizzle-orm";
 import { db } from "../src/db";
 import {
   formSections,
   formVersions,
-  questionOptions,
   questions,
   rcaTags,
   scaleLevels,
@@ -27,33 +25,43 @@ const questionSeeds = [
   { key: "genre_fit", label: "Genre Fit", weight: 3, offset: 0 },
 ] as const;
 
-await db.transaction(async (tx) => {
-  const [existingVersion] = await tx.select({ id: formVersions.id }).from(formVersions).limit(1);
-  if (!existingVersion) await seedForm(tx);
+export async function seedDatabase(database = db) {
+  await database.transaction(async (tx) => {
+    const [existingVersion] = await tx
+      .select({ id: formVersions.id })
+      .from(formVersions)
+      .limit(1);
+    if (!existingVersion) await seedForm(tx);
 
-  for (const row of defaultRubric) {
-    await tx
-      .insert(scaleLevels)
-      .values({
-        level: row.score,
-        title: "",
-        meaning: row.meaning,
-        exampleFilms: row.examples.join(", "),
-      })
-      .onConflictDoNothing({ target: scaleLevels.level });
-  }
+    for (const row of defaultRubric) {
+      await tx
+        .insert(scaleLevels)
+        .values({
+          level: row.score,
+          title: "",
+          meaning: row.meaning,
+          exampleFilms: row.examples.join(", "),
+        })
+        .onConflictDoNothing({ target: scaleLevels.level });
+    }
 
-  for (const [questionKey, label, polarity] of starterRcaTags) {
-    await tx
-      .insert(rcaTags)
-      .values({ label, questionKey, polarity })
-      .onConflictDoNothing({ target: [rcaTags.label, rcaTags.questionKey] });
-  }
-});
+    for (const [questionKey, label, polarity] of starterRcaTags) {
+      await tx
+        .insert(rcaTags)
+        .values({ label, questionKey, polarity })
+        .onConflictDoNothing({ target: [rcaTags.label, rcaTags.questionKey] });
+    }
+  });
+}
 
-console.log("Form v1, rating scale, and RCA tags seeded.");
+if (process.env.NODE_ENV !== "test") {
+  await seedDatabase();
+  console.log("Form v1, rating scale, and RCA tags seeded.");
+}
 
-async function seedForm(tx: Parameters<Parameters<typeof db.transaction>[0]>[0]) {
+async function seedForm(
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+) {
   const [version] = await tx
     .insert(formVersions)
     .values({
@@ -74,7 +82,11 @@ async function seedForm(tx: Parameters<Parameters<typeof db.transaction>[0]>[0])
     .returning({ id: formSections.id });
   const [quality] = await tx
     .insert(formSections)
-    .values({ formVersionId: version.id, title: "Quality (secondary)", sortOrder: 1 })
+    .values({
+      formVersionId: version.id,
+      title: "Quality (secondary)",
+      sortOrder: 1,
+    })
     .returning({ id: formSections.id });
   if (!attributes || !quality) throw new Error("Could not seed form sections.");
 
@@ -96,9 +108,14 @@ async function seedForm(tx: Parameters<Parameters<typeof db.transaction>[0]>[0])
       allowNa: false,
       conditionLogic: "all",
       rcaEnabled: true,
-      secondaryScored: question.key === "rewatchability" || question.key === "genre_fit",
+      secondaryScored:
+        question.key === "rewatchability" || question.key === "genre_fit",
       secondaryWeight:
-        question.key === "rewatchability" ? 4 : question.key === "genre_fit" ? 1 : null,
+        question.key === "rewatchability"
+          ? 4
+          : question.key === "genre_fit"
+            ? 1
+            : null,
     });
   }
 
