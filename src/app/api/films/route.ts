@@ -1,7 +1,9 @@
 import { and, eq, isNull, max, sql } from "drizzle-orm";
+import { revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { films, franchises } from "@/db/schema";
+import { CATALOG_OPTIONS_CACHE_TAG } from "@/lib/cache-tags";
 import { filmCreateSchema } from "@/lib/validation";
 import { invalidateRecommendations } from "@/lib/recs-cache";
 
@@ -78,9 +80,8 @@ export async function POST(request: Request) {
           : null;
       const nextOrder =
         input.status === "to_watch" && input.watchOrder == null
-          ? ((await tx
-              .select({ value: max(films.watchOrder) })
-              .from(films))[0]?.value ?? 0) + 1
+          ? ((await tx.select({ value: max(films.watchOrder) }).from(films))[0]
+              ?.value ?? 0) + 1
           : input.watchOrder;
       const [film] = await tx
         .insert(films)
@@ -107,6 +108,7 @@ export async function POST(request: Request) {
       return film;
     });
     invalidateRecommendations();
+    revalidateTag(CATALOG_OPTIONS_CACHE_TAG, { expire: 0 });
     return NextResponse.json(created, { status: 201 });
   } catch (error) {
     if (error instanceof DuplicateFilmError)

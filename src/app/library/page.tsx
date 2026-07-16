@@ -1,12 +1,46 @@
+import { Suspense } from "react";
 import { AddFilmDialog } from "@/components/library/add-film-dialog";
 import { LibraryView } from "@/components/library/library-view";
 import { PageShell } from "@/components/page-shell";
+import { RouteContentLoading } from "@/components/route-content-loading";
 import { getCatalogOptions, getLibraryFilms } from "@/lib/catalog";
 import { getRcaTagsWithUsage } from "@/lib/rca";
 
-export const dynamic = "force-dynamic";
+export const unstable_instant = {
+  prefetch: "runtime",
+  samples: [
+    {
+      searchParams: {
+        status: null,
+        view: null,
+        sort: null,
+        dir: null,
+        rca: null,
+        q: null,
+        genre: null,
+        franchise: null,
+        minYear: null,
+        maxYear: null,
+        minScore: null,
+        maxScore: null,
+        maxScoreExclusive: null,
+        rcaMode: null,
+      },
+    },
+  ],
+};
 
-export default async function LibraryPage() {
+export default function LibraryPage() {
+  return (
+    <PageShell>
+      <Suspense fallback={<RouteContentLoading label="Loading library" />}>
+        <LibraryContent />
+      </Suspense>
+    </PageShell>
+  );
+}
+
+async function LibraryContent() {
   const [films, options, rcaTags] = await Promise.all([
     getLibraryFilms(),
     getCatalogOptions(),
@@ -19,7 +53,7 @@ export default async function LibraryPage() {
     .filter(({ parentId }) => parentId === null)
     .map(({ name }) => name);
   return (
-    <PageShell>
+    <>
       <header className="mb-8 flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="eyebrow">Personal catalog</p>
@@ -41,6 +75,6 @@ export default async function LibraryPage() {
         franchises={filterFranchises}
         rcaTags={rcaTags}
       />
-    </PageShell>
+    </>
   );
 }

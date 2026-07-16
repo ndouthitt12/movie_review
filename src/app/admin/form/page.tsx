@@ -1,8 +1,16 @@
+import { Suspense } from "react";
 import { FormBuilder } from "@/components/admin/form-builder";
+import { RouteContentLoading } from "@/components/route-content-loading";
 import { ensureDraftForm } from "@/lib/admin-form";
 
-export const dynamic = "force-dynamic";
+export default function AdminFormPage() {
+  return (
+    <Suspense fallback={<RouteContentLoading label="Loading form editor" />}>
+      <AdminFormContent />
+    </Suspense>
+  );
+}
 
-export default async function AdminFormPage() {
+async function AdminFormContent() {
   return <FormBuilder initialForm={await ensureDraftForm()} />;
 }

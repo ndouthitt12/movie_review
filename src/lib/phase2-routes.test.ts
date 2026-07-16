@@ -1,7 +1,11 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import { defaultRubric } from "@/db/seed-data";
 import { settings } from "@/db/schema";
 import { queryRow, queryRows, resetTestDatabase } from "@/test/database";
+
+const revalidateCatalogTag = vi.hoisted(() => vi.fn());
+
+vi.mock("next/cache", () => ({ revalidateTag: revalidateCatalogTag }));
 
 let createFilm: (request: Request) => Promise<Response>;
 let reorderFilms: (request: Request) => Promise<Response>;
@@ -62,6 +66,9 @@ describe("Phase 2 route integration", () => {
       tmdbGenres: [],
     });
     expect(first.status).toBe(201);
+    expect(revalidateCatalogTag).toHaveBeenCalledWith("catalog-options", {
+      expire: 0,
+    });
     const { id: firstId } = (await first.json()) as { id: number };
 
     const crossSourceDuplicate = await postFilm({

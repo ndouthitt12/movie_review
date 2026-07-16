@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
+import { RouteContentLoading } from "@/components/route-content-loading";
 import { TabBar, type TabItem } from "@/components/ui/tab-bar";
 import { Wordmark } from "@/components/ui/wordmark";
 import { isAdminAuthenticated } from "@/lib/admin-auth";
@@ -13,7 +15,21 @@ const tabs: TabItem[] = [
   { label: "Versions", href: "/admin/versions" },
 ];
 
-export default async function AdminLayout({
+export const unstable_instant = false;
+
+export default function AdminLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <Suspense fallback={<RouteContentLoading label="Checking admin access" />}>
+      <AuthenticatedAdminLayout>{children}</AuthenticatedAdminLayout>
+    </Suspense>
+  );
+}
+
+async function AuthenticatedAdminLayout({
   children,
 }: {
   children: React.ReactNode;

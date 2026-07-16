@@ -1,13 +1,26 @@
+import { Suspense } from "react";
+import { connection } from "next/server";
 import { PageShell } from "@/components/page-shell";
-import {
-  PosterGrid,
-  type HomePoster,
-} from "@/components/home/poster-rail";
+import { RouteContentLoading } from "@/components/route-content-loading";
+import { PosterGrid, type HomePoster } from "@/components/home/poster-rail";
 import { getRecommendations } from "@/lib/recs-server";
 
-export const dynamic = "force-dynamic";
+export const unstable_instant = { prefetch: "static" };
 
-export default async function RecommendationsPage() {
+export default function RecommendationsPage() {
+  return (
+    <PageShell>
+      <Suspense
+        fallback={<RouteContentLoading label="Loading recommendations" />}
+      >
+        <RecommendationsContent />
+      </Suspense>
+    </PageShell>
+  );
+}
+
+async function RecommendationsContent() {
+  await connection();
   const payload = await getRecommendations(100).catch(() => null);
   const items: HomePoster[] =
     payload?.items.flatMap((item) =>
@@ -31,31 +44,27 @@ export default async function RecommendationsPage() {
     payload?.mode === "trending" ? "Popular Right Now" : "Recommended For You";
 
   return (
-    <PageShell>
-      <div className="mx-auto max-w-7xl py-8 sm:py-12">
-        <p className="type-label text-accent-400 tracking-[0.18em] uppercase">
-          Your discovery feed
-        </p>
-        <h1 className="type-page-heading text-paper-100 mt-3">
-          {heading}
-        </h1>
-        <p className="type-body text-paper-500 mt-3 max-w-2xl">
-          Ranked from your ratings, genres, directors, watch history, and the
-          films currently drawing attention.
-        </p>
-        <div className="mt-9">
-          {items.length ? (
-            <PosterGrid items={items} />
-          ) : (
-            <div className="border-hairline bg-ink-900 rounded-card border p-8">
-              <p className="text-paper-300">
-                Recommendations are temporarily unavailable. Add or rate films
-                to keep shaping this feed.
-              </p>
-            </div>
-          )}
-        </div>
+    <div className="mx-auto max-w-7xl py-8 sm:py-12">
+      <p className="type-label text-accent-400 tracking-[0.18em] uppercase">
+        Your discovery feed
+      </p>
+      <h1 className="type-page-heading text-paper-100 mt-3">{heading}</h1>
+      <p className="type-body text-paper-500 mt-3 max-w-2xl">
+        Ranked from your ratings, genres, directors, watch history, and the
+        films currently drawing attention.
+      </p>
+      <div className="mt-9">
+        {items.length ? (
+          <PosterGrid items={items} />
+        ) : (
+          <div className="border-hairline bg-ink-900 rounded-card border p-8">
+            <p className="text-paper-300">
+              Recommendations are temporarily unavailable. Add or rate films to
+              keep shaping this feed.
+            </p>
+          </div>
+        )}
       </div>
-    </PageShell>
+    </div>
   );
 }

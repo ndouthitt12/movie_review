@@ -4,6 +4,7 @@ import { settings } from "@/db/schema";
 import { queryRow, resetTestDatabase } from "@/test/database";
 
 vi.mock("@/lib/admin-auth", () => ({ requireAdminApi: async () => null }));
+vi.mock("next/cache", () => ({ revalidateTag: vi.fn() }));
 
 let formRoute: typeof import("@/app/api/admin/form/route");
 let publish: typeof import("@/app/api/admin/form/publish/route").POST;

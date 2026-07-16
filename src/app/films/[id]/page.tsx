@@ -1,23 +1,38 @@
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import { FilmEditor } from "@/components/film/film-editor";
 import { RatingEditor } from "@/components/film/rating-editor";
 import { WatchLog } from "@/components/film/watch-log";
 import { PageShell } from "@/components/page-shell";
+import { RouteContentLoading } from "@/components/route-content-loading";
 import { Stars } from "@/components/ui/stars";
 import { getFilmDetail } from "@/lib/catalog";
 import { getPublishedRuntimeForm } from "@/lib/form-config";
 import { getRcaTagsWithUsage } from "@/lib/rca";
 import { tmdbImage } from "@/lib/tmdb";
 
-export const dynamic = "force-dynamic";
+export const unstable_instant = {
+  prefetch: "runtime",
+  samples: [{ params: { id: "1" } }],
+};
 
-export default async function FilmPage({
+export default function FilmPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
+  return (
+    <PageShell>
+      <Suspense fallback={<RouteContentLoading label="Loading film details" />}>
+        <FilmContent params={params} />
+      </Suspense>
+    </PageShell>
+  );
+}
+
+async function FilmContent({ params }: { params: Promise<{ id: string }> }) {
   const id = Number((await params).id);
   if (!Number.isInteger(id)) notFound();
   const [detail, rcaTags, publishedForm] = await Promise.all([
@@ -42,7 +57,7 @@ export default async function FilmPage({
   const poster = tmdbImage(film.posterPath, "w500");
 
   return (
-    <PageShell>
+    <>
       <Link
         href="/library"
         className="type-label text-paper-500 hover:text-accent-400 tracking-widest uppercase transition-colors"
@@ -142,6 +157,6 @@ export default async function FilmPage({
         />
         <FilmEditor filmId={film.id} status={film.status} notes={film.notes} />
       </div>
-    </PageShell>
+    </>
   );
 }

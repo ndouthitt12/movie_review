@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
+import { Suspense } from "react";
+import { RouteContentLoading } from "@/components/route-content-loading";
 import { ChartIcon, FilmIcon, StarIcon } from "@/components/ui/icons";
 import { ListRow } from "@/components/ui/list-row";
 import { SectionCard } from "@/components/ui/section-card";
@@ -9,10 +11,17 @@ import { getDashboardData, getLibraryFilms } from "@/lib/catalog";
 import { dateInTimeZone } from "@/lib/dates";
 import { tmdbImage } from "@/lib/tmdb";
 
-export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Admin overview" };
 
-export default async function AdminPage() {
+export default function AdminPage() {
+  return (
+    <Suspense fallback={<RouteContentLoading label="Loading admin overview" />}>
+      <AdminOverview />
+    </Suspense>
+  );
+}
+
+async function AdminOverview() {
   const [{ films, watches }, libraryFilms] = await Promise.all([
     getDashboardData(),
     getLibraryFilms(),

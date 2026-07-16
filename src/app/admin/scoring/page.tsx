@@ -1,8 +1,16 @@
+import { Suspense } from "react";
 import { ScoringAdmin } from "@/components/admin/scoring-admin";
+import { RouteContentLoading } from "@/components/route-content-loading";
 import { ensureDraftForm } from "@/lib/admin-form";
 
-export const dynamic = "force-dynamic";
+export default function AdminScoringPage() {
+  return (
+    <Suspense fallback={<RouteContentLoading label="Loading scoring editor" />}>
+      <AdminScoringContent />
+    </Suspense>
+  );
+}
 
-export default async function AdminScoringPage() {
+async function AdminScoringContent() {
   return <ScoringAdmin initialForm={await ensureDraftForm()} />;
 }

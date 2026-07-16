@@ -1,5 +1,6 @@
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
+import { cacheTag } from "next/cache";
 import { db } from "@/db";
 import {
   answers,
@@ -14,121 +15,98 @@ import {
   watchLog,
 } from "@/db/schema";
 import { getFormVersionConfig, getPublishedRuntimeForm } from "./form-config";
+import { CATALOG_OPTIONS_CACHE_TAG } from "./cache-tags";
 import type { DashboardFilm } from "./stats";
 
 export async function getLibraryFilms() {
   const subFranchises = alias(franchises, "sub_franchises");
-  const rows = await db
-    .select({
-      id: films.id,
-      tmdbId: films.tmdbId,
-      title: films.title,
-      releaseYear: films.releaseYear,
-      status: films.status,
-      watchOrder: films.watchOrder,
-      lastWatchDate: films.lastWatchDate,
-      genrePrimary: films.genrePrimary,
-      genreSecondary: films.genreSecondary,
-      franchiseId: films.franchiseId,
-      subFranchiseId: films.subFranchiseId,
-      notes: films.notes,
-      posterPath: films.posterPath,
-      backdropPath: films.backdropPath,
-      runtime: films.runtime,
-      overview: films.overview,
-      tmdbGenres: films.tmdbGenres,
-      director: films.director,
-      franchise: franchises.name,
-      subFranchise: subFranchises.name,
-      formVersionId: ratings.formVersionId,
-      overall: ratings.overall,
-      tagId: rcaTags.id,
-      tagLabel: rcaTags.label,
-      tagAttribute: rcaTags.questionKey,
-      tagPolarity: rcaTags.polarity,
-      tagColor: rcaTags.color,
-      answerKey: questions.key,
-      answerValue: answers.valueNumber,
-    })
-    .from(films)
-    .leftJoin(ratings, eq(ratings.filmId, films.id))
-    .leftJoin(franchises, eq(franchises.id, films.franchiseId))
-    .leftJoin(subFranchises, eq(subFranchises.id, films.subFranchiseId))
-    .leftJoin(filmRcaTags, eq(filmRcaTags.filmId, films.id))
-    .leftJoin(rcaTags, eq(rcaTags.id, filmRcaTags.rcaTagId))
-    .leftJoin(answers, eq(answers.filmId, films.id))
-    .leftJoin(questions, eq(questions.id, answers.questionId))
-    .orderBy(
-      asc(films.watchOrder),
-      asc(films.title),
-      asc(rcaTags.label),
-    );
-  const byFilm = new Map<
-    number,
-    {
-      film: Omit<
-        (typeof rows)[number],
-        | "tagId"
-        | "tagLabel"
-        | "tagAttribute"
-        | "tagPolarity"
-        | "tagColor"
-        | "answerKey"
-        | "answerValue"
-      >;
-      scores: Map<string, number>;
-      tags: Map<
-        number,
-        {
-          id: number;
-          label: string;
-          attribute: string;
-          polarity: "positive" | "negative" | "neutral";
-          color: string | null;
-        }
-      >;
-    }
-  >();
-  for (const row of rows) {
-    const {
-      tagId,
-      tagLabel,
-      tagAttribute,
-      tagPolarity,
-      tagColor,
-      answerKey,
-      answerValue,
-      ...film
-    } = row;
-    const entry = byFilm.get(row.id) ?? {
-      film,
-      scores: new Map<string, number>(),
-      tags: new Map(),
-    };
-    if (answerKey && answerValue !== null)
-      entry.scores.set(answerKey, answerValue);
-    if (tagId !== null && tagLabel && tagAttribute && tagPolarity)
-      entry.tags.set(tagId, {
-        id: tagId,
-        label: tagLabel,
-        attribute: tagAttribute,
-        polarity: tagPolarity,
-        color: tagColor,
-      });
-    byFilm.set(row.id, entry);
+  const [filmRows, tagRows, answerRows] = await Promise.all([
+    db
+      .select({
+        id: films.id,
+        tmdbId: films.tmdbId,
+        title: films.title,
+        releaseYear: films.releaseYear,
+        status: films.status,
+        watchOrder: films.watchOrder,
+        lastWatchDate: films.lastWatchDate,
+        genrePrimary: films.genrePrimary,
+        genreSecondary: films.genreSecondary,
+        franchiseId: films.franchiseId,
+        subFranchiseId: films.subFranchiseId,
+        notes: films.notes,
+        posterPath: films.posterPath,
+        backdropPath: films.backdropPath,
+        runtime: films.runtime,
+        overview: films.overview,
+        tmdbGenres: films.tmdbGenres,
+        director: films.director,
+        franchise: franchises.name,
+        subFranchise: subFranchises.name,
+        formVersionId: ratings.formVersionId,
+        overall: ratings.overall,
+      })
+      .from(films)
+      .leftJoin(ratings, eq(ratings.filmId, films.id))
+      .leftJoin(franchises, eq(franchises.id, films.franchiseId))
+      .leftJoin(subFranchises, eq(subFranchises.id, films.subFranchiseId))
+      .orderBy(asc(films.watchOrder), asc(films.title)),
+    db
+      .select({
+        filmId: filmRcaTags.filmId,
+        id: rcaTags.id,
+        label: rcaTags.label,
+        attribute: rcaTags.questionKey,
+        polarity: rcaTags.polarity,
+        color: rcaTags.color,
+      })
+      .from(filmRcaTags)
+      .innerJoin(rcaTags, eq(rcaTags.id, filmRcaTags.rcaTagId))
+      .orderBy(asc(rcaTags.label)),
+    db
+      .select({
+        filmId: answers.filmId,
+        key: questions.key,
+        value: answers.valueNumber,
+      })
+      .from(answers)
+      .innerJoin(questions, eq(questions.id, answers.questionId)),
+  ]);
+
+  const scoresByFilm = new Map<number, Map<string, number>>();
+  for (const { filmId, key, value } of answerRows) {
+    if (value === null) continue;
+    const scores = scoresByFilm.get(filmId) ?? new Map<string, number>();
+    scores.set(key, value);
+    scoresByFilm.set(filmId, scores);
   }
-  return [...byFilm.values()].map(({ film, scores, tags }) => {
+
+  type FilmTag = Omit<(typeof tagRows)[number], "filmId">;
+  const tagsByFilm = new Map<number, Map<number, FilmTag>>();
+  for (const { filmId, ...tag } of tagRows) {
+    const tags = tagsByFilm.get(filmId) ?? new Map<number, FilmTag>();
+    tags.set(tag.id, tag);
+    tagsByFilm.set(filmId, tags);
+  }
+
+  const filmsById = new Map<number, (typeof filmRows)[number]>();
+  for (const film of filmRows) {
+    if (!filmsById.has(film.id)) filmsById.set(film.id, film);
+  }
+
+  return [...filmsById.values()].map((film) => {
+    const scores = scoresByFilm.get(film.id);
     return {
       ...film,
-      story: scores.get("story") ?? null,
-      direction: scores.get("direction") ?? null,
-      writing: scores.get("writing") ?? null,
-      acting: scores.get("acting") ?? null,
-      music: scores.get("music") ?? null,
-      impact: scores.get("impact") ?? null,
-      rewatchability: scores.get("rewatchability") ?? null,
-      genreFit: scores.get("genre_fit") ?? null,
-      rcaTags: [...tags.values()],
+      story: scores?.get("story") ?? null,
+      direction: scores?.get("direction") ?? null,
+      writing: scores?.get("writing") ?? null,
+      acting: scores?.get("acting") ?? null,
+      music: scores?.get("music") ?? null,
+      impact: scores?.get("impact") ?? null,
+      rewatchability: scores?.get("rewatchability") ?? null,
+      genreFit: scores?.get("genre_fit") ?? null,
+      rcaTags: [...(tagsByFilm.get(film.id)?.values() ?? [])],
     };
   });
 }
@@ -136,6 +114,8 @@ export async function getLibraryFilms() {
 export type LibraryFilm = Awaited<ReturnType<typeof getLibraryFilms>>[number];
 
 export async function getCatalogOptions() {
+  "use cache";
+  cacheTag(CATALOG_OPTIONS_CACHE_TAG);
   const filmRows = await db
     .select({
       primary: films.genrePrimary,

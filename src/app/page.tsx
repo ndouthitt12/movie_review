@@ -1,19 +1,12 @@
 import Image from "next/image";
 import Link from "next/link";
+import { connection } from "next/server";
+import { Suspense } from "react";
 import { PageShell } from "@/components/page-shell";
-import {
-  HeroCarousel,
-  type HeroFilm,
-} from "@/components/home/hero-carousel";
-import {
-  PosterRail,
-  type HomePoster,
-} from "@/components/home/poster-rail";
-import {
-  ChevronRightIcon,
-  ClockIcon,
-  PlusIcon,
-} from "@/components/ui/icons";
+import { RouteContentLoading } from "@/components/route-content-loading";
+import { HeroCarousel, type HeroFilm } from "@/components/home/hero-carousel";
+import { PosterRail, type HomePoster } from "@/components/home/poster-rail";
+import { ChevronRightIcon, ClockIcon, PlusIcon } from "@/components/ui/icons";
 import { Stars } from "@/components/ui/stars";
 import { getLibraryFilms, type LibraryFilm } from "@/lib/catalog";
 import { getRecommendations, getTrending } from "@/lib/recs-server";
@@ -21,7 +14,7 @@ import { selectTmdbTrailer, tmdbImage } from "@/lib/tmdb";
 import { getTmdbVideos } from "@/lib/tmdb-server";
 import styles from "./home.module.css";
 
-export const dynamic = "force-dynamic";
+export const unstable_instant = { prefetch: "static" };
 
 const genreFallback = [
   "Action",
@@ -36,7 +29,18 @@ const genreFallback = [
   "Thriller",
 ];
 
-export default async function Home() {
+export default function Home() {
+  return (
+    <PageShell>
+      <Suspense fallback={<RouteContentLoading label="Loading home" />}>
+        <HomeContent />
+      </Suspense>
+    </PageShell>
+  );
+}
+
+async function HomeContent() {
+  await connection();
   const [films, recommendations, trending] = await Promise.all([
     getLibraryFilms(),
     getRecommendations(8).catch(() => null),
@@ -46,10 +50,11 @@ export default async function Home() {
     ({ status }) => status === "watched" || status === "to_rewatch",
   );
   const rated = mostRecent(watched.filter(({ overall }) => overall !== null));
-  const featuredFilms = uniqueFilms([...rated, ...mostRecent(watched), ...films]).slice(
-    0,
-    4,
-  );
+  const featuredFilms = uniqueFilms([
+    ...rated,
+    ...mostRecent(watched),
+    ...films,
+  ]).slice(0, 4);
   const featured = featuredFilms[0];
   const heroFilms: HeroFilm[] = await Promise.all(
     featuredFilms.map(async (film) => {
@@ -120,76 +125,77 @@ export default async function Home() {
     canonicalMatches.length >= 8 ? canonicalMatches : genreFallback;
 
   return (
-    <PageShell>
-      <div className={styles.homeGrid}>
-        <div className={styles.mainColumn}>
-          {heroFilms.length ? <HeroCarousel films={heroFilms} /> : <EmptyHero />}
+    <div className={styles.homeGrid}>
+      <div className={styles.mainColumn}>
+        {heroFilms.length ? <HeroCarousel films={heroFilms} /> : <EmptyHero />}
 
-          <section className={styles.trendingSection}>
-            <SectionHeading title="Trending Now" href="/trending" />
-            <PosterRail items={trendingPosters} />
-          </section>
+        <section className={styles.trendingSection}>
+          <SectionHeading title="Trending Now" href="/trending" />
+          <PosterRail items={trendingPosters} />
+        </section>
 
-          {recommendedPosters.length ? (
-            <section className={styles.recommendedSection}>
-              <SectionHeading
-                title={
-                  recommendations?.mode === "trending"
-                    ? "Popular Right Now"
-                    : "Recommended For You"
-                }
-                href="/recommendations"
-              />
-              <PosterRail items={recommendedPosters} showMeta />
-            </section>
-          ) : null}
-
-          <section className={styles.reviewsSection}>
+        {recommendedPosters.length ? (
+          <section className={styles.recommendedSection}>
             <SectionHeading
-              title="Your Recent Notes"
-              href="/library?status=rated&sort=lastWatchDate&dir=desc"
+              title={
+                recommendations?.mode === "trending"
+                  ? "Popular Right Now"
+                  : "Recommended For You"
+              }
+              href="/recommendations"
             />
-            {recentNotes.length ? (
-              <div className={styles.reviewGrid}>
-                {recentNotes.map((film, index) => (
-                  <Link
-                    href={`/films/${film.id}`}
-                    className={styles.reviewCard}
-                    key={film.id}
-                  >
-                    <article>
-                      <div className={styles.reviewHeader}>
-                        <Avatar initials={titleInitials(film.title)} index={index} />
-                        <div className={styles.reviewIdentity}>
-                          <span>{film.title}</span>
-                          <Stars
-                            value={scoreOutOfFive(film.overall)}
-                            className={styles.reviewStars}
-                          />
-                        </div>
-                        <time>{relativeWatchDate(film.lastWatchDate)}</time>
-                      </div>
-                      <p className={styles.reviewText}>{film.notes.trim()}</p>
-                    </article>
-                  </Link>
-                ))}
-              </div>
-            ) : (
-              <Link href="/library" className={styles.reviewEmpty}>
-                Add notes when you rate films and your latest reflections will
-                appear here.
-              </Link>
-            )}
+            <PosterRail items={recommendedPosters} showMeta />
           </section>
-        </div>
+        ) : null}
 
-        <aside className={styles.sidebar} aria-label="Discover more">
-          <TopRated films={rated} />
-          <Genres genres={genres} />
-          <RecentlyReviewed films={recentRatings} />
-        </aside>
+        <section className={styles.reviewsSection}>
+          <SectionHeading
+            title="Your Recent Notes"
+            href="/library?status=rated&sort=lastWatchDate&dir=desc"
+          />
+          {recentNotes.length ? (
+            <div className={styles.reviewGrid}>
+              {recentNotes.map((film, index) => (
+                <Link
+                  href={`/films/${film.id}`}
+                  className={styles.reviewCard}
+                  key={film.id}
+                >
+                  <article>
+                    <div className={styles.reviewHeader}>
+                      <Avatar
+                        initials={titleInitials(film.title)}
+                        index={index}
+                      />
+                      <div className={styles.reviewIdentity}>
+                        <span>{film.title}</span>
+                        <Stars
+                          value={scoreOutOfFive(film.overall)}
+                          className={styles.reviewStars}
+                        />
+                      </div>
+                      <time>{relativeWatchDate(film.lastWatchDate)}</time>
+                    </div>
+                    <p className={styles.reviewText}>{film.notes.trim()}</p>
+                  </article>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <Link href="/library" className={styles.reviewEmpty}>
+              Add notes when you rate films and your latest reflections will
+              appear here.
+            </Link>
+          )}
+        </section>
       </div>
-    </PageShell>
+
+      <aside className={styles.sidebar} aria-label="Discover more">
+        <TopRated films={rated} />
+        <Genres genres={genres} />
+        <RecentlyReviewed films={recentRatings} />
+      </aside>
+    </div>
   );
 }
 

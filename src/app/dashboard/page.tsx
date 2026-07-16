@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import {
   BarChart,
   HistogramChart,
@@ -8,6 +9,7 @@ import {
 } from "@/components/charts/charts";
 import { CalendarPanel } from "@/components/dashboard/calendar-panel";
 import { PageShell } from "@/components/page-shell";
+import { RouteContentLoading } from "@/components/route-content-loading";
 import { getDashboardData } from "@/lib/catalog";
 import { dateInTimeZone } from "@/lib/dates";
 import { computeStreaks } from "@/lib/streaks";
@@ -24,10 +26,20 @@ import {
   watchesPerYear,
 } from "@/lib/stats";
 
-export const dynamic = "force-dynamic";
+export const unstable_instant = { prefetch: "static" };
 export const metadata: Metadata = { title: "Dashboard" };
 
-export default async function DashboardPage() {
+export default function DashboardPage() {
+  return (
+    <PageShell>
+      <Suspense fallback={<RouteContentLoading label="Loading dashboard" />}>
+        <DashboardContent />
+      </Suspense>
+    </PageShell>
+  );
+}
+
+async function DashboardContent() {
   const {
     films,
     watches,
@@ -58,7 +70,7 @@ export default async function DashboardPage() {
   );
 
   return (
-    <PageShell>
+    <>
       <header className="page-heading">
         <p className="eyebrow">Dashboard / trends</p>
         <h1>Your viewing, in focus</h1>
@@ -264,7 +276,7 @@ export default async function DashboardPage() {
           />
         </section>
       </div>
-    </PageShell>
+    </>
   );
 }
 
