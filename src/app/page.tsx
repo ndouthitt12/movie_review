@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/icons";
 import { Stars } from "@/components/ui/stars";
 import { getLibraryFilms, type LibraryFilm } from "@/lib/catalog";
+import { getRecommendations, getTrending } from "@/lib/recs-server";
 import { tmdbImage } from "@/lib/tmdb";
 import styles from "./home.module.css";
 
@@ -73,15 +74,30 @@ const critics = [
   { name: "James Whitman", initials: "JW", score: 3.9 },
 ];
 
+type HomePoster = {
+  key: string;
+  title: string;
+  posterPath: string;
+  rating: number;
+  href: string;
+  external?: boolean;
+  reason?: string;
+  badge?: string;
+};
+
 export default async function Home() {
-  const films = await getLibraryFilms();
+  const [films, recommendations, trending] = await Promise.all([
+    getLibraryFilms(),
+    getRecommendations(8).catch(() => null),
+    getTrending(16).catch(() => null),
+  ]);
   const watched = films.filter(
     ({ status }) => status === "watched" || status === "to_rewatch",
   );
   const rated = mostRecent(watched.filter(({ overall }) => overall !== null));
   const featured = rated[0] ?? mostRecent(watched)[0] ?? films[0];
   const recentRatings = rated.slice(0, 3);
-  const posters = [...films]
+  const libraryPosters = [...films]
     .filter(({ id, posterPath }) => posterPath && id !== featured?.id)
     .sort(
       (a, b) =>
@@ -89,6 +105,35 @@ export default async function Home() {
         b.id - a.id,
     )
     .slice(0, 8);
+  const trendingPosters: HomePoster[] =
+    trending?.available && trending.items.length
+      ? trending.items.slice(0, 8).map((item) => ({
+          key: `tmdb-${item.tmdbId}`,
+          title: item.title,
+          posterPath: item.posterPath,
+          rating: item.rating,
+          href: item.libraryFilmId
+            ? `/films/${item.libraryFilmId}`
+            : `https://www.themoviedb.org/movie/${item.tmdbId}`,
+          external: item.libraryFilmId === null,
+          badge: item.badge,
+        }))
+      : libraryPosters.map(libraryPoster);
+  const recommendedPosters: HomePoster[] =
+    recommendations?.available && recommendations.items.length
+      ? recommendations.items.map((item) => ({
+          key: `recommendation-${item.tmdbId}`,
+          title: item.title,
+          posterPath: item.posterPath!,
+          rating: Math.max(0, Math.min(5, item.voteAverage / 2)),
+          href: item.libraryFilmId
+            ? `/films/${item.libraryFilmId}`
+            : `https://www.themoviedb.org/movie/${item.tmdbId}`,
+          external: item.libraryFilmId === null,
+          reason: item.reasons[0],
+          badge: item.isWatchlist ? "From your watchlist" : undefined,
+        }))
+      : [];
   const rankedGenres = topGenres(films, 10);
   const canonicalMatches = genreFallback.filter((genre) =>
     rankedGenres.map(normalizeGenre).includes(genre),
@@ -105,25 +150,29 @@ export default async function Home() {
           <section className={styles.trendingSection}>
             <SectionHeading title="Trending Now" href="/library" />
             <div className={styles.posterRail}>
-              {Array.from(
-                { length: Math.max(8, posters.length) },
-                (_, index) => {
-                  const film = posters[index];
-                  return film ? (
-                    <PosterCard key={film.id} film={film} />
-                  ) : (
-                    <div
-                      key={`empty-${index}`}
-                      className={`${styles.posterCard} ${styles.posterPlaceholder}`}
-                      aria-hidden="true"
-                    >
-                      <span>Reeler</span>
-                    </div>
-                  );
-                },
-              )}
+              {trendingPosters.map((item) => (
+                <PosterCard key={item.key} item={item} />
+              ))}
             </div>
           </section>
+
+          {recommendedPosters.length ? (
+            <section className={styles.recommendedSection}>
+              <SectionHeading
+                title={
+                  recommendations?.mode === "trending"
+                    ? "Popular Right Now"
+                    : "Recommended For You"
+                }
+                href="/library"
+              />
+              <div className={styles.posterRail}>
+                {recommendedPosters.map((item) => (
+                  <PosterCard key={item.key} item={item} showMeta />
+                ))}
+              </div>
+            </section>
+          ) : null}
 
           <section className={styles.reviewsSection}>
             <SectionHeading title="Popular Reviews" href="/library" />
@@ -325,23 +374,73 @@ function ScorePanel({
   );
 }
 
-function PosterCard({ film }: { film: LibraryFilm }) {
-  return (
-    <Link href={`/films/${film.id}`} className={styles.posterCard}>
+function PosterCard({
+  item,
+  showMeta = false,
+}: {
+  item: HomePoster;
+  showMeta?: boolean;
+}) {
+  const content = (
+    <>
       <Image
-        src={tmdbImage(film.posterPath, "w342")!}
-        alt={`${film.title} poster`}
+        src={tmdbImage(item.posterPath, "w342")!}
+        alt={`${item.title} poster`}
         fill
         sizes="(max-width: 900px) 140px, 12vw"
         className={styles.posterImage}
       />
       <span className={styles.posterShade} />
+      {item.badge && !showMeta ? (
+        <span className={styles.posterBadge}>{item.badge}</span>
+      ) : null}
       <span className={styles.posterScore}>
         <b aria-hidden="true">★</b>
-        {scoreOutOfFive(film.overall).toFixed(1)}
+        {item.rating.toFixed(1)}
       </span>
-    </Link>
+    </>
   );
+  return (
+    <div className={styles.posterItem}>
+      {item.external ? (
+        <a
+          href={item.href}
+          target="_blank"
+          rel="noreferrer"
+          className={styles.posterCard}
+          aria-label={`View ${item.title} on TMDB`}
+        >
+          {content}
+        </a>
+      ) : (
+        <Link
+          href={item.href}
+          className={styles.posterCard}
+          aria-label={`Open ${item.title}`}
+        >
+          {content}
+        </Link>
+      )}
+      {showMeta ? (
+        <div className={styles.posterMeta}>
+          {item.badge ? (
+            <span className={styles.posterMetaBadge}>{item.badge}</span>
+          ) : null}
+          {item.reason ? <p>{item.reason}</p> : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function libraryPoster(film: LibraryFilm): HomePoster {
+  return {
+    key: `library-${film.id}`,
+    title: film.title,
+    posterPath: film.posterPath!,
+    rating: scoreOutOfFive(film.overall),
+    href: `/films/${film.id}`,
+  };
 }
 
 function TopCritics() {

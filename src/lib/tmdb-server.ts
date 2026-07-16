@@ -63,7 +63,7 @@ async function request(
   let response: Response;
   try {
     response = await fetch(url, {
-      signal: AbortSignal.timeout(8_000),
+      signal: AbortSignal.timeout(3_000),
       ...(cacheOptions
         ? {
             next: {

@@ -337,6 +337,10 @@
   margin-top: 19px;
 }
 
+.recommendedSection {
+  margin-top: 31px;
+}
+
 .reviewsSection {
   margin-top: 32px;
 }
@@ -381,6 +385,15 @@
   display: grid;
   grid-template-columns: repeat(8, minmax(0, 1fr));
   gap: 15px;
+  scrollbar-width: none;
+}
+
+.posterRail::-webkit-scrollbar {
+  display: none;
+}
+
+.posterItem {
+  min-width: 0;
 }
 
 .posterCard {
@@ -396,6 +409,10 @@
   transition:
     border-color 150ms ease,
     transform 150ms ease;
+}
+
+.posterItem .posterCard {
+  width: 100%;
 }
 
 .posterCard:hover {
@@ -424,6 +441,48 @@
 .posterScore b {
   color: var(--color-accent-400);
   font-size: 14px;
+}
+
+.posterBadge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  max-width: calc(100% - 16px);
+  overflow: hidden;
+  border: 1px solid rgb(232 180 81 / 32%);
+  border-radius: 999px;
+  background: rgb(10 10 10 / 84%);
+  padding: 4px 7px;
+  color: var(--color-accent-300);
+  font-size: 9px;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  backdrop-filter: blur(8px);
+}
+
+.posterMeta {
+  min-height: 35px;
+  padding: 7px 2px 0;
+}
+
+.posterMeta p {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--color-paper-500);
+  font-size: 10px;
+  line-height: 1.35;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.posterMetaBadge {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--color-accent-400);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
 }
 
 .posterPlaceholder {
@@ -754,7 +813,7 @@
     scroll-snap-type: x mandatory;
   }
 
-  .posterCard {
+  .posterItem {
     width: 138px;
     flex: none;
     scroll-snap-align: start;
@@ -768,6 +827,14 @@
 @media (max-width: 960px) {
   .homeGrid {
     grid-template-columns: 1fr;
+  }
+
+  .heroContent {
+    width: 70%;
+  }
+
+  .scorePanel {
+    display: none;
   }
 
   .sidebar {

@@ -42,41 +42,82 @@ export async function getLibraryFilms() {
       subFranchise: subFranchises.name,
       formVersionId: ratings.formVersionId,
       overall: ratings.overall,
+      tagId: rcaTags.id,
+      tagLabel: rcaTags.label,
+      tagAttribute: rcaTags.questionKey,
+      tagPolarity: rcaTags.polarity,
+      tagColor: rcaTags.color,
+      answerKey: questions.key,
+      answerValue: answers.valueNumber,
     })
     .from(films)
     .leftJoin(ratings, eq(ratings.filmId, films.id))
     .leftJoin(franchises, eq(franchises.id, films.franchiseId))
     .leftJoin(subFranchises, eq(subFranchises.id, films.subFranchiseId))
-    .orderBy(asc(films.watchOrder), asc(films.title));
-  const tagRows = rows.length
-    ? await db
-        .select({
-          filmId: filmRcaTags.filmId,
-          id: rcaTags.id,
-          label: rcaTags.label,
-          attribute: rcaTags.questionKey,
-          polarity: rcaTags.polarity,
-          color: rcaTags.color,
-        })
-        .from(filmRcaTags)
-        .innerJoin(rcaTags, eq(rcaTags.id, filmRcaTags.rcaTagId))
-        .where(
-          inArray(
-            filmRcaTags.filmId,
-            rows.map(({ id }) => id),
-          ),
-        )
-        .orderBy(asc(rcaTags.label))
-    : [];
-  const tagsByFilm = new Map<number, typeof tagRows>();
-  for (const tag of tagRows) {
-    const list = tagsByFilm.get(tag.filmId) ?? [];
-    list.push(tag);
-    tagsByFilm.set(tag.filmId, list);
+    .leftJoin(filmRcaTags, eq(filmRcaTags.filmId, films.id))
+    .leftJoin(rcaTags, eq(rcaTags.id, filmRcaTags.rcaTagId))
+    .leftJoin(answers, eq(answers.filmId, films.id))
+    .leftJoin(questions, eq(questions.id, answers.questionId))
+    .orderBy(
+      asc(films.watchOrder),
+      asc(films.title),
+      asc(rcaTags.label),
+    );
+  const byFilm = new Map<
+    number,
+    {
+      film: Omit<
+        (typeof rows)[number],
+        | "tagId"
+        | "tagLabel"
+        | "tagAttribute"
+        | "tagPolarity"
+        | "tagColor"
+        | "answerKey"
+        | "answerValue"
+      >;
+      scores: Map<string, number>;
+      tags: Map<
+        number,
+        {
+          id: number;
+          label: string;
+          attribute: string;
+          polarity: "positive" | "negative" | "neutral";
+          color: string | null;
+        }
+      >;
+    }
+  >();
+  for (const row of rows) {
+    const {
+      tagId,
+      tagLabel,
+      tagAttribute,
+      tagPolarity,
+      tagColor,
+      answerKey,
+      answerValue,
+      ...film
+    } = row;
+    const entry = byFilm.get(row.id) ?? {
+      film,
+      scores: new Map<string, number>(),
+      tags: new Map(),
+    };
+    if (answerKey && answerValue !== null)
+      entry.scores.set(answerKey, answerValue);
+    if (tagId !== null && tagLabel && tagAttribute && tagPolarity)
+      entry.tags.set(tagId, {
+        id: tagId,
+        label: tagLabel,
+        attribute: tagAttribute,
+        polarity: tagPolarity,
+        color: tagColor,
+      });
+    byFilm.set(row.id, entry);
   }
-  const scoresByFilm = await loadNumericAnswers(rows.map(({ id }) => id));
-  return rows.map((film) => {
-    const scores = scoresByFilm.get(film.id) ?? new Map<string, number>();
+  return [...byFilm.values()].map(({ film, scores, tags }) => {
     return {
       ...film,
       story: scores.get("story") ?? null,
@@ -87,15 +128,7 @@ export async function getLibraryFilms() {
       impact: scores.get("impact") ?? null,
       rewatchability: scores.get("rewatchability") ?? null,
       genreFit: scores.get("genre_fit") ?? null,
-      rcaTags: (tagsByFilm.get(film.id) ?? []).map(
-        ({ id, label, attribute, polarity, color }) => ({
-          id,
-          label,
-          attribute,
-          polarity,
-          color,
-        }),
-      ),
+      rcaTags: [...tags.values()],
     };
   });
 }
@@ -246,32 +279,6 @@ export async function getDashboardData() {
 
 export async function getRubric() {
   return db.select().from(scaleLevels).orderBy(desc(scaleLevels.level));
-}
-
-async function loadNumericAnswers(filmIds: number[]) {
-  if (filmIds.length === 0) return new Map<number, Map<string, number>>();
-  const rows = await db
-    .select({
-      filmId: answers.filmId,
-      questionId: answers.questionId,
-      valueNumber: answers.valueNumber,
-    })
-    .from(answers)
-    .where(inArray(answers.filmId, filmIds));
-  const questionKeys = new Map(
-    (
-      await db.select({ id: questions.id, key: questions.key }).from(questions)
-    ).map(({ id, key }) => [id, key]),
-  );
-  const byFilm = new Map<number, Map<string, number>>();
-  for (const row of rows) {
-    const key = questionKeys.get(row.questionId);
-    if (!key || row.valueNumber == null) continue;
-    const values = byFilm.get(row.filmId) ?? new Map<string, number>();
-    values.set(key, row.valueNumber);
-    byFilm.set(row.filmId, values);
-  }
-  return byFilm;
 }
 
 async function loadDashboardScores(

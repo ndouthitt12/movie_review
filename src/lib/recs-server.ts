@@ -32,7 +32,7 @@ import {
 import { tmdbGenreId, type TmdbMovieSummary } from "./tmdb";
 
 const MAX_CANDIDATES = 250;
-const MAX_ENRICHED_CANDIDATES = 60;
+const MAX_ENRICHED_CANDIDATES = 1;
 
 export type RecommendationPayload = RecommendationResult & {
   available: boolean;
@@ -315,7 +315,7 @@ function topSeeds(films: readonly LibraryFilm[], profile: TasteProfile) {
       (left, right) =>
         right.rankScore - left.rankScore || left.tmdbId - right.tmdbId,
     )
-    .slice(0, 10)
+    .slice(0, 6)
     .map(({ tmdbId, title, displayRating, score }) => ({
       tmdbId,
       title,
