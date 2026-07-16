@@ -26,7 +26,7 @@ export default async function AdminLayout({
         <Link href="/" aria-label="Picture House home">
           <Wordmark className="text-3xl sm:text-4xl" />
         </Link>
-        <h1 className="text-paper-100 mt-7 font-serif text-4xl font-semibold tracking-[-0.03em] sm:text-5xl">
+        <h1 className="type-page-heading text-paper-100 mt-7 tracking-[-0.03em]">
           Admin
         </h1>
         <TabBar tabs={tabs} className="mt-7" />

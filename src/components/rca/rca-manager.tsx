@@ -235,7 +235,7 @@ export function RcaManager({
           return (
             <section key={group} className="panel overflow-hidden">
               <header className="border-hairline bg-ink-850 flex items-center justify-between border-b px-5 py-4">
-                <h2 className="text-paper-100 font-semibold">{groupLabel}</h2>
+                <h2 className="type-card-title text-paper-100">{groupLabel}</h2>
                 <span className="text-paper-500 text-xs">
                   {groupTags.length} tags
                 </span>

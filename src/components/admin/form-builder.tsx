@@ -169,7 +169,7 @@ export function FormBuilder({ initialForm }: BuilderProps) {
             return (
               <div key={section.id} className="panel overflow-hidden">
                 <header className="border-hairline bg-ink-850 border-b px-4 py-3">
-                  <h2 className="text-paper-100 font-semibold">
+                  <h2 className="type-card-title text-paper-100">
                     {section.title}
                   </h2>
                 </header>
@@ -182,7 +182,7 @@ export function FormBuilder({ initialForm }: BuilderProps) {
           {form.questions.some(({ sectionId }) => sectionId == null) ? (
             <div className="panel overflow-hidden">
               <header className="border-hairline bg-ink-850 border-b px-4 py-3">
-                <h2 className="text-paper-100 font-semibold">Unsectioned</h2>
+                <h2 className="type-card-title text-paper-100">Unsectioned</h2>
               </header>
               <div className="divide-hairline divide-y">
                 {questionList(

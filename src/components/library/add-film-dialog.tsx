@@ -191,12 +191,12 @@ export function AddFilmDialog({ genres, franchiseNames }: Props) {
           <div className="rounded-card border-hairline bg-ink-900 mx-auto max-w-3xl border p-5 sm:p-8">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-accent-400 text-xs tracking-[0.2em] uppercase">
+                <p className="type-label text-accent-400 tracking-[0.2em] uppercase">
                   Library intake
                 </p>
                 <h2
                   id="add-film-title"
-                  className="text-paper-100 mt-2 font-serif text-3xl"
+                  className="type-page-heading text-paper-100 mt-2"
                 >
                   Add a film
                 </h2>
@@ -208,7 +208,7 @@ export function AddFilmDialog({ genres, franchiseNames }: Props) {
 
             {!selected && !manual ? (
               <div className="mt-8">
-                <label className="text-paper-500 text-xs tracking-widest uppercase">
+                <label className="type-label text-paper-500 tracking-widest uppercase">
                   Search TMDB
                   <Input
                     autoFocus
@@ -328,7 +328,7 @@ function FilmFields({
             ) : null}
           </div>
           <div>
-            <h3 className="text-paper-100 font-serif text-2xl">
+            <h3 className="type-card-title text-paper-100">
               {selected.title}
             </h3>
             <p className="text-paper-500 mt-1 text-sm">

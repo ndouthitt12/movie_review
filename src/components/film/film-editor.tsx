@@ -37,7 +37,7 @@ export function FilmEditor({
   return (
     <form onSubmit={submit} className="panel p-5 sm:p-7">
       <p className="eyebrow">Film details</p>
-      <h2 className="text-paper-100 mt-1 font-serif text-3xl">Library notes</h2>
+      <h2 className="type-section-heading text-paper-100 mt-1">Library notes</h2>
       <div className="mt-5 grid gap-5 md:grid-cols-[14rem_1fr]">
         <label className="text-paper-500 text-xs tracking-widest uppercase">
           Status

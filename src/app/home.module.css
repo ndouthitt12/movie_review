@@ -68,18 +68,14 @@
 .featuredLabel {
   margin-bottom: 7px;
   color: var(--color-accent-300);
-  font-size: 11px;
-  font-weight: 600;
+  font: var(--type-label);
   letter-spacing: 0.055em;
   text-transform: uppercase;
 }
 
 .hero h1 {
   color: #fff;
-  font-family: var(--font-display), serif;
-  font-size: clamp(39px, 3.05vw, 49px);
-  font-weight: 700;
-  line-height: 1.02;
+  font: var(--type-hero);
   letter-spacing: -0.025em;
   text-wrap: balance;
 }
@@ -90,7 +86,7 @@
   gap: 0;
   margin-top: 11px;
   color: #c2c2c1;
-  font-size: 13px;
+  font: var(--type-meta);
 }
 
 .heroMeta span {
@@ -109,8 +105,7 @@
   margin-top: 15px;
   overflow: hidden;
   color: #b9b9b8;
-  font-size: 14px;
-  line-height: 1.52;
+  font: var(--type-body);
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 4;
 }
@@ -118,7 +113,7 @@
 .attribution {
   margin-top: 8px;
   color: #8b8b89;
-  font-size: 12px;
+  font: var(--type-meta);
   font-style: italic;
 }
 
@@ -137,8 +132,7 @@
   min-height: 42px;
   border-radius: 10px;
   padding: 0 19px;
-  font-size: 13px;
-  font-weight: 500;
+  font: var(--type-meta);
   transition:
     background 150ms ease,
     border-color 150ms ease,
@@ -220,17 +214,14 @@
 
 .scoreRing strong {
   color: #f2c76f;
-  font-family: var(--font-display), serif;
-  font-size: 43px;
-  font-weight: 600;
-  line-height: 1;
+  font: var(--type-score);
+  font-variant-numeric: tabular-nums;
 }
 
 .scoreLabel {
   margin-top: 9px;
   color: var(--color-accent-400);
-  font-size: 11px;
-  font-weight: 600;
+  font: var(--type-label);
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
@@ -238,8 +229,7 @@
 .verdict {
   margin-top: 3px;
   color: var(--color-accent-400);
-  font-size: 14px;
-  font-weight: 500;
+  font: var(--type-card-title);
 }
 
 .heroStars {
@@ -250,7 +240,7 @@
 .ratingCount {
   margin-top: 4px;
   color: #9d9d9a;
-  font-size: 11px;
+  font: var(--type-meta);
 }
 
 .histogram {
@@ -265,7 +255,7 @@
   gap: 6px;
   height: 20px;
   color: #b3b3b1;
-  font-size: 11px;
+  font: var(--type-meta);
   font-variant-numeric: tabular-nums;
 }
 
@@ -412,8 +402,7 @@
 .sectionHeading h2,
 .panelHeading h2 {
   color: #efefed;
-  font-size: 14px;
-  font-weight: 600;
+  font: var(--type-section-heading);
   letter-spacing: 0.03em;
   text-transform: uppercase;
 }
@@ -424,7 +413,7 @@
   align-items: center;
   gap: 5px;
   color: var(--color-accent-400);
-  font-size: 12px;
+  font: var(--type-meta);
 }
 
 .sectionHeading svg,
@@ -494,7 +483,7 @@
   align-items: center;
   gap: 5px;
   color: #f0f0ee;
-  font-size: 12px;
+  font: var(--type-meta);
   font-variant-numeric: tabular-nums;
 }
 
@@ -514,15 +503,14 @@
   background: rgb(10 10 10 / 84%);
   padding: 4px 7px;
   color: var(--color-accent-300);
-  font-size: 9px;
-  line-height: 1;
+  font: var(--type-label);
   text-overflow: ellipsis;
   white-space: nowrap;
   backdrop-filter: blur(8px);
 }
 
 .posterMeta {
-  min-height: 35px;
+  min-height: 48px;
   padding: 7px 2px 0;
 }
 
@@ -530,8 +518,7 @@
   display: -webkit-box;
   overflow: hidden;
   color: var(--color-paper-500);
-  font-size: 10px;
-  line-height: 1.35;
+  font: var(--type-meta);
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
 }
@@ -540,8 +527,7 @@
   display: block;
   margin-bottom: 4px;
   color: var(--color-accent-400);
-  font-size: 9px;
-  font-weight: 600;
+  font: var(--type-label);
   letter-spacing: 0.02em;
 }
 
@@ -549,8 +535,7 @@
   display: block;
   overflow: hidden;
   color: var(--color-paper-100);
-  font-size: 12px;
-  line-height: 1.35;
+  font: var(--type-card-title);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -598,7 +583,7 @@
 }
 
 .posterGrid .posterMeta {
-  min-height: 62px;
+  min-height: 78px;
 }
 
 .posterPlaceholder {
@@ -610,8 +595,7 @@
 
 .posterPlaceholder span {
   color: #4e4a41;
-  font-family: var(--font-display), serif;
-  font-size: 18px;
+  font: var(--type-card-title);
 }
 
 .reviewGrid {
@@ -646,7 +630,7 @@
   background: #131517;
   padding: 28px;
   color: var(--color-paper-500);
-  font-size: 13px;
+  font: var(--type-meta);
   text-align: center;
 }
 
@@ -674,8 +658,7 @@
   border-radius: 50%;
   background: linear-gradient(145deg, #527984, #23353b);
   color: #f4e6d2;
-  font-size: 10px;
-  font-weight: 600;
+  font: var(--type-label);
   box-shadow: inset 0 -8px 14px rgb(0 0 0 / 20%);
 }
 
@@ -702,7 +685,7 @@
   align-items: center;
   gap: 5px;
   color: #f0f0ee;
-  font-size: 13px;
+  font: var(--type-meta);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -723,7 +706,7 @@
 .reviewHeader time {
   align-self: center;
   color: #77787a;
-  font-size: 11px;
+  font: var(--type-label);
   white-space: nowrap;
 }
 
@@ -732,8 +715,7 @@
   margin-top: 9px;
   overflow: hidden;
   color: #b8b8b6;
-  font-size: 13px;
-  line-height: 1.45;
+  font: var(--type-meta);
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
 }
@@ -774,10 +756,6 @@
   margin-bottom: 9px;
 }
 
-.panelHeading h2 {
-  font-size: 12px;
-}
-
 .criticList {
   display: flex;
   flex-direction: column;
@@ -798,8 +776,7 @@
 
 .criticScore {
   color: var(--color-accent-400);
-  font-size: 14px;
-  font-weight: 500;
+  font: var(--type-meta);
   font-variant-numeric: tabular-nums;
 }
 
@@ -819,7 +796,7 @@
   background: #17191b;
   padding: 0 13px;
   color: #e1e1df;
-  font-size: 12px;
+  font: var(--type-meta);
   transition:
     border-color 150ms ease,
     color 150ms ease;
@@ -835,7 +812,7 @@
   margin-top: auto;
   padding-top: 9px;
   color: var(--color-accent-400);
-  font-size: 12px;
+  font: var(--type-meta);
 }
 
 .genresPanel .panelFooterLink {
@@ -877,9 +854,7 @@
   display: -webkit-box;
   overflow: hidden;
   color: #efefed;
-  font-size: 13px;
-  font-weight: 400;
-  line-height: 1.25;
+  font: var(--type-card-title);
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
 }
@@ -890,7 +865,7 @@
   gap: 5px;
   margin-top: 9px;
   color: #a4a4a2;
-  font-size: 12px;
+  font: var(--type-meta);
 }
 
 .recentCopy b {
@@ -915,7 +890,7 @@
 
 .recentEmpty {
   color: var(--color-paper-500);
-  font-size: 13px;
+  font: var(--type-meta);
 }
 
 @media (max-width: 1180px) {
@@ -994,10 +969,6 @@
     padding: 0 24px 32px;
   }
 
-  .hero h1 {
-    font-size: 38px;
-  }
-
   .scorePanel,
   .carouselArrow {
     display: none;
@@ -1028,10 +999,6 @@
     padding-left: 19px;
   }
 
-  .hero h1 {
-    font-size: 35px;
-  }
-
   .synopsis {
     -webkit-line-clamp: 3;
   }
@@ -1045,7 +1012,6 @@
   .secondaryAction {
     flex: 1;
     padding: 0 11px;
-    font-size: 12px;
   }
 
   .reviewGrid {

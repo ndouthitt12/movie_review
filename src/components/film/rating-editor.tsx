@@ -164,7 +164,7 @@ export function RatingEditor({
         <header className="border-hairline flex items-end justify-between gap-5 border-b px-5 py-5 sm:px-7">
           <div>
             <p className="eyebrow">Your rating</p>
-            <h2 className="text-paper-100 mt-1 font-serif text-3xl">
+            <h2 className="type-section-heading text-paper-100 mt-1">
               The breakdown
             </h2>
             {ratedForm.id !== publishedForm.id ? (
@@ -174,7 +174,7 @@ export function RatingEditor({
             ) : null}
           </div>
           <div className="text-right">
-            <p className="text-accent-400 text-3xl font-semibold tabular-nums">
+            <p className="type-score text-accent-400">
               {initialOverall?.toFixed(3) ?? "—"}
             </p>
             {initialOverall !== null ? (
@@ -226,7 +226,7 @@ export function RatingEditor({
       <header className="border-hairline flex flex-col gap-4 border-b px-5 py-5 sm:flex-row sm:items-end sm:justify-between sm:px-7">
         <div>
           <p className="eyebrow">Runtime form</p>
-          <h2 className="text-paper-100 mt-1 font-serif text-3xl">
+          <h2 className="type-section-heading text-paper-100 mt-1">
             {publishedForm.label}
           </h2>
         </div>
@@ -242,7 +242,7 @@ export function RatingEditor({
       {formSections(publishedForm).map((section) => (
         <div key={section.id}>
           <div className="border-hairline bg-ink-850 border-y px-5 py-2.5 sm:px-7">
-            <h3 className="text-paper-500 text-xs font-semibold tracking-widest uppercase">
+            <h3 className="type-label text-paper-500 tracking-widest uppercase">
               {section.title}
             </h3>
           </div>
@@ -475,11 +475,15 @@ function ScoreReadout({
 }) {
   return (
     <div>
-      <p className="text-paper-500 text-[10px] font-semibold uppercase">
+      <p className="type-label text-paper-500 uppercase">
         {label}
       </p>
       <p
-        className={`${large ? "text-accent-400 text-3xl" : "text-accent-400 text-xl"} font-bold tabular-nums`}
+        className={
+          large
+            ? "type-score text-accent-400"
+            : "type-card-title text-accent-400 tabular-nums"
+        }
       >
         {value?.toFixed(3) ?? "—"}
       </p>

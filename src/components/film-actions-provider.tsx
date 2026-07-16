@@ -166,12 +166,12 @@ export function FilmActionsProvider({ children }: { children: ReactNode }) {
           <div className="rounded-card border-hairline bg-ink-900 w-full max-w-xl border p-5 shadow-2xl sm:p-7">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-accent-400 text-xs tracking-[0.18em] uppercase">
+                <p className="type-label text-accent-400 tracking-[0.18em] uppercase">
                   Add to watchlist
                 </p>
                 <h2
                   id="quick-add-title"
-                  className="text-paper-100 mt-2 font-serif text-3xl"
+                  className="type-page-heading text-paper-100 mt-2"
                 >
                   {details?.title ?? target.title}
                 </h2>

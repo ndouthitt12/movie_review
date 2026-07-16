@@ -13,7 +13,7 @@ export default async function RubricPage() {
     <PageShell>
       <header className="page-heading">
         <p className="eyebrow">Rating reference</p>
-        <h1 className="font-serif">The scale, in your words</h1>
+        <h1>The scale, in your words</h1>
         <p>
           Keep scores consistent over time by defining the meaning and
           touchstone films for every point.
@@ -23,7 +23,7 @@ export default async function RubricPage() {
         {rubric.map((row) => (
           <SectionCard key={row.level} title={`Level ${row.level}`}>
             <div className="grid grid-cols-[4rem_1fr] gap-4">
-              <p className="text-accent-400 font-serif text-5xl font-semibold tabular-nums">
+              <p className="type-score text-accent-400">
                 {row.level}
               </p>
               <div>

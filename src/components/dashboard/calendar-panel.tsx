@@ -38,7 +38,7 @@ export function CalendarPanel({
       <header className="border-hairline flex flex-col gap-4 border-b px-5 py-5 sm:flex-row sm:items-end sm:justify-between sm:px-7">
         <div>
           <p className="eyebrow">Watch calendar</p>
-          <h2 className="text-paper-100 mt-1 text-2xl font-bold">
+          <h2 className="type-section-heading text-paper-100 mt-1">
             Every film day
           </h2>
         </div>

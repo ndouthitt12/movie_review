@@ -45,7 +45,7 @@ export default async function FilmPage({
     <PageShell>
       <Link
         href="/library"
-        className="text-paper-500 hover:text-accent-400 text-xs tracking-widest uppercase transition-colors"
+        className="type-label text-paper-500 hover:text-accent-400 tracking-widest uppercase transition-colors"
       >
         ← Library
       </Link>
@@ -73,19 +73,19 @@ export default async function FilmPage({
                 className="object-cover"
               />
             ) : (
-              <div className="text-paper-500 flex h-full items-center justify-center p-5 text-center font-serif">
+              <div className="type-body text-paper-500 flex h-full items-center justify-center p-5 text-center">
                 No poster
               </div>
             )}
           </div>
           <div>
-            <p className="text-accent-400 text-xs font-semibold tracking-[0.2em] uppercase">
+            <p className="type-label text-accent-400 tracking-[0.2em] uppercase">
               {film.status.replaceAll("_", " ")}
             </p>
-            <h1 className="text-paper-100 mt-3 max-w-4xl font-serif text-5xl leading-none tracking-[-0.04em] sm:text-7xl">
+            <h1 className="type-hero text-paper-100 mt-3 max-w-4xl tracking-[-0.04em]">
               {film.title}
             </h1>
-            <p className="text-paper-300 mt-5 text-sm sm:text-base">
+            <p className="type-meta text-paper-300 mt-5">
               {[
                 film.genrePrimary,
                 film.genreSecondary,
@@ -96,12 +96,12 @@ export default async function FilmPage({
                 .join(" · ")}
             </p>
             {film.director ? (
-              <p className="text-paper-500 mt-2 text-sm">
+              <p className="type-meta text-paper-500 mt-2">
                 Directed by {film.director}
               </p>
             ) : null}
             {film.overview ? (
-              <p className="border-hairline text-paper-300 mt-6 max-w-3xl border-t pt-5 text-sm leading-7 sm:text-base">
+              <p className="type-body border-hairline text-paper-300 mt-6 max-w-3xl border-t pt-5">
                 {film.overview}
               </p>
             ) : null}
@@ -111,10 +111,10 @@ export default async function FilmPage({
                   value={rating.overall / 2}
                   className="text-2xl sm:text-3xl"
                 />
-                <span className="text-paper-100 text-4xl font-semibold tabular-nums">
+                <span className="type-score text-paper-100">
                   {(rating.overall / 2).toFixed(1)}
                 </span>
-                <span className="text-paper-500 text-base">/ 5</span>
+                <span className="type-body text-paper-500">/ 5</span>
               </div>
             ) : null}
           </div>

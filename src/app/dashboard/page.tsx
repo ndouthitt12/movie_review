@@ -61,7 +61,7 @@ export default async function DashboardPage() {
     <PageShell>
       <header className="page-heading">
         <p className="eyebrow">Dashboard / trends</p>
-        <h1 className="font-serif">Your viewing, in focus</h1>
+        <h1>Your viewing, in focus</h1>
         <p>
           Distribution, habits, taste, and the reasons behind your ratings—all
           computed from the same film and watch records as the library.
@@ -127,7 +127,7 @@ export default async function DashboardPage() {
       <section className="panel mt-6 grid gap-6 p-5 sm:p-7 lg:grid-cols-[1fr_2fr] lg:items-center">
         <div>
           <p className="eyebrow">Long view</p>
-          <h2 className="text-paper-100 mt-1 text-2xl font-bold">
+          <h2 className="type-section-heading text-paper-100 mt-1">
             Watches by year
           </h2>
           <p className="text-paper-500 mt-3 text-sm leading-6">
@@ -167,7 +167,7 @@ export default async function DashboardPage() {
         <section className="panel overflow-hidden">
           <header className="border-hairline border-b p-5 sm:p-7">
             <p className="eyebrow">Correlation</p>
-            <h2 className="text-paper-100 mt-1 text-2xl font-bold">
+            <h2 className="type-section-heading text-paper-100 mt-1">
               What moves Overall
             </h2>
             <p className="text-paper-500 mt-2 text-sm">
@@ -232,7 +232,7 @@ export default async function DashboardPage() {
         <section className="panel overflow-hidden">
           <header className="border-hairline border-b p-5 sm:p-7">
             <p className="eyebrow">Franchises</p>
-            <h2 className="text-paper-100 mt-1 text-2xl font-bold">
+            <h2 className="type-section-heading text-paper-100 mt-1">
               Report cards
             </h2>
           </header>
@@ -249,7 +249,7 @@ export default async function DashboardPage() {
         <section className="panel overflow-hidden">
           <header className="border-hairline border-b p-5 sm:p-7">
             <p className="eyebrow">RCA analytics</p>
-            <h2 className="text-paper-100 mt-1 text-2xl font-bold">
+            <h2 className="type-section-heading text-paper-100 mt-1">
               Your most common why tags
             </h2>
           </header>
@@ -307,7 +307,7 @@ function ChartPanel({
     <section className="panel overflow-hidden">
       <header className="border-hairline border-b p-5 sm:p-7">
         <p className="eyebrow">{eyebrow}</p>
-        <h2 className="text-paper-100 mt-1 text-2xl font-bold">{title}</h2>
+        <h2 className="type-section-heading text-paper-100 mt-1">{title}</h2>
         <p className="text-paper-500 mt-2 text-sm leading-6">{caption}</p>
       </header>
       <div className="p-4 sm:p-6">{children}</div>

@@ -23,10 +23,10 @@ export default async function LibraryPage() {
       <header className="mb-8 flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="eyebrow">Personal catalog</p>
-          <h1 className="text-paper-100 mt-2 font-serif text-4xl font-semibold tracking-tight sm:text-5xl">
+          <h1 className="type-page-heading text-paper-100 mt-2 tracking-tight">
             Your films
           </h1>
-          <p className="text-paper-500 mt-3 text-sm">
+          <p className="type-body text-paper-500 mt-3">
             Sort the scores, scan the posters, remember why.
           </p>
         </div>

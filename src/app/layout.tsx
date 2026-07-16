@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Sans, Source_Serif_4 } from "next/font/google";
+import { IBM_Plex_Sans, Sora } from "next/font/google";
 import "./globals.css";
 
 const ui = IBM_Plex_Sans({
@@ -9,9 +9,10 @@ const ui = IBM_Plex_Sans({
   display: "swap",
 });
 
-const display = Source_Serif_4({
+const display = Sora({
   variable: "--font-display",
   subsets: ["latin"],
+  weight: "600",
   display: "swap",
 });
 

@@ -145,7 +145,7 @@ export function ScoringAdmin({
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <p className="eyebrow">Existing ratings</p>
-            <h2 className="mt-1 text-xl font-semibold">
+            <h2 className="type-section-heading mt-1">
               Recompute published scores
             </h2>
           </div>

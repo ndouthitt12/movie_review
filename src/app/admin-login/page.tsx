@@ -10,10 +10,10 @@ export default function AdminLoginPage() {
     <PageShell>
       <div className="mx-auto max-w-md py-20">
         <p className="eyebrow">Restricted area</p>
-        <h1 className="text-paper-100 mt-2 font-serif text-5xl">
+        <h1 className="type-page-heading text-paper-100 mt-2">
           Admin access
         </h1>
-        <p className="text-paper-300 mt-4 text-sm leading-6">
+        <p className="type-body text-paper-300 mt-4">
           Enter the passcode configured in ADMIN_PASSCODE.
         </p>
         <AdminLogin configured={adminAuthConfigured()} />

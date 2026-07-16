@@ -502,7 +502,7 @@ function PosterGrid({ films }: { films: LibraryFilm[] }) {
                 className="object-cover transition-opacity group-hover:opacity-80"
               />
             ) : (
-              <div className="text-paper-500 flex h-full items-center justify-center p-4 text-center font-serif">
+              <div className="type-body text-paper-500 flex h-full items-center justify-center p-4 text-center">
                 {film.title}
               </div>
             )}
@@ -526,7 +526,7 @@ function PosterGrid({ films }: { films: LibraryFilm[] }) {
               )}
             </div>
           </div>
-          <h3 className="text-paper-100 mt-2 truncate text-sm font-medium">
+          <h3 className="type-card-title text-paper-100 mt-2 truncate">
             {film.title}
           </h3>
           <p className="text-paper-500 mt-1 text-xs">
@@ -636,10 +636,10 @@ function RewatchList({ films }: { films: LibraryFilm[] }) {
 function EmptyState() {
   return (
     <div className="border-hairline bg-ink-900 rounded-card border py-16 text-center">
-      <h2 className="text-paper-100 font-serif text-3xl">
+      <h2 className="type-section-heading text-paper-100">
         No films in this cut.
       </h2>
-      <p className="text-paper-500 mt-3 text-sm">
+      <p className="type-body text-paper-500 mt-3">
         Adjust the filters or add something new.
       </p>
     </div>

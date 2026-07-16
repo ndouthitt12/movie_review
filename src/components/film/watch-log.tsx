@@ -68,7 +68,7 @@ export function WatchLog({
   return (
     <section className="panel p-5 sm:p-7">
       <p className="eyebrow">Viewing history</p>
-      <h2 className="text-paper-100 mt-1 font-serif text-3xl">Watch log</h2>
+      <h2 className="type-section-heading text-paper-100 mt-1">Watch log</h2>
       <form onSubmit={add} className="mt-5 flex flex-wrap items-end gap-3">
         <label className="text-paper-500 text-xs tracking-widest uppercase">
           Watched on

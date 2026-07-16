@@ -19,13 +19,13 @@ export default function TokensPage() {
   return (
     <PageShell>
       <header className="max-w-3xl">
-        <p className="text-accent-300 text-xs tracking-[0.22em] uppercase">
+        <p className="type-label text-accent-300 tracking-[0.22em] uppercase">
           Development reference
         </p>
-        <h1 className="text-paper-100 mt-4 font-serif text-5xl tracking-tight">
+        <h1 className="type-page-heading text-paper-100 mt-4 tracking-tight">
           The Picture House system
         </h1>
-        <p className="text-paper-300 mt-5 leading-7">
+        <p className="type-body text-paper-300 mt-5">
           Warm charcoal, muted amber, precise rules, and typography that leaves
           the films in charge.
         </p>
@@ -34,12 +34,12 @@ export default function TokensPage() {
       <Hairline className="my-12" />
 
       <section>
-        <h2 className="font-serif text-3xl">Palette</h2>
+        <h2 className="type-section-heading">Palette</h2>
         <div className="bg-hairline border-hairline mt-6 grid grid-cols-2 gap-px border sm:grid-cols-3 lg:grid-cols-5">
           {colors.map(([label, color]) => (
             <div key={label} className="bg-ink-950 p-3">
               <div className={`h-20 ${color}`} />
-              <p className="text-paper-500 mt-3 text-xs">{label}</p>
+              <p className="type-meta text-paper-500 mt-3">{label}</p>
             </div>
           ))}
         </div>
@@ -49,27 +49,39 @@ export default function TokensPage() {
 
       <section className="grid gap-10 lg:grid-cols-2">
         <div>
-          <h2 className="font-serif text-3xl">Typography</h2>
-          <p className="mt-6 font-serif text-5xl leading-tight">
+          <h2 className="type-section-heading">Typography</h2>
+          <p className="type-hero mt-6">
             The moving image, carefully kept.
           </p>
-          <p className="text-paper-300 mt-5 max-w-lg leading-7">
-            IBM Plex Sans carries interface copy with quiet clarity. Fraunces
-            supplies editorial character without turning the catalog into
-            decoration.
+          <p className="type-page-heading text-paper-100 mt-6">
+            Page heading
           </p>
-          <p className="text-score-high mt-5 text-2xl tabular-nums">
+          <p className="type-section-heading text-paper-100 mt-5">
+            Section heading
+          </p>
+          <p className="type-card-title text-paper-100 mt-5">Card title</p>
+          <p className="type-body text-paper-300 mt-5 max-w-lg">
+            IBM Plex Sans carries body copy with quiet clarity. Sora gives hero,
+            heading, and score displays a geometric, cinematic presence.
+          </p>
+          <p className="type-meta text-paper-500 mt-4">
+            Metadata / 2026 / 132 minutes
+          </p>
+          <p className="type-label text-accent-300 mt-4 tracking-[0.16em] uppercase">
+            Interface label
+          </p>
+          <p className="type-score text-score-high mt-5">
             9.988&nbsp;&nbsp; 365&nbsp;&nbsp; 2026
           </p>
         </div>
         <div>
-          <h2 className="font-serif text-3xl">Controls</h2>
+          <h2 className="type-section-heading">Controls</h2>
           <div className="mt-6 flex flex-wrap gap-3">
             <Button>Primary action</Button>
             <QuietButton>Quiet action</QuietButton>
             <Button disabled>Disabled</Button>
           </div>
-          <label className="text-paper-500 mt-7 block max-w-md text-xs tracking-widest uppercase">
+          <label className="type-label text-paper-500 mt-7 block max-w-md tracking-widest uppercase">
             Film title
             <Input className="mt-2" placeholder="Search your library" />
           </label>
@@ -79,7 +91,7 @@ export default function TokensPage() {
       <Hairline className="my-12" />
 
       <section>
-        <h2 className="font-serif text-3xl">Table skeleton</h2>
+        <h2 className="type-section-heading">Table skeleton</h2>
         <Table className="mt-6 tabular-nums">
           <TableHeader>
             <tr>
