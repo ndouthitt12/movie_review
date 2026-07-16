@@ -308,6 +308,33 @@ describe("form scoring", () => {
     ).toBe(1);
   });
 
+  it("always excludes display elements from scoring", () => {
+    const malformedTitle = question({
+      id: 1,
+      key: "heading",
+      type: "title",
+      scored: true,
+      weight: 100,
+      blankPolicy: "treat_as_zero",
+    });
+    const scored = question({ id: 2, key: "score" });
+    const result = computeOverallFromForm(
+      {
+        divisorMode: "auto",
+        manualDivisor: null,
+        questions: [malformedTitle, scored],
+      },
+      { 1: { number: 100 }, 2: { number: 100 } },
+    );
+    expect(result.overall).toBe(1);
+    expect(result.terms[0]).toMatchObject({
+      counted: false,
+      maxPoints: 0,
+      points: 0,
+      reason: "unscored",
+    });
+  });
+
   it("throws when the effective divisor is not positive", () => {
     expect(() =>
       computeOverallFromForm(

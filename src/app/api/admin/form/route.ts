@@ -26,6 +26,11 @@ import {
 } from "@/lib/admin-form";
 
 const finite = z.number().finite();
+const optionQuestionTypes = new Set([
+  "dropdown",
+  "multiple_choice",
+  "multi_select",
+]);
 const questionFields = z.object({
   key: z
     .string()
@@ -322,6 +327,8 @@ export async function POST(request: Request) {
       }
       case "add_options": {
         const question = assertDraftQuestion(draft, parsed.data.questionId);
+        if (!optionQuestionTypes.has(question.type))
+          throw new Error("This question type does not support options.");
         const existingLabels = new Set(
           question.options.map(({ label }) => label.trim().toLocaleLowerCase()),
         );
@@ -347,6 +354,8 @@ export async function POST(request: Request) {
       case "save_option": {
         const optionId = parsed.data.optionId;
         const question = assertDraftQuestion(draft, parsed.data.questionId);
+        if (!optionQuestionTypes.has(question.type))
+          throw new Error("This question type does not support options.");
         if (parsed.data.data.isNull && parsed.data.data.valueScore != null)
           throw new Error("A null response option cannot have a score.");
         if (optionId) {

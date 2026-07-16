@@ -160,6 +160,10 @@ export function Outline({
                 section={section}
                 mutate={mutate}
                 onDragStart={() => setDraggedSection(section.id)}
+                onDragEnd={() => {
+                  setDraggedSection(null);
+                  setDropKey(null);
+                }}
                 onMove={(direction) => void moveSection(section.id, direction)}
               />
               <QuestionRows
@@ -170,6 +174,10 @@ export function Outline({
                 dragging={draggedQuestion != null}
                 onSelect={onSelect}
                 onDragStart={setDraggedQuestion}
+                onDragEnd={() => {
+                  setDraggedQuestion(null);
+                  setDropKey(null);
+                }}
                 onDropKey={setDropKey}
                 onDrop={(beforeId) => void dropQuestion(section.id, beforeId)}
                 onMove={(id, direction) => void moveQuestion(id, direction)}
@@ -198,6 +206,10 @@ export function Outline({
               dragging={draggedQuestion != null}
               onSelect={onSelect}
               onDragStart={setDraggedQuestion}
+              onDragEnd={() => {
+                setDraggedQuestion(null);
+                setDropKey(null);
+              }}
               onDropKey={setDropKey}
               onDrop={(beforeId) => void dropQuestion(null, beforeId)}
               onMove={(id, direction) => void moveQuestion(id, direction)}
@@ -228,11 +240,13 @@ function SectionHeader({
   section,
   mutate,
   onDragStart,
+  onDragEnd,
   onMove,
 }: {
   section: RuntimeFormConfig["sections"][number];
   mutate: Mutate;
   onDragStart: () => void;
+  onDragEnd: () => void;
   onMove: (direction: -1 | 1) => void;
 }) {
   const [editing, setEditing] = useState(false);
@@ -259,11 +273,13 @@ function SectionHeader({
       <DragHandle
         label={`Reorder section ${section.title}`}
         onDragStart={onDragStart}
+        onDragEnd={onDragEnd}
         onMove={onMove}
       />
       {editing ? (
         <Input
           autoFocus
+          aria-label={`Rename section ${section.title}`}
           value={title}
           onChange={(event) => setTitle(event.target.value)}
           onBlur={() => void save()}
@@ -330,6 +346,7 @@ function QuestionRows({
   dragging,
   onSelect,
   onDragStart,
+  onDragEnd,
   onDropKey,
   onDrop,
   onMove,
@@ -341,6 +358,7 @@ function QuestionRows({
   dragging: boolean;
   onSelect: (id: number) => void;
   onDragStart: (id: number) => void;
+  onDragEnd: () => void;
   onDropKey: (key: string | null) => void;
   onDrop: (beforeId: number | null) => void;
   onMove: (id: number, direction: -1 | 1) => void;
@@ -366,6 +384,7 @@ function QuestionRows({
             <DragHandle
               label={`Reorder ${question.label}`}
               onDragStart={() => onDragStart(question.id)}
+              onDragEnd={onDragEnd}
               onMove={(direction) => onMove(question.id, direction)}
             />
             <button
@@ -424,10 +443,12 @@ function Indicators({ question }: { question: RuntimeQuestionConfig }) {
 function DragHandle({
   label,
   onDragStart,
+  onDragEnd,
   onMove,
 }: {
   label: string;
   onDragStart: () => void;
+  onDragEnd: () => void;
   onMove: (direction: -1 | 1) => void;
 }) {
   return (
@@ -441,6 +462,7 @@ function DragHandle({
         event.dataTransfer.effectAllowed = "move";
         onDragStart();
       }}
+      onDragEnd={onDragEnd}
       onKeyDown={(event) => {
         if (event.key === "ArrowUp") {
           event.preventDefault();
@@ -589,7 +611,7 @@ function AddSection({ mutate }: { mutate: Mutate }) {
     );
   return (
     <form
-      className="border-hairline bg-ink-850 flex gap-2 border-t p-3"
+      className="border-hairline bg-ink-850 grid gap-2 border-t p-3"
       onSubmit={async (event) => {
         event.preventDefault();
         const next = await mutate({
@@ -609,7 +631,12 @@ function AddSection({ mutate }: { mutate: Mutate }) {
         placeholder="Section title"
         required
       />
-      <Button type="submit">Add</Button>
+      <div className="flex gap-2">
+        <Button type="submit">Add</Button>
+        <QuietButton type="button" onClick={() => setOpen(false)}>
+          Cancel
+        </QuietButton>
+      </div>
     </form>
   );
 }

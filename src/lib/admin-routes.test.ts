@@ -644,6 +644,15 @@ describe("admin form workflow", () => {
       scored: false,
       secondaryScored: false,
     });
+    response = await change({
+      action: "add_options",
+      questionId: title.id,
+      labels: ["Not allowed"],
+    });
+    expect(response.status).toBe(400);
+    expect((await response.json()) as { error: string }).toMatchObject({
+      error: expect.stringContaining("does not support options"),
+    });
     const source = body.form.questions.find(
       (question) => question.type !== "title" && question.type !== "divider",
     )!;

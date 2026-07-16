@@ -325,7 +325,11 @@ function contributionForState(
   answers: AnswerMap,
   state: ConditionState,
 ): QuestionContribution {
-  if (!question.scored) {
+  if (
+    !question.scored ||
+    question.type === "title" ||
+    question.type === "divider"
+  ) {
     return { points: 0, maxPoints: 0, counted: false, reason: "unscored" };
   }
   const maxPoints = maximumPoints(question);

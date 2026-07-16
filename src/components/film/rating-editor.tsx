@@ -160,6 +160,15 @@ export function RatingEditor({
   }
 
   if (!editing && ratedForm) {
+    const breakdownSections = formSections(ratedForm)
+      .map((section) => ({
+        ...section,
+        questions: section.questions.filter(
+          (question) => !isDisplayElement(question),
+        ),
+      }))
+      .filter((section) => section.questions.length > 0);
+
     return (
       <section className="panel overflow-hidden">
         <header className="border-hairline flex items-end justify-between gap-5 border-b px-5 py-5 sm:px-7">
@@ -190,32 +199,66 @@ export function RatingEditor({
             </button>
           </div>
         </header>
-        <div className="bg-hairline grid gap-px sm:grid-cols-2 lg:grid-cols-4">
-          {ratedForm.questions.map((question) => {
-            if (isDisplayElement(question)) return null;
-            const selected = tags.filter(
-              (tag) =>
-                tag.questionKey === question.key &&
-                selectedIds.includes(tag.id),
+        <div className="divide-hairline divide-y">
+          {breakdownSections.map((section) => {
+            const scoreQuestions = section.questions.filter(isScoreQuestion);
+            const responseQuestions = section.questions.filter(
+              (question) => !isScoreQuestion(question),
             );
+            const secondary =
+              /secondary/i.test(section.title) ||
+              responseQuestions.length > scoreQuestions.length;
+
             return (
-              <div key={question.id} className="bg-ink-850 p-4">
-                <div className="flex items-baseline justify-between gap-3">
-                  <span className="text-paper-500 text-xs font-semibold tracking-wide uppercase">
-                    {question.label}
+              <section key={section.id}>
+                <header className="bg-ink-900 flex items-end justify-between gap-4 px-5 py-3 sm:px-7">
+                  <div>
+                    <p className="text-accent-400 text-[10px] font-semibold tracking-[0.14em] uppercase">
+                      {secondary ? "Secondary responses" : "Primary scores"}
+                    </p>
+                    <h3 className="text-paper-100 mt-0.5 text-sm font-semibold">
+                      {section.title.replace(/\s*\(secondary\)\s*$/i, "")}
+                    </h3>
+                  </div>
+                  <span className="text-paper-500 text-[10px] tracking-wide uppercase">
+                    {section.questions.length} responses
                   </span>
-                  <span className="text-paper-100 text-lg font-bold tabular-nums">
-                    {formatAnswer(question, initialAnswers[question.id])}
-                  </span>
-                </div>
-                {selected.length ? (
-                  <div className="mt-3 flex flex-wrap gap-1">
-                    {selected.map((tag) => (
-                      <RcaChip key={tag.id} tag={tag} compact />
+                </header>
+
+                {scoreQuestions.length ? (
+                  <div className="bg-hairline grid gap-px sm:grid-cols-2 lg:grid-cols-4">
+                    {scoreQuestions.map((question) => (
+                      <BreakdownScore
+                        key={question.id}
+                        question={question}
+                        answer={initialAnswers[question.id]}
+                        selectedTags={selectedTagsForQuestion(
+                          tags,
+                          selectedIds,
+                          question,
+                        )}
+                      />
                     ))}
                   </div>
                 ) : null}
-              </div>
+
+                {responseQuestions.length ? (
+                  <div className="bg-hairline grid gap-px md:grid-cols-2">
+                    {responseQuestions.map((question) => (
+                      <BreakdownResponse
+                        key={question.id}
+                        question={question}
+                        answer={initialAnswers[question.id]}
+                        selectedTags={selectedTagsForQuestion(
+                          tags,
+                          selectedIds,
+                          question,
+                        )}
+                      />
+                    ))}
+                  </div>
+                ) : null}
+              </section>
             );
           })}
         </div>
@@ -418,6 +461,80 @@ function answersForPublishedForm(
 
 function isDisplayElement(question: RuntimeQuestionConfig) {
   return question.type === "title" || question.type === "divider";
+}
+
+function isScoreQuestion(question: RuntimeQuestionConfig) {
+  return question.type === "slider" || question.type === "integer";
+}
+
+function selectedTagsForQuestion(
+  tags: RcaOption[],
+  selectedIds: number[],
+  question: RuntimeQuestionConfig,
+) {
+  return tags.filter(
+    (tag) => tag.questionKey === question.key && selectedIds.includes(tag.id),
+  );
+}
+
+function BreakdownScore({
+  question,
+  answer,
+  selectedTags,
+}: {
+  question: RuntimeQuestionConfig;
+  answer: AnswerValue | undefined;
+  selectedTags: RcaOption[];
+}) {
+  return (
+    <div className="bg-ink-850 min-w-0 px-4 py-3.5">
+      <div className="flex items-baseline justify-between gap-3">
+        <span className="text-paper-500 min-w-0 text-[10px] font-semibold tracking-wide uppercase">
+          {question.label}
+        </span>
+        <span className="text-paper-100 shrink-0 text-base font-bold tabular-nums">
+          {formatAnswer(question, answer)}
+        </span>
+      </div>
+      {selectedTags.length ? (
+        <div className="mt-2.5 flex flex-wrap gap-1">
+          {selectedTags.map((tag) => (
+            <RcaChip key={tag.id} tag={tag} compact />
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function BreakdownResponse({
+  question,
+  answer,
+  selectedTags,
+}: {
+  question: RuntimeQuestionConfig;
+  answer: AnswerValue | undefined;
+  selectedTags: RcaOption[];
+}) {
+  return (
+    <div className="bg-ink-850 grid min-w-0 grid-cols-[minmax(6.5rem,0.42fr)_minmax(0,1fr)] gap-3 px-4 py-3 sm:gap-4 sm:px-5">
+      <span className="text-paper-500 pt-0.5 text-[10px] leading-4 font-semibold tracking-wide uppercase">
+        {question.label}
+      </span>
+      <div className="min-w-0">
+        <p className="text-paper-100 text-sm leading-5 font-semibold">
+          {formatAnswer(question, answer)}
+        </p>
+        {selectedTags.length ? (
+          <div className="mt-2 flex flex-wrap gap-1">
+            {selectedTags.map((tag) => (
+              <RcaChip key={tag.id} tag={tag} compact />
+            ))}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
 }
 
 function answerPresent(answer: AnswerValue | undefined) {

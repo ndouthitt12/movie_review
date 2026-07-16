@@ -80,14 +80,19 @@ export const questionSchema = z
     archivedAt: z.string().nullable().optional(),
   })
   .superRefine((question, context) => {
-    if (question.scored && question.weight == null) {
+    const display = question.type === "title" || question.type === "divider";
+    if (!display && question.scored && question.weight == null) {
       context.addIssue({
         code: "custom",
         message: "A scored question requires a weight.",
         path: ["weight"],
       });
     }
-    if (question.secondaryScored && question.secondaryWeight == null) {
+    if (
+      !display &&
+      question.secondaryScored &&
+      question.secondaryWeight == null
+    ) {
       context.addIssue({
         code: "custom",
         message: "A secondary-scored question requires a secondary weight.",
@@ -105,6 +110,7 @@ export const questionSchema = z
       });
     }
     if (
+      !display &&
       question.min != null &&
       question.max != null &&
       question.min > question.max
@@ -116,6 +122,7 @@ export const questionSchema = z
       });
     }
     if (
+      !display &&
       question.type === "multi_select" &&
       question.scored &&
       question.multiSelectScoring == null

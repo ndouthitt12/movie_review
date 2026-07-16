@@ -136,6 +136,15 @@ export function validateFormForPublish(form: RuntimeFormConfig): string[] {
         question.required ||
         question.scored ||
         question.secondaryScored ||
+        question.weight != null ||
+        question.secondaryWeight != null ||
+        question.min != null ||
+        question.max != null ||
+        question.offset !== 0 ||
+        question.secondaryOffset !== 0 ||
+        question.multiSelectScoring != null ||
+        question.allowNa ||
+        question.rcaEnabled ||
         question.options.length
       )
         errors.push(
