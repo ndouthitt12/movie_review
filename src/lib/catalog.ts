@@ -137,12 +137,19 @@ export type LibraryFilm = Awaited<ReturnType<typeof getLibraryFilms>>[number];
 
 export async function getCatalogOptions() {
   const filmRows = await db
-    .select({ primary: films.genrePrimary, secondary: films.genreSecondary })
+    .select({
+      primary: films.genrePrimary,
+      secondary: films.genreSecondary,
+      tmdbGenres: films.tmdbGenres,
+    })
     .from(films);
   const genreSet = new Set<string>();
-  filmRows.forEach(({ primary, secondary }) => {
+  filmRows.forEach(({ primary, secondary, tmdbGenres }) => {
     if (primary) genreSet.add(primary);
     if (secondary) genreSet.add(secondary);
+    tmdbGenres?.forEach((genre) =>
+      genreSet.add(genre === "Science Fiction" ? "Sci-Fi" : genre),
+    );
   });
   return {
     genres: [...genreSet].sort(),

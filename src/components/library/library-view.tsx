@@ -128,8 +128,15 @@ export function LibraryView({
       .filter(
         (film) =>
           !genre ||
-          film.genrePrimary === genre ||
-          film.genreSecondary === genre,
+          [
+            film.genrePrimary,
+            film.genreSecondary,
+            ...(film.tmdbGenres ?? []),
+          ].some((filmGenre) =>
+            filmGenre
+              ? normalizeGenre(filmGenre) === normalizeGenre(genre)
+              : false,
+          ),
       )
       .filter(
         (film) =>
@@ -655,4 +662,8 @@ function parameterNumber(value: string | null, fallback: number) {
   if (value === null || value.trim() === "") return fallback;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function normalizeGenre(value: string) {
+  return value === "Science Fiction" ? "Sci-Fi" : value;
 }

@@ -158,6 +158,11 @@
   backdrop-filter: blur(8px);
 }
 
+.secondaryAction:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
 .primaryAction:hover,
 .secondaryAction:hover {
   transform: translateY(-1px);
@@ -185,6 +190,15 @@
   padding: 17px 16px 14px;
   box-shadow: 0 15px 30px rgb(0 0 0 / 34%);
   backdrop-filter: blur(16px);
+}
+
+.scorePanelLink {
+  color: inherit;
+}
+
+.scorePanelLink:focus-visible .scorePanel {
+  outline: 2px solid var(--color-accent-400);
+  outline-offset: 2px;
 }
 
 .scoreRing {
@@ -313,15 +327,53 @@
   transform: translateX(-50%);
 }
 
-.carouselDots span {
+.carouselDots span,
+.carouselDots button {
   width: 8px;
   height: 8px;
+  border: 0;
   border-radius: 50%;
   background: #77787a;
+  padding: 0;
+  cursor: pointer;
 }
 
 .carouselDots .activeDot {
   background: var(--color-accent-400);
+}
+
+.trailerBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 110;
+  display: grid;
+  place-items: center;
+  background: rgb(0 0 0 / 88%);
+  padding: 20px;
+  backdrop-filter: blur(10px);
+}
+
+.trailerDialog {
+  width: min(100%, 960px);
+}
+
+.trailerDialog > button {
+  display: block;
+  margin: 0 0 10px auto;
+  border: 1px solid #5b5d60;
+  border-radius: 8px;
+  background: #17191b;
+  padding: 8px 14px;
+  color: var(--color-paper-100);
+  cursor: pointer;
+}
+
+.trailerDialog iframe {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 1px solid #343638;
+  border-radius: 12px;
+  background: #000;
 }
 
 .emptyHero {
@@ -388,6 +440,10 @@
   scrollbar-width: none;
 }
 
+.posterRailWrap {
+  position: relative;
+}
+
 .posterRail::-webkit-scrollbar {
   display: none;
 }
@@ -409,6 +465,10 @@
   transition:
     border-color 150ms ease,
     transform 150ms ease;
+  padding: 0;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
 }
 
 .posterItem .posterCard {
@@ -485,6 +545,62 @@
   letter-spacing: 0.02em;
 }
 
+.posterTitle {
+  display: block;
+  overflow: hidden;
+  color: var(--color-paper-100);
+  font-size: 12px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.railArrow {
+  position: absolute;
+  top: 42%;
+  z-index: 8;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 58px;
+  border: 1px solid #3b3e41;
+  border-radius: 9px;
+  background: rgb(12 14 15 / 92%);
+  color: var(--color-paper-100);
+  opacity: 0;
+  cursor: pointer;
+  transform: translateY(-50%);
+  transition: opacity 150ms ease;
+}
+
+.posterRailWrap:hover .railArrow,
+.railArrow:focus-visible {
+  opacity: 1;
+}
+
+.railArrowLeft {
+  left: -9px;
+}
+
+.railArrowRight {
+  right: -9px;
+}
+
+.railArrow svg {
+  width: 20px;
+  height: 20px;
+}
+
+.posterGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(145px, 1fr));
+  gap: 22px 16px;
+}
+
+.posterGrid .posterMeta {
+  min-height: 62px;
+}
+
 .posterPlaceholder {
   display: grid;
   place-items: center;
@@ -513,6 +629,30 @@
   border-radius: 9px;
   background: linear-gradient(145deg, #181b1d, #131517);
   padding: 12px 14px;
+  transition:
+    border-color 150ms ease,
+    transform 150ms ease;
+}
+
+.reviewCard:hover {
+  border-color: var(--color-accent-400);
+  transform: translateY(-2px);
+}
+
+.reviewEmpty {
+  display: block;
+  border: 1px dashed #343638;
+  border-radius: 9px;
+  background: #131517;
+  padding: 28px;
+  color: var(--color-paper-500);
+  font-size: 13px;
+  text-align: center;
+}
+
+.reviewEmpty:hover {
+  border-color: var(--color-accent-400);
+  color: var(--color-paper-100);
 }
 
 .reviewHeader {
@@ -523,6 +663,7 @@
 }
 
 .profileAvatar {
+  position: relative;
   display: inline-flex;
   flex: none;
   align-items: center;
@@ -563,6 +704,8 @@
   color: #f0f0ee;
   font-size: 13px;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .verifiedIcon {

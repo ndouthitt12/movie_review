@@ -2,18 +2,23 @@ import Image from "next/image";
 import Link from "next/link";
 import { PageShell } from "@/components/page-shell";
 import {
-  ChevronLeftIcon,
+  HeroCarousel,
+  type HeroFilm,
+} from "@/components/home/hero-carousel";
+import {
+  PosterRail,
+  type HomePoster,
+} from "@/components/home/poster-rail";
+import {
   ChevronRightIcon,
   ClockIcon,
-  HeartIcon,
-  PlayIcon,
   PlusIcon,
-  VerifiedIcon,
 } from "@/components/ui/icons";
 import { Stars } from "@/components/ui/stars";
 import { getLibraryFilms, type LibraryFilm } from "@/lib/catalog";
 import { getRecommendations, getTrending } from "@/lib/recs-server";
-import { tmdbImage } from "@/lib/tmdb";
+import { selectTmdbTrailer, tmdbImage } from "@/lib/tmdb";
+import { getTmdbVideos } from "@/lib/tmdb-server";
 import styles from "./home.module.css";
 
 export const dynamic = "force-dynamic";
@@ -31,60 +36,6 @@ const genreFallback = [
   "Thriller",
 ];
 
-const reviewerProfiles = [
-  {
-    name: "Ethan Cole",
-    initials: "EC",
-    time: "2d ago",
-    likes: 128,
-    fallback:
-      "A breathtaking experience from start to finish, with confident craft and a finale that lands beautifully.",
-  },
-  {
-    name: "Maya Patel",
-    initials: "MP",
-    time: "3d ago",
-    likes: 96,
-    fallback:
-      "Slow in parts, but the world-building and performances make this an unforgettable experience.",
-  },
-  {
-    name: "Lucas Meyer",
-    initials: "LM",
-    time: "4d ago",
-    likes: 77,
-    fallback:
-      "Bold, immersive, and emotionally resonant. One of the year's most rewarding watches.",
-  },
-  {
-    name: "Isabella Tran",
-    initials: "IT",
-    time: "5d ago",
-    likes: 64,
-    fallback:
-      "Stunning visuals and sound design that demand to be experienced on the biggest screen possible.",
-  },
-];
-
-const critics = [
-  { name: "Ethan Cole", initials: "EC", score: 4.8 },
-  { name: "Maya Patel", initials: "MP", score: 4.5 },
-  { name: "Lucas Meyer", initials: "LM", score: 4.5 },
-  { name: "Isabella Tran", initials: "IT", score: 4.0 },
-  { name: "James Whitman", initials: "JW", score: 3.9 },
-];
-
-type HomePoster = {
-  key: string;
-  title: string;
-  posterPath: string;
-  rating: number;
-  href: string;
-  external?: boolean;
-  reason?: string;
-  badge?: string;
-};
-
 export default async function Home() {
   const [films, recommendations, trending] = await Promise.all([
     getLibraryFilms(),
@@ -95,8 +46,37 @@ export default async function Home() {
     ({ status }) => status === "watched" || status === "to_rewatch",
   );
   const rated = mostRecent(watched.filter(({ overall }) => overall !== null));
-  const featured = rated[0] ?? mostRecent(watched)[0] ?? films[0];
+  const featuredFilms = uniqueFilms([...rated, ...mostRecent(watched), ...films]).slice(
+    0,
+    4,
+  );
+  const featured = featuredFilms[0];
+  const heroFilms: HeroFilm[] = await Promise.all(
+    featuredFilms.map(async (film) => {
+      const trailer = film.tmdbId
+        ? await getTmdbVideos(film.tmdbId)
+            .then(selectTmdbTrailer)
+            .catch(() => null)
+        : null;
+      return {
+        id: film.id,
+        title: film.title,
+        releaseYear: film.releaseYear,
+        status: film.status,
+        genres: uniqueGenres(film).map(normalizeGenre),
+        runtime: film.runtime,
+        overview:
+          film.overview?.trim() ||
+          film.notes.trim() ||
+          "A standout selection from your personal film library, ready to revisit and rate.",
+        backdropPath: film.backdropPath,
+        score: scoreOutOfFive(film.overall),
+        trailerKey: trailer?.key ?? null,
+      };
+    }),
+  );
   const recentRatings = rated.slice(0, 3);
+  const recentNotes = rated.filter(({ notes }) => notes.trim()).slice(0, 4);
   const libraryPosters = [...films]
     .filter(({ id, posterPath }) => posterPath && id !== featured?.id)
     .sort(
@@ -109,13 +89,12 @@ export default async function Home() {
     trending?.available && trending.items.length
       ? trending.items.slice(0, 8).map((item) => ({
           key: `tmdb-${item.tmdbId}`,
+          tmdbId: item.tmdbId,
+          libraryFilmId: item.libraryFilmId,
           title: item.title,
+          year: item.year,
           posterPath: item.posterPath,
           rating: item.rating,
-          href: item.libraryFilmId
-            ? `/films/${item.libraryFilmId}`
-            : `https://www.themoviedb.org/movie/${item.tmdbId}`,
-          external: item.libraryFilmId === null,
           badge: item.badge,
         }))
       : libraryPosters.map(libraryPoster);
@@ -123,13 +102,12 @@ export default async function Home() {
     recommendations?.available && recommendations.items.length
       ? recommendations.items.map((item) => ({
           key: `recommendation-${item.tmdbId}`,
+          tmdbId: item.tmdbId,
+          libraryFilmId: item.libraryFilmId,
           title: item.title,
+          year: item.year,
           posterPath: item.posterPath!,
           rating: Math.max(0, Math.min(5, item.voteAverage / 2)),
-          href: item.libraryFilmId
-            ? `/films/${item.libraryFilmId}`
-            : `https://www.themoviedb.org/movie/${item.tmdbId}`,
-          external: item.libraryFilmId === null,
           reason: item.reasons[0],
           badge: item.isWatchlist ? "From your watchlist" : undefined,
         }))
@@ -145,15 +123,11 @@ export default async function Home() {
     <PageShell>
       <div className={styles.homeGrid}>
         <div className={styles.mainColumn}>
-          {featured ? <Hero film={featured} /> : <EmptyHero />}
+          {heroFilms.length ? <HeroCarousel films={heroFilms} /> : <EmptyHero />}
 
           <section className={styles.trendingSection}>
-            <SectionHeading title="Trending Now" href="/library" />
-            <div className={styles.posterRail}>
-              {trendingPosters.map((item) => (
-                <PosterCard key={item.key} item={item} />
-              ))}
-            </div>
+            <SectionHeading title="Trending Now" href="/trending" />
+            <PosterRail items={trendingPosters} />
           </section>
 
           {recommendedPosters.length ? (
@@ -164,148 +138,58 @@ export default async function Home() {
                     ? "Popular Right Now"
                     : "Recommended For You"
                 }
-                href="/library"
+                href="/recommendations"
               />
-              <div className={styles.posterRail}>
-                {recommendedPosters.map((item) => (
-                  <PosterCard key={item.key} item={item} showMeta />
-                ))}
-              </div>
+              <PosterRail items={recommendedPosters} showMeta />
             </section>
           ) : null}
 
           <section className={styles.reviewsSection}>
-            <SectionHeading title="Popular Reviews" href="/library" />
-            <div className={styles.reviewGrid}>
-              {reviewerProfiles.map((profile, index) => {
-                const film = rated[index];
-                const rating = film
-                  ? scoreOutOfFive(film.overall)
-                  : 4.5 - index * 0.15;
-                return (
-                  <article className={styles.reviewCard} key={profile.name}>
-                    <div className={styles.reviewHeader}>
-                      <Avatar initials={profile.initials} index={index} />
-                      <div className={styles.reviewIdentity}>
-                        <span>
-                          {profile.name}
-                          <VerifiedIcon className={styles.verifiedIcon} />
-                        </span>
-                        <Stars value={rating} className={styles.reviewStars} />
+            <SectionHeading
+              title="Your Recent Notes"
+              href="/library?status=rated&sort=lastWatchDate&dir=desc"
+            />
+            {recentNotes.length ? (
+              <div className={styles.reviewGrid}>
+                {recentNotes.map((film, index) => (
+                  <Link
+                    href={`/films/${film.id}`}
+                    className={styles.reviewCard}
+                    key={film.id}
+                  >
+                    <article>
+                      <div className={styles.reviewHeader}>
+                        <Avatar initials={titleInitials(film.title)} index={index} />
+                        <div className={styles.reviewIdentity}>
+                          <span>{film.title}</span>
+                          <Stars
+                            value={scoreOutOfFive(film.overall)}
+                            className={styles.reviewStars}
+                          />
+                        </div>
+                        <time>{relativeWatchDate(film.lastWatchDate)}</time>
                       </div>
-                      <time>
-                        {film
-                          ? relativeWatchDate(film.lastWatchDate)
-                          : profile.time}
-                      </time>
-                    </div>
-                    <p className={styles.reviewText}>
-                      {film?.notes.trim() || profile.fallback}
-                    </p>
-                    <div className={styles.likes}>
-                      <HeartIcon />
-                      <span>{profile.likes}</span>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
+                      <p className={styles.reviewText}>{film.notes.trim()}</p>
+                    </article>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <Link href="/library" className={styles.reviewEmpty}>
+                Add notes when you rate films and your latest reflections will
+                appear here.
+              </Link>
+            )}
           </section>
         </div>
 
         <aside className={styles.sidebar} aria-label="Discover more">
-          <TopCritics />
+          <TopRated films={rated} />
           <Genres genres={genres} />
           <RecentlyReviewed films={recentRatings} />
         </aside>
       </div>
     </PageShell>
-  );
-}
-
-function Hero({ film }: { film: LibraryFilm }) {
-  const backdrop = tmdbImage(film.backdropPath, "original");
-  const score = scoreOutOfFive(film.overall);
-  const distribution = ratingDistribution(score);
-  const genres = uniqueGenres(film).map(normalizeGenre).slice(0, 2).join(", ");
-  const meta = [
-    genres,
-    String(film.releaseYear),
-    formatRuntime(film.runtime),
-    film.releaseYear >= 2000 ? "PG-13" : null,
-  ].filter(Boolean);
-
-  return (
-    <section className={styles.hero} aria-labelledby="featured-title">
-      {backdrop ? (
-        <Image
-          src={backdrop}
-          alt=""
-          fill
-          priority
-          sizes="(max-width: 1100px) 100vw, 75vw"
-          className={styles.heroImage}
-        />
-      ) : null}
-      <div className={styles.heroFallbackBackdrop} />
-      <div className={styles.heroShade} />
-      <div className={styles.heroContent}>
-        <p className={styles.featuredLabel}>Featured</p>
-        <Link href={`/films/${film.id}`}>
-          <h1 id="featured-title">{film.title}</h1>
-        </Link>
-        <p className={styles.heroMeta}>
-          {meta.map((item, index) => (
-            <span key={item}>
-              {index ? <i aria-hidden="true">•</i> : null}
-              {item}
-            </span>
-          ))}
-        </p>
-        <p className={styles.synopsis}>
-          {film.overview?.trim() ||
-            film.notes.trim() ||
-            "A standout selection from your personal film library, ready to revisit and rate."}
-        </p>
-        <p className={styles.attribution}>— Your Reeler library</p>
-        <div className={styles.heroActions}>
-          <a
-            href={`https://www.youtube.com/results?search_query=${encodeURIComponent(`${film.title} trailer`)}`}
-            target="_blank"
-            rel="noreferrer"
-            className={styles.primaryAction}
-          >
-            <PlayIcon />
-            Watch Trailer
-          </a>
-          <Link href={`/films/${film.id}`} className={styles.secondaryAction}>
-            <PlusIcon />
-            Add to Watchlist
-          </Link>
-        </div>
-      </div>
-
-      <ScorePanel score={score} distribution={distribution} />
-
-      <button
-        className={`${styles.carouselArrow} ${styles.arrowLeft}`}
-        aria-label="Previous featured film"
-      >
-        <ChevronLeftIcon />
-      </button>
-      <button
-        className={`${styles.carouselArrow} ${styles.arrowRight}`}
-        aria-label="Next featured film"
-      >
-        <ChevronRightIcon />
-      </button>
-      <div className={styles.carouselDots} aria-label="Featured film 1 of 4">
-        <span className={styles.activeDot} />
-        <span />
-        <span />
-        <span />
-      </div>
-    </section>
   );
 }
 
@@ -328,138 +212,50 @@ function EmptyHero() {
   );
 }
 
-function ScorePanel({
-  score,
-  distribution,
-}: {
-  score: number;
-  distribution: number[];
-}) {
-  const angle = Math.max(0, Math.min(360, (score / 5) * 360));
-  const totalRatings = Math.max(1, Math.round(12432 * (score / 4.6 || 0.08)));
-  return (
-    <div className={styles.scorePanel}>
-      <div
-        className={styles.scoreRing}
-        style={{
-          background: `conic-gradient(var(--color-accent-400) ${angle}deg, #303234 ${angle}deg)`,
-        }}
-      >
-        <div>
-          <strong>{score.toFixed(1)}</strong>
-        </div>
-      </div>
-      <p className={styles.scoreLabel}>Reeler Score</p>
-      <p className={styles.verdict}>{scoreVerdict(score)}</p>
-      <Stars value={score} className={styles.heroStars} />
-      <p className={styles.ratingCount}>
-        Based on {totalRatings.toLocaleString()} ratings
-      </p>
-      <div className={styles.histogram}>
-        {distribution.map((percentage, index) => {
-          const rating = 5 - index;
-          return (
-            <div className={styles.histogramRow} key={rating}>
-              <span>{rating}</span>
-              <span className={styles.smallStar}>★</span>
-              <span className={styles.track}>
-                <span style={{ width: `${percentage}%` }} />
-              </span>
-              <span>{percentage}%</span>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-function PosterCard({
-  item,
-  showMeta = false,
-}: {
-  item: HomePoster;
-  showMeta?: boolean;
-}) {
-  const content = (
-    <>
-      <Image
-        src={tmdbImage(item.posterPath, "w342")!}
-        alt={`${item.title} poster`}
-        fill
-        sizes="(max-width: 900px) 140px, 12vw"
-        className={styles.posterImage}
-      />
-      <span className={styles.posterShade} />
-      {item.badge && !showMeta ? (
-        <span className={styles.posterBadge}>{item.badge}</span>
-      ) : null}
-      <span className={styles.posterScore}>
-        <b aria-hidden="true">★</b>
-        {item.rating.toFixed(1)}
-      </span>
-    </>
-  );
-  return (
-    <div className={styles.posterItem}>
-      {item.external ? (
-        <a
-          href={item.href}
-          target="_blank"
-          rel="noreferrer"
-          className={styles.posterCard}
-          aria-label={`View ${item.title} on TMDB`}
-        >
-          {content}
-        </a>
-      ) : (
-        <Link
-          href={item.href}
-          className={styles.posterCard}
-          aria-label={`Open ${item.title}`}
-        >
-          {content}
-        </Link>
-      )}
-      {showMeta ? (
-        <div className={styles.posterMeta}>
-          {item.badge ? (
-            <span className={styles.posterMetaBadge}>{item.badge}</span>
-          ) : null}
-          {item.reason ? <p>{item.reason}</p> : null}
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
 function libraryPoster(film: LibraryFilm): HomePoster {
   return {
     key: `library-${film.id}`,
+    tmdbId: film.tmdbId,
+    libraryFilmId: film.id,
     title: film.title,
+    year: film.releaseYear,
     posterPath: film.posterPath!,
     rating: scoreOutOfFive(film.overall),
-    href: `/films/${film.id}`,
   };
 }
 
-function TopCritics() {
+function TopRated({ films }: { films: LibraryFilm[] }) {
+  const top = [...films]
+    .sort(
+      (left, right) =>
+        (right.overall ?? 0) - (left.overall ?? 0) ||
+        left.title.localeCompare(right.title),
+    )
+    .slice(0, 5);
   return (
     <section className={`${styles.sidePanel} ${styles.criticsPanel}`}>
-      <PanelHeading title="Top Critics" href="/library" />
+      <PanelHeading
+        title="Top Rated"
+        href="/library?status=rated&sort=overall&dir=desc"
+      />
       <div className={styles.criticList}>
-        {critics.map((critic, index) => (
-          <div className={styles.criticRow} key={critic.name}>
-            <Avatar initials={critic.initials} index={index} />
-            <span className={styles.criticName}>
-              {critic.name}
-              <VerifiedIcon className={styles.verifiedIcon} />
-            </span>
-            <span className={styles.criticScore}>
-              {critic.score.toFixed(1)}
-            </span>
-          </div>
-        ))}
+        {top.length ? (
+          top.map((film, index) => (
+            <Link
+              href={`/films/${film.id}`}
+              className={styles.criticRow}
+              key={film.id}
+            >
+              <FilmThumb film={film} index={index} />
+              <span className={styles.criticName}>{film.title}</span>
+              <span className={styles.criticScore}>
+                {scoreOutOfFive(film.overall).toFixed(1)}
+              </span>
+            </Link>
+          ))
+        ) : (
+          <p className={styles.recentEmpty}>Rated films will appear here.</p>
+        )}
       </div>
     </section>
   );
@@ -526,7 +322,7 @@ function RecentlyReviewed({ films }: { films: LibraryFilm[] }) {
           <p className={styles.recentEmpty}>Rated films will appear here.</p>
         )}
       </div>
-      <Link href="/library" className={styles.panelFooterLink}>
+      <Link href="/dashboard" className={styles.panelFooterLink}>
         View all activity
       </Link>
     </section>
@@ -573,6 +369,38 @@ function mostRecent(films: LibraryFilm[]) {
   );
 }
 
+function FilmThumb({ film, index }: { film: LibraryFilm; index: number }) {
+  return (
+    <span className={styles.profileAvatar} data-tone={index % 5}>
+      {film.posterPath ? (
+        <Image
+          src={tmdbImage(film.posterPath, "w185")!}
+          alt=""
+          fill
+          sizes="34px"
+          className="object-cover"
+        />
+      ) : (
+        titleInitials(film.title)
+      )}
+    </span>
+  );
+}
+
+function titleInitials(title: string) {
+  return title
+    .split(/\s+/)
+    .filter((word) => !/^(a|an|the)$/i.test(word))
+    .map((word) => word[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+}
+
+function uniqueFilms(films: LibraryFilm[]) {
+  return [...new Map(films.map((film) => [film.id, film])).values()];
+}
+
 function uniqueGenres(film: LibraryFilm) {
   return [
     ...new Set(
@@ -608,25 +436,6 @@ function topGenres(films: LibraryFilm[], limit: number) {
 
 function scoreOutOfFive(score: number | null) {
   return Math.max(0, Math.min(5, (score ?? 0) / 2));
-}
-
-function scoreVerdict(score: number) {
-  if (score >= 4.5) return "Great";
-  if (score >= 4) return "Very Good";
-  if (score >= 3) return "Good";
-  if (score >= 2) return "Mixed";
-  return "Not Rated";
-}
-
-function ratingDistribution(score: number) {
-  if (score >= 4.4) return [66, 22, 8, 3, 1];
-  const weights = [5, 4, 3, 2, 1].map((rating) =>
-    Math.exp(-Math.pow(rating - score, 2) / 0.72),
-  );
-  const total = weights.reduce((sum, weight) => sum + weight, 0);
-  const values = weights.map((weight) => Math.round((weight / total) * 100));
-  values[0] += 100 - values.reduce((sum, value) => sum + value, 0);
-  return values;
 }
 
 function formatRuntime(runtime: number | null) {
