@@ -98,6 +98,7 @@ export function RatingEditor({
         enabled: true,
       };
       return (
+        !isDisplayElement(question) &&
         question.required &&
         state.visible &&
         state.enabled &&
@@ -191,6 +192,7 @@ export function RatingEditor({
         </header>
         <div className="bg-hairline grid gap-px sm:grid-cols-2 lg:grid-cols-4">
           {ratedForm.questions.map((question) => {
+            if (isDisplayElement(question)) return null;
             const selected = tags.filter(
               (tag) =>
                 tag.questionKey === question.key &&
@@ -245,6 +247,9 @@ export function RatingEditor({
             <h3 className="type-label text-paper-500 tracking-widest uppercase">
               {section.title}
             </h3>
+            {section.description ? (
+              <Markdown className="mt-1">{section.description}</Markdown>
+            ) : null}
           </div>
           <div className="divide-hairline divide-y">
             {section.questions.map((question) => {
@@ -253,6 +258,20 @@ export function RatingEditor({
                 enabled: true,
               };
               if (!state.visible) return null;
+              if (isDisplayElement(question))
+                return (
+                  <div
+                    key={question.id}
+                    className={`px-5 py-5 sm:px-7 ${state.enabled ? "" : "opacity-50"}`}
+                  >
+                    <QuestionRenderer
+                      question={question}
+                      value={undefined}
+                      disabled={!state.enabled}
+                      onChange={() => undefined}
+                    />
+                  </div>
+                );
               const scopedTags = tags.filter(
                 (tag) => tag.questionKey === question.key,
               );
@@ -379,18 +398,26 @@ function answersForPublishedForm(
   initial: AnswerMap,
 ) {
   return Object.fromEntries(
-    published.questions.map((question) => {
-      const previous = rated?.questions.find(({ key }) => key === question.key);
-      const previousAnswer = previous ? initial[previous.id] : undefined;
-      if (previousAnswer) return [question.id, { ...previousAnswer }];
-      if (question.type === "slider") {
-        const min = question.min ?? 0;
-        const max = question.max ?? 100;
-        return [question.id, { number: Math.max(min, Math.min(max, 50)) }];
-      }
-      return [question.id, undefined];
-    }),
+    published.questions
+      .filter((question) => !isDisplayElement(question))
+      .map((question) => {
+        const previous = rated?.questions.find(
+          ({ key }) => key === question.key,
+        );
+        const previousAnswer = previous ? initial[previous.id] : undefined;
+        if (previousAnswer) return [question.id, { ...previousAnswer }];
+        if (question.type === "slider") {
+          const min = question.min ?? 0;
+          const max = question.max ?? 100;
+          return [question.id, { number: Math.max(min, Math.min(max, 50)) }];
+        }
+        return [question.id, undefined];
+      }),
   );
+}
+
+function isDisplayElement(question: RuntimeQuestionConfig) {
+  return question.type === "title" || question.type === "divider";
 }
 
 function answerPresent(answer: AnswerValue | undefined) {
@@ -442,6 +469,7 @@ function formSections(form: RuntimeFormConfig) {
         {
           id: 0,
           title: "Other",
+          description: "",
           sortOrder: Number.MAX_SAFE_INTEGER,
           questions: unsectioned,
         },
@@ -475,9 +503,7 @@ function ScoreReadout({
 }) {
   return (
     <div>
-      <p className="type-label text-paper-500 uppercase">
-        {label}
-      </p>
+      <p className="type-label text-paper-500 uppercase">{label}</p>
       <p
         className={
           large

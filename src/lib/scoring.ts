@@ -1,8 +1,4 @@
-import type {
-  BlankPolicy,
-  ConditionOperator,
-  QuestionType,
-} from "@/db/schema";
+import type { BlankPolicy, ConditionOperator, QuestionType } from "@/db/schema";
 
 export const scoreAttributes = [
   "story",
@@ -104,12 +100,7 @@ export type QuestionContribution = {
   points: number;
   maxPoints: number;
   counted: boolean;
-  reason?:
-    | "na"
-    | "null_option"
-    | "blank"
-    | "suppressed"
-    | "unscored";
+  reason?: "na" | "null_option" | "blank" | "suppressed" | "unscored";
 };
 
 type ConditionState = { visible: boolean; enabled: boolean };
@@ -117,9 +108,9 @@ type ConditionState = { visible: boolean; enabled: boolean };
 function answerIsPresent(answer: AnswerValue | undefined) {
   return Boolean(
     answer?.isNa ||
-      answer?.number != null ||
-      (answer?.text != null && answer.text.trim().length > 0) ||
-      (answer?.optionIds != null && answer.optionIds.length > 0),
+    answer?.number != null ||
+    (answer?.text != null && answer.text.trim().length > 0) ||
+    (answer?.optionIds != null && answer.optionIds.length > 0),
   );
 }
 
@@ -283,6 +274,8 @@ function maximumPoints(question: QuestionConfig) {
       return optionMaximum(question);
     case "short_text":
     case "paragraph":
+    case "title":
+    case "divider":
       return 0;
   }
 }
@@ -295,7 +288,12 @@ function answeredScore(
     return { value: answer?.number ?? null };
   }
 
-  if (question.type === "short_text" || question.type === "paragraph") {
+  if (
+    question.type === "short_text" ||
+    question.type === "paragraph" ||
+    question.type === "title" ||
+    question.type === "divider"
+  ) {
     return { value: null };
   }
 

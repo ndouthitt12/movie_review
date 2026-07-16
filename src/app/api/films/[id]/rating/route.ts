@@ -51,7 +51,9 @@ export async function PUT(
       { error: "The published rating form changed. Reload before saving." },
       { status: 409 },
     );
-  const questionById = new Map(form.questions.map((question) => [question.id, question]));
+  const questionById = new Map(
+    form.questions.map((question) => [question.id, question]),
+  );
   const answerMap: AnswerMap = Object.fromEntries(
     parsed.data.answers.map((answer) => [
       answer.questionId,
@@ -70,6 +72,13 @@ export async function PUT(
         { error: `Question ${answer.questionId} is not part of this form.` },
         { status: 400 },
       );
+    if (question.type === "title" || question.type === "divider")
+      return NextResponse.json(
+        {
+          error: `${question.label} is a display element and cannot be answered.`,
+        },
+        { status: 400 },
+      );
     const error = validateAnswer(question, answer);
     if (error) return NextResponse.json({ error }, { status: 400 });
   }
@@ -77,6 +86,8 @@ export async function PUT(
   const missing = form.questions.filter((question) => {
     const state = states[question.id] ?? { visible: true, enabled: true };
     return (
+      question.type !== "title" &&
+      question.type !== "divider" &&
       question.required &&
       state.visible &&
       state.enabled &&
@@ -85,7 +96,9 @@ export async function PUT(
   });
   if (missing.length)
     return NextResponse.json(
-      { error: `Answer required: ${missing.map(({ label }) => label).join(", ")}.` },
+      {
+        error: `Answer required: ${missing.map(({ label }) => label).join(", ")}.`,
+      },
       { status: 400 },
     );
 
@@ -119,18 +132,18 @@ export async function PUT(
   await db.transaction(async (tx) => {
     await tx.delete(answers).where(eq(answers.filmId, id));
     if (parsed.data.answers.length)
-      await tx.insert(answers)
-        .values(
-          parsed.data.answers.map((answer) => ({
-            filmId: id,
-            questionId: answer.questionId,
-            valueNumber: answer.valueNumber ?? null,
-            valueText: answer.valueText ?? null,
-            valueOptionIds: answer.valueOptionIds ?? null,
-            isNa: answer.isNa,
-          })),
-        );
-    await tx.insert(ratings)
+      await tx.insert(answers).values(
+        parsed.data.answers.map((answer) => ({
+          filmId: id,
+          questionId: answer.questionId,
+          valueNumber: answer.valueNumber ?? null,
+          valueText: answer.valueText ?? null,
+          valueOptionIds: answer.valueOptionIds ?? null,
+          isNa: answer.isNa,
+        })),
+      );
+    await tx
+      .insert(ratings)
       .values({
         filmId: id,
         formVersionId: form.id,
@@ -154,10 +167,13 @@ export async function PUT(
         .values(uniqueRcaTagIds.map((rcaTagId) => ({ filmId: id, rcaTagId })));
     if (film.status === "to_watch" && parsed.data.promoteToWatched) {
       const watchedOn = parsed.data.watchedOn!;
-      await tx.update(films)
+      await tx
+        .update(films)
         .set({ status: "watched", lastWatchDate: watchedOn, updatedAt: now })
         .where(eq(films.id, id));
-      await tx.insert(watchLog).values({ filmId: id, watchedOn, isRewatch: false });
+      await tx
+        .insert(watchLog)
+        .values({ filmId: id, watchedOn, isRewatch: false });
     }
   });
   invalidateRecommendations();
@@ -205,9 +221,9 @@ function validateAnswer(question: RuntimeQuestionConfig, answer: ParsedAnswer) {
 function answerPresent(answer: AnswerMap[number]) {
   return Boolean(
     answer?.isNa ||
-      answer?.number != null ||
-      (answer?.text != null && answer.text.trim()) ||
-      answer?.optionIds?.length,
+    answer?.number != null ||
+    (answer?.text != null && answer.text.trim()) ||
+    answer?.optionIds?.length,
   );
 }
 
@@ -216,10 +232,8 @@ function secondaryScore(
   answerMap: AnswerMap,
 ) {
   try {
-    return computeOverallFromForm(
-      getSecondaryFormConfig(form),
-      answerMap,
-    ).overall;
+    return computeOverallFromForm(getSecondaryFormConfig(form), answerMap)
+      .overall;
   } catch {
     return null;
   }

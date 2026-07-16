@@ -36,6 +36,8 @@ export const questionTypes = [
   "multi_select",
   "multiple_choice",
   "integer",
+  "title",
+  "divider",
 ] as const;
 export const conditionOperators = [
   "equals",
@@ -173,6 +175,7 @@ export const formSections = pgTable(
       .notNull()
       .references(() => formVersions.id, { onDelete: "cascade" }),
     title: text("title").notNull(),
+    description: text("description").notNull().default(""),
     sortOrder: integer("sort_order").notNull(),
   },
   (table) => [
@@ -201,9 +204,7 @@ export const questions = pgTable(
     required: boolean("required").notNull().default(true),
     scored: boolean("scored").notNull().default(false),
     weight: real("weight"),
-    secondaryScored: boolean("secondary_scored")
-      .notNull()
-      .default(false),
+    secondaryScored: boolean("secondary_scored").notNull().default(false),
     secondaryWeight: real("secondary_weight"),
     min: real("min"),
     max: real("max"),
@@ -224,9 +225,7 @@ export const questions = pgTable(
     conditionLogic: text("condition_logic", { enum: conditionLogics })
       .notNull()
       .default("all"),
-    rcaEnabled: boolean("rca_enabled")
-      .notNull()
-      .default(false),
+    rcaEnabled: boolean("rca_enabled").notNull().default(false),
     archivedAt: text("archived_at"),
   },
   (table) => [
@@ -295,9 +294,7 @@ export const answers = pgTable(
       .references(() => questions.id, { onDelete: "cascade" }),
     valueNumber: real("value_number"),
     valueText: text("value_text"),
-    valueOptionIds: jsonb("value_option_ids").$type<
-      number[]
-    >(),
+    valueOptionIds: jsonb("value_option_ids").$type<number[]>(),
     isNa: boolean("is_na").notNull().default(false),
   },
   (table) => [
@@ -346,9 +343,7 @@ export const watchLog = pgTable(
       .notNull()
       .references(() => films.id, { onDelete: "cascade" }),
     watchedOn: text("watched_on").notNull(),
-    isRewatch: boolean("is_rewatch")
-      .notNull()
-      .default(false),
+    isRewatch: boolean("is_rewatch").notNull().default(false),
   },
   (table) => [
     index("watch_log_film_idx").on(table.filmId),
@@ -392,9 +387,7 @@ export const filmRcaTags = pgTable(
 
 export const settings = pgTable("settings", {
   id: integer("id").primaryKey(),
-  weights: jsonb("weights")
-    .$type<Record<string, number>>()
-    .notNull(),
+  weights: jsonb("weights").$type<Record<string, number>>().notNull(),
   rubric: jsonb("rubric")
     .$type<Array<{ score: number; meaning: string; examples: string[] }>>()
     .notNull(),

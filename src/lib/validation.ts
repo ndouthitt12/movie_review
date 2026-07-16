@@ -127,11 +127,27 @@ export const questionSchema = z
       });
     }
   })
-  .transform((question) =>
-    question.type === "slider"
-      ? { ...question, min: question.min ?? 0, max: question.max ?? 100 }
-      : question,
-  );
+  .transform((question) => {
+    if (question.type === "slider")
+      return { ...question, min: question.min ?? 0, max: question.max ?? 100 };
+    if (question.type === "title" || question.type === "divider")
+      return {
+        ...question,
+        required: false,
+        scored: false,
+        weight: null,
+        secondaryScored: false,
+        secondaryWeight: null,
+        min: null,
+        max: null,
+        offset: 0,
+        secondaryOffset: 0,
+        multiSelectScoring: null,
+        allowNa: false,
+        rcaEnabled: false,
+      };
+    return question;
+  });
 
 export const questionOptionSchema = z
   .object({

@@ -41,6 +41,34 @@ describe("form configuration validation", () => {
     ).toBe(false);
   });
 
+  it("normalizes display elements so they never collect or score answers", () => {
+    const parsed = questionSchema.parse({
+      ...baseQuestion,
+      type: "title",
+      required: true,
+      scored: true,
+      weight: 5,
+      secondaryScored: true,
+      secondaryWeight: 2,
+      allowNa: true,
+      rcaEnabled: true,
+      min: 0,
+      max: 100,
+    });
+    expect(parsed).toMatchObject({
+      type: "title",
+      required: false,
+      scored: false,
+      weight: null,
+      secondaryScored: false,
+      secondaryWeight: null,
+      allowNa: false,
+      rcaEnabled: false,
+      min: null,
+      max: null,
+    });
+  });
+
   it("requires scores for active non-null options of scored parents", () => {
     expect(
       questionOptionSchema.safeParse({

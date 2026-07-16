@@ -9,7 +9,10 @@ import {
 } from "@/db/schema";
 import type { FormConfig, QuestionConfig } from "./scoring";
 
-export type RuntimeQuestionConfig = Omit<QuestionConfig, "options" | "conditions"> & {
+export type RuntimeQuestionConfig = Omit<
+  QuestionConfig,
+  "options" | "conditions"
+> & {
   label: string;
   helpText: string;
   sectionId: number | null;
@@ -33,7 +36,12 @@ export type RuntimeFormConfig = Omit<FormConfig, "questions"> & {
   publishedAt: string | null;
   secondaryDivisorMode: "auto" | "manual";
   secondaryManualDivisor: number | null;
-  sections: Array<{ id: number; title: string; sortOrder: number }>;
+  sections: Array<{
+    id: number;
+    title: string;
+    description: string;
+    sortOrder: number;
+  }>;
   questions: RuntimeQuestionConfig[];
 };
 
@@ -93,6 +101,7 @@ async function assembleForm(
     sections: sectionRows.map((section) => ({
       id: section.id,
       title: section.title,
+      description: section.description,
       sortOrder: section.sortOrder,
     })),
     questions: questionRows.map((question) => ({

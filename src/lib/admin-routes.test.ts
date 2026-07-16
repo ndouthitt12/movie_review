@@ -555,6 +555,211 @@ describe("admin form workflow", () => {
       ),
     ).toBe(true);
   });
+
+  it("manages sections and display elements without changing rating answers", async () => {
+    let response = await change({
+      action: "add_section",
+      data: { title: "Editorial", description: "Builder notes" },
+    });
+    expect(response.status).toBe(200);
+    let body = (await response.json()) as {
+      form: {
+        id: number;
+        sections: Array<{
+          id: number;
+          title: string;
+          description: string;
+          sortOrder: number;
+        }>;
+        questions: Array<{
+          id: number;
+          key: string;
+          label: string;
+          type: string;
+          sectionId: number | null;
+          required: boolean;
+          scored: boolean;
+          secondaryScored: boolean;
+          min: number | null;
+          options: Array<{ id: number }>;
+        }>;
+      };
+    };
+    const section = body.form.sections.find(
+      ({ title }) => title === "Editorial",
+    )!;
+
+    response = await change({
+      action: "update_section",
+      sectionId: section.id,
+      data: { title: "Editorial flow", description: "Optional context" },
+    });
+    expect(response.status).toBe(200);
+    body = await response.json();
+    expect(
+      body.form.sections.find(({ id }) => id === section.id),
+    ).toMatchObject({
+      title: "Editorial flow",
+      description: "Optional context",
+    });
+
+    response = await change({
+      action: "reorder_sections",
+      orderedIds: body.form.sections.map(({ id }) => id).reverse(),
+    });
+    expect(response.status).toBe(200);
+    body = await response.json();
+    expect(body.form.sections[0]!.id).toBe(section.id);
+
+    await change({
+      action: "add_question",
+      data: {
+        key: "editorial_heading",
+        label: "Editorial context",
+        type: "title",
+        sectionId: section.id,
+        required: true,
+        scored: true,
+        weight: 99,
+      },
+    });
+    response = await change({
+      action: "add_question",
+      data: {
+        key: "editorial_divider",
+        label: "Editorial divider",
+        type: "divider",
+        sectionId: null,
+      },
+    });
+    body = await response.json();
+    const title = body.form.questions.find(
+      ({ key }) => key === "editorial_heading",
+    )!;
+    const divider = body.form.questions.find(
+      ({ key }) => key === "editorial_divider",
+    )!;
+    expect(title).toMatchObject({
+      required: false,
+      scored: false,
+      secondaryScored: false,
+    });
+    const source = body.form.questions.find(
+      (question) => question.type !== "title" && question.type !== "divider",
+    )!;
+
+    response = await change({
+      action: "add_condition",
+      questionId: title.id,
+      data: {
+        sourceQuestionId: source.id,
+        operator: "equals",
+        value: source.options[0]?.id ?? source.min ?? 0,
+        effect: "show",
+      },
+    });
+    expect(response.status).toBe(200);
+    response = await change({
+      action: "add_condition",
+      questionId: divider.id,
+      data: {
+        sourceQuestionId: title.id,
+        operator: "answered",
+        value: null,
+        effect: "show",
+      },
+    });
+    expect(response.status).toBe(400);
+    expect((await response.json()) as { error: string }).toMatchObject({
+      error: expect.stringContaining("display element"),
+    });
+
+    response = await change({
+      action: "reorder",
+      orderedIds: body.form.questions.map(({ id }) => id),
+      moved: { questionId: divider.id, sectionId: section.id },
+    });
+    expect(response.status).toBe(200);
+    body = await response.json();
+    expect(
+      body.form.questions.find(({ id }) => id === divider.id)?.sectionId,
+    ).toBe(section.id);
+
+    response = await change({
+      action: "archive_section",
+      sectionId: section.id,
+    });
+    expect(response.status).toBe(200);
+    body = await response.json();
+    expect(body.form.sections.some(({ id }) => id === section.id)).toBe(false);
+    expect(
+      body.form.questions
+        .filter(({ id }) => id === title.id || id === divider.id)
+        .every(({ sectionId }) => sectionId == null),
+    ).toBe(true);
+
+    const publishedResponse = await publish();
+    expect(publishedResponse.status).toBe(200);
+    const published = (await publishedResponse.json()) as typeof body;
+    const publishedTitle = published.form.questions.find(
+      ({ key }) => key === "editorial_heading",
+    )!;
+    const createdFilm = await createFilm(
+      jsonRequest("http://test/api/films", "POST", {
+        tmdbId: 777001,
+        title: "Display Element Test",
+        releaseYear: 2026,
+        status: "watched",
+        tmdbGenres: [],
+      }),
+    );
+    const film = (await createdFilm.json()) as { id: number };
+
+    const rejectedDisplayAnswer = await saveRating(
+      jsonRequest(`http://test/api/films/${film.id}/rating`, "PUT", {
+        formVersionId: published.form.id,
+        answers: [
+          { questionId: publishedTitle.id, valueText: "not an answer" },
+        ],
+        rcaTagIds: [],
+      }),
+      { params: Promise.resolve({ id: String(film.id) }) },
+    );
+    expect(rejectedDisplayAnswer.status).toBe(400);
+
+    const ratingAnswers = published.form.questions.flatMap<RouteAnswer>(
+      (question) => {
+        if (question.type === "title" || question.type === "divider") return [];
+        if (question.type === "short_text" || question.type === "paragraph")
+          return [
+            { questionId: question.id, valueText: "A considered answer" },
+          ];
+        if (
+          question.type === "dropdown" ||
+          question.type === "multiple_choice" ||
+          question.type === "multi_select"
+        )
+          return question.options[0]
+            ? [
+                {
+                  questionId: question.id,
+                  valueOptionIds: [question.options[0].id],
+                },
+              ]
+            : [];
+        return [{ questionId: question.id, valueNumber: question.min ?? 50 }];
+      },
+    );
+    const rated = await saveRating(
+      jsonRequest(`http://test/api/films/${film.id}/rating`, "PUT", {
+        formVersionId: published.form.id,
+        answers: ratingAnswers,
+        rcaTagIds: [],
+      }),
+      { params: Promise.resolve({ id: String(film.id) }) },
+    );
+    expect(rated.status).toBe(200);
+  });
 });
 
 function change(body: Record<string, unknown>) {

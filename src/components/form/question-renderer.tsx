@@ -7,6 +7,7 @@ import { MultipleChoice } from "./multiple-choice";
 import { Paragraph } from "./paragraph";
 import { ShortText } from "./short-text";
 import { Slider } from "./slider";
+import { Markdown } from "@/components/markdown";
 import type { RuntimeQuestionConfig } from "@/lib/form-config";
 import type { AnswerValue } from "@/lib/scoring";
 
@@ -102,6 +103,21 @@ export function QuestionRenderer({
           onChange={(number) => onChange({ number })}
         />
       );
+      break;
+    case "title":
+      input = (
+        <div className="py-1">
+          <h3 className="type-section-heading text-paper-100">
+            {question.label}
+          </h3>
+          {question.helpText ? (
+            <Markdown className="mt-2">{question.helpText}</Markdown>
+          ) : null}
+        </div>
+      );
+      break;
+    case "divider":
+      input = <hr className="border-hairline my-2 border-t" />;
       break;
   }
 
