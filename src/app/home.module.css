@@ -738,22 +738,6 @@
   -webkit-line-clamp: 3;
 }
 
-.likes {
-  position: absolute;
-  right: 13px;
-  bottom: 10px;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  color: #8b8c8d;
-  font-size: 12px;
-}
-
-.likes svg {
-  width: 16px;
-  height: 16px;
-}
-
 .sidebar {
   display: flex;
   min-width: 0;
