@@ -5,7 +5,7 @@ import * as schema from "./schema";
 const connectionString =
   process.env.DATABASE_URL || "postgresql://localhost/movie_ratings";
 const postgresClient = postgres(connectionString, {
-  max: 1,
+  max: 10,
   prepare: false,
   connect_timeout: 10,
   idle_timeout: 20,
