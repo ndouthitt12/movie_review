@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { connection } from "next/server";
 import { AddFilmDialog } from "@/components/library/add-film-dialog";
 import { LibraryView } from "@/components/library/library-view";
 import { PageShell } from "@/components/page-shell";
@@ -41,6 +42,7 @@ export default function LibraryPage() {
 }
 
 async function LibraryContent() {
+  await connection();
   const [films, options, rcaTags] = await Promise.all([
     getLibraryFilms(),
     getCatalogOptions(),

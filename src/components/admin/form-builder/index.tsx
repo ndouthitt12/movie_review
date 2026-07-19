@@ -81,7 +81,8 @@ export function FormBuilder({
     return Boolean(next);
   }
 
-  async function archiveSelected() {
+  async function archiveQuestion(questionId: number) {
+    const selected = form.questions.find(({ id }) => id === questionId);
     if (!selected) return;
     if (
       !window.confirm(
@@ -98,7 +99,7 @@ export function FormBuilder({
     if (next) {
       const replacement =
         next.questions[Math.min(index, next.questions.length - 1)];
-      setSelectedId(replacement?.id ?? null);
+      if (selectedId === selected.id) setSelectedId(replacement?.id ?? null);
       showToast(`Archived “${selected.label}”.`);
     }
   }
@@ -182,6 +183,7 @@ export function FormBuilder({
           onAddQuestion={addQuestion}
           onReorderQuestions={reorderQuestions}
           onReorderSections={reorderSections}
+          onArchiveQuestion={(id) => void archiveQuestion(id)}
           mutate={mutate}
         />
 
@@ -194,7 +196,7 @@ export function FormBuilder({
               updateQuestion={updateQuestion}
               flushQuestion={flushQuestion}
               mutate={mutate}
-              onArchive={() => void archiveSelected()}
+              onArchive={() => void archiveQuestion(selected.id)}
             />
           ) : (
             <section className="panel text-paper-500 flex min-h-64 items-center justify-center p-8 text-center text-sm">

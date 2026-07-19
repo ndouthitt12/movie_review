@@ -1,8 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Button, QuietButton } from "@/components/button";
 import { Input } from "@/components/input";
+import {
+  ChevronDownIcon,
+  ChevronUpIcon,
+  TrashIcon,
+} from "@/components/ui/icons";
 import type {
   RuntimeFormConfig,
   RuntimeQuestionConfig,
@@ -16,6 +21,8 @@ import {
 import type { Mutate } from "./use-form-draft";
 
 type MovedQuestion = { questionId: number; sectionId: number | null };
+const questionDragType = "application/x-form-builder-question";
+const sectionDragType = "application/x-form-builder-section";
 
 export function Outline({
   form,
@@ -24,6 +31,7 @@ export function Outline({
   onAddQuestion,
   onReorderQuestions,
   onReorderSections,
+  onArchiveQuestion,
   mutate,
 }: {
   form: RuntimeFormConfig;
@@ -40,11 +48,14 @@ export function Outline({
     moved: MovedQuestion,
   ) => Promise<void>;
   onReorderSections: (orderedIds: number[]) => Promise<void>;
+  onArchiveQuestion: (id: number) => void;
   mutate: Mutate;
 }) {
   const [draggedQuestion, setDraggedQuestion] = useState<number | null>(null);
   const [draggedSection, setDraggedSection] = useState<number | null>(null);
   const [dropKey, setDropKey] = useState<string | null>(null);
+  const draggedQuestionRef = useRef<number | null>(null);
+  const draggedSectionRef = useRef<number | null>(null);
   const sections = [...form.sections].sort((a, b) => a.sortOrder - b.sortOrder);
   const questions = [...form.questions].sort(
     (a, b) => a.sortOrder - b.sortOrder,
@@ -66,32 +77,31 @@ export function Outline({
     sectionId: number | null,
     beforeId: number | null,
   ) {
-    if (draggedQuestion == null) return;
+    const questionId = draggedQuestionRef.current;
+    if (questionId == null) return;
     const ordered: number[] = [];
     for (const groupId of [...sections.map(({ id }) => id), null]) {
       const group = questions
         .filter(
           (question) =>
-            question.id !== draggedQuestion && question.sectionId === groupId,
+            question.id !== questionId && question.sectionId === groupId,
         )
         .map(({ id }) => id);
       if (groupId === sectionId) {
-        if (beforeId == null) group.push(draggedQuestion);
-        else
-          group.splice(
-            Math.max(0, group.indexOf(beforeId)),
-            0,
-            draggedQuestion,
-          );
+        if (beforeId == null) group.push(questionId);
+        else group.splice(Math.max(0, group.indexOf(beforeId)), 0, questionId);
       }
       ordered.push(...group);
     }
     await onReorderQuestions(ordered, {
-      questionId: draggedQuestion,
+      questionId,
       sectionId,
     });
-    setDraggedQuestion(null);
-    setDropKey(null);
+    if (draggedQuestionRef.current === questionId) {
+      draggedQuestionRef.current = null;
+      setDraggedQuestion(null);
+      setDropKey(null);
+    }
   }
 
   async function moveQuestion(questionId: number, direction: -1 | 1) {
@@ -111,16 +121,19 @@ export function Outline({
   }
 
   async function dropSection(beforeId: number | null) {
-    if (draggedSection == null) return;
+    const sectionId = draggedSectionRef.current;
+    if (sectionId == null) return;
     const ordered = sections
       .map(({ id }) => id)
-      .filter((id) => id !== draggedSection);
-    if (beforeId == null) ordered.push(draggedSection);
-    else
-      ordered.splice(Math.max(0, ordered.indexOf(beforeId)), 0, draggedSection);
+      .filter((id) => id !== sectionId);
+    if (beforeId == null) ordered.push(sectionId);
+    else ordered.splice(Math.max(0, ordered.indexOf(beforeId)), 0, sectionId);
     await onReorderSections(ordered);
-    setDraggedSection(null);
-    setDropKey(null);
+    if (draggedSectionRef.current === sectionId) {
+      draggedSectionRef.current = null;
+      setDraggedSection(null);
+      setDropKey(null);
+    }
   }
 
   async function moveSection(sectionId: number, direction: -1 | 1) {
@@ -159,8 +172,12 @@ export function Outline({
               <SectionHeader
                 section={section}
                 mutate={mutate}
-                onDragStart={() => setDraggedSection(section.id)}
+                onDragStart={() => {
+                  draggedSectionRef.current = section.id;
+                  setDraggedSection(section.id);
+                }}
                 onDragEnd={() => {
+                  draggedSectionRef.current = null;
                   setDraggedSection(null);
                   setDropKey(null);
                 }}
@@ -173,14 +190,20 @@ export function Outline({
                 dropKey={dropKey}
                 dragging={draggedQuestion != null}
                 onSelect={onSelect}
-                onDragStart={setDraggedQuestion}
+                onDragStart={(id) => {
+                  draggedQuestionRef.current = id;
+                  setDraggedQuestion(id);
+                }}
                 onDragEnd={() => {
+                  draggedQuestionRef.current = null;
                   setDraggedQuestion(null);
                   setDropKey(null);
                 }}
                 onDropKey={setDropKey}
                 onDrop={(beforeId) => void dropQuestion(section.id, beforeId)}
                 onMove={(id, direction) => void moveQuestion(id, direction)}
+                onArchive={onArchiveQuestion}
+                visualOrder={visualQuestionIds()}
               />
               <AddQuestionRow
                 sectionId={section.id}
@@ -205,14 +228,20 @@ export function Outline({
               dropKey={dropKey}
               dragging={draggedQuestion != null}
               onSelect={onSelect}
-              onDragStart={setDraggedQuestion}
+              onDragStart={(id) => {
+                draggedQuestionRef.current = id;
+                setDraggedQuestion(id);
+              }}
               onDragEnd={() => {
+                draggedQuestionRef.current = null;
                 setDraggedQuestion(null);
                 setDropKey(null);
               }}
               onDropKey={setDropKey}
               onDrop={(beforeId) => void dropQuestion(null, beforeId)}
               onMove={(id, direction) => void moveQuestion(id, direction)}
+              onArchive={onArchiveQuestion}
+              visualOrder={visualQuestionIds()}
             />
             <AddQuestionRow
               sectionId={null}
@@ -272,6 +301,8 @@ function SectionHeader({
     <header className="border-hairline bg-ink-850 flex items-center gap-2 border-b px-3 py-2.5">
       <DragHandle
         label={`Reorder section ${section.title}`}
+        dragType={sectionDragType}
+        dragId={section.id}
         onDragStart={onDragStart}
         onDragEnd={onDragEnd}
         onMove={onMove}
@@ -350,6 +381,8 @@ function QuestionRows({
   onDropKey,
   onDrop,
   onMove,
+  onArchive,
+  visualOrder,
 }: {
   questions: RuntimeQuestionConfig[];
   sectionId: number | null;
@@ -362,51 +395,115 @@ function QuestionRows({
   onDropKey: (key: string | null) => void;
   onDrop: (beforeId: number | null) => void;
   onMove: (id: number, direction: -1 | 1) => void;
+  onArchive: (id: number) => void;
+  visualOrder: number[];
 }) {
   return (
     <div>
-      {questions.map((question) => (
-        <div key={question.id}>
-          <DropLine
-            active={dropKey === `question-${question.id}`}
-            onOver={() => {
-              if (dragging) onDropKey(`question-${question.id}`);
-            }}
-            onDrop={() => onDrop(question.id)}
-          />
-          <div
-            className={`border-hairline flex items-center gap-2 border-b px-3 py-2 transition-colors ${
-              selectedId === question.id
-                ? "bg-accent-400/10 shadow-[inset_3px_0_0_var(--color-accent-400)]"
-                : "hover:bg-ink-850"
-            }`}
-          >
-            <DragHandle
-              label={`Reorder ${question.label}`}
-              onDragStart={() => onDragStart(question.id)}
-              onDragEnd={onDragEnd}
-              onMove={(direction) => onMove(question.id, direction)}
+      {questions.map((question, index) => {
+        const afterId = questions[index + 1]?.id ?? null;
+        const visualIndex = visualOrder.indexOf(question.id);
+        const beforeIdForPointer = (clientY: number, element: HTMLElement) => {
+          const bounds = element.getBoundingClientRect();
+          return clientY < bounds.top + bounds.height / 2
+            ? question.id
+            : afterId;
+        };
+        const showDropPosition = (beforeId: number | null) =>
+          onDropKey(
+            beforeId == null
+              ? `question-end-${sectionId ?? "none"}`
+              : `question-${beforeId}`,
+          );
+
+        return (
+          <div key={question.id}>
+            <DropLine
+              active={dropKey === `question-${question.id}`}
+              onOver={() => {
+                if (dragging) onDropKey(`question-${question.id}`);
+              }}
+              onDrop={() => onDrop(question.id)}
             />
-            <button
-              type="button"
-              className="min-w-0 flex-1 text-left"
-              onClick={() => onSelect(question.id)}
+            <div
+              className={`border-hairline flex items-center gap-2 border-b px-3 py-2 transition-colors ${
+                selectedId === question.id
+                  ? "bg-accent-400/10 shadow-[inset_3px_0_0_var(--color-accent-400)]"
+                  : "hover:bg-ink-850"
+              }`}
+              onDragOver={(event) => {
+                if (
+                  !dragging ||
+                  !event.dataTransfer.types.includes(questionDragType)
+                )
+                  return;
+                event.preventDefault();
+                event.dataTransfer.dropEffect = "move";
+                showDropPosition(
+                  beforeIdForPointer(event.clientY, event.currentTarget),
+                );
+              }}
+              onDrop={(event) => {
+                if (!event.dataTransfer.types.includes(questionDragType))
+                  return;
+                event.preventDefault();
+                onDrop(beforeIdForPointer(event.clientY, event.currentTarget));
+              }}
             >
-              <span
-                className={`text-paper-100 block truncate text-sm ${isDisplayType(question.type) ? "italic" : ""}`}
+              <DragHandle
+                label={`Reorder ${question.label}`}
+                dragType={questionDragType}
+                dragId={question.id}
+                onDragStart={() => onDragStart(question.id)}
+                onDragEnd={onDragEnd}
+                onMove={(direction) => onMove(question.id, direction)}
+              />
+              <button
+                type="button"
+                className="min-w-0 flex-1 text-left"
+                onClick={() => onSelect(question.id)}
               >
-                {question.type === "divider" ? "Divider" : question.label}
-              </span>
-              <span className="mt-1 flex items-center gap-2">
-                <span className="rounded-ui border-hairline text-paper-500 border px-1.5 py-0.5 text-[9px] font-semibold tracking-wide uppercase">
-                  {typeLabels[question.type]}
+                <span
+                  className={`text-paper-100 block truncate text-sm ${isDisplayType(question.type) ? "italic" : ""}`}
+                >
+                  {question.type === "divider" ? "Divider" : question.label}
                 </span>
-                <Indicators question={question} />
-              </span>
-            </button>
+                <span className="mt-1 flex items-center gap-2">
+                  <span className="rounded-ui border-hairline text-paper-500 border px-1.5 py-0.5 text-[9px] font-semibold tracking-wide uppercase">
+                    {typeLabels[question.type]}
+                  </span>
+                  <Indicators question={question} />
+                </span>
+              </button>
+              <div className="ml-1 flex shrink-0 items-center gap-0.5">
+                <OutlineAction
+                  label={`Move ${question.label} up`}
+                  disabled={visualIndex <= 0}
+                  onClick={() => onMove(question.id, -1)}
+                >
+                  <ChevronUpIcon className="h-4 w-4" />
+                </OutlineAction>
+                <OutlineAction
+                  label={`Move ${question.label} down`}
+                  disabled={
+                    visualIndex < 0 || visualIndex === visualOrder.length - 1
+                  }
+                  onClick={() => onMove(question.id, 1)}
+                >
+                  <ChevronDownIcon className="h-4 w-4" />
+                </OutlineAction>
+                <OutlineAction
+                  label={`Archive ${question.label}`}
+                  danger
+                  onClick={() => onArchive(question.id)}
+                >
+                  <TrashIcon className="h-4 w-4" />
+                </OutlineAction>
+              </div>
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
       <DropLine
         active={dropKey === `question-end-${sectionId ?? "none"}`}
         onOver={() => {
@@ -415,6 +512,37 @@ function QuestionRows({
         onDrop={() => onDrop(null)}
       />
     </div>
+  );
+}
+
+function OutlineAction({
+  label,
+  disabled = false,
+  danger = false,
+  onClick,
+  children,
+}: {
+  label: string;
+  disabled?: boolean;
+  danger?: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      disabled={disabled}
+      className={`rounded-ui inline-flex h-7 w-7 items-center justify-center transition-colors disabled:cursor-not-allowed disabled:opacity-25 ${
+        danger
+          ? "text-paper-500 hover:bg-red-950/50 hover:text-red-300"
+          : "text-paper-500 hover:bg-ink-800 hover:text-paper-100"
+      }`}
+      onClick={onClick}
+    >
+      {children}
+    </button>
   );
 }
 
@@ -442,11 +570,15 @@ function Indicators({ question }: { question: RuntimeQuestionConfig }) {
 
 function DragHandle({
   label,
+  dragType,
+  dragId,
   onDragStart,
   onDragEnd,
   onMove,
 }: {
   label: string;
+  dragType: string;
+  dragId: number;
   onDragStart: () => void;
   onDragEnd: () => void;
   onMove: (direction: -1 | 1) => void;
@@ -460,6 +592,8 @@ function DragHandle({
       className="text-paper-500 hover:text-paper-100 cursor-grab touch-none px-1 py-2 text-base active:cursor-grabbing"
       onDragStart={(event) => {
         event.dataTransfer.effectAllowed = "move";
+        event.dataTransfer.setData(dragType, String(dragId));
+        event.dataTransfer.setData("text/plain", String(dragId));
         onDragStart();
       }}
       onDragEnd={onDragEnd}
