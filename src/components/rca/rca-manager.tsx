@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { Button, QuietButton } from "@/components/button";
 import { Input } from "@/components/input";
+import { ChevronDownIcon, ChevronUpIcon } from "@/components/ui/icons";
 import { rcaPolarities } from "@/db/schema";
 import type { RcaTagWithUsage } from "@/lib/rca";
 
@@ -34,6 +35,7 @@ export function RcaManager({
   const [sourceId, setSourceId] = useState("");
   const [targetId, setTargetId] = useState("");
   const [message, setMessage] = useState("");
+  const [reorderingGroup, setReorderingGroup] = useState<string | null>(null);
   const mergeOptions = useMemo(
     () =>
       tags.filter(
@@ -136,6 +138,46 @@ export function RcaManager({
     setTargetId("");
     setMessage("Tags merged.");
     await refresh();
+  }
+
+  async function moveTag(
+    groupTags: RcaTagWithUsage[],
+    index: number,
+    by: -1 | 1,
+  ) {
+    const targetIndex = index + by;
+    if (targetIndex < 0 || targetIndex >= groupTags.length) return;
+    const reordered = [...groupTags];
+    [reordered[index], reordered[targetIndex]] = [
+      reordered[targetIndex]!,
+      reordered[index]!,
+    ];
+    const group = reordered[0]!.questionKey;
+    setTags((current) => {
+      let nextIndex = 0;
+      return current.map((tag) =>
+        tag.questionKey === group ? reordered[nextIndex++]! : tag,
+      );
+    });
+    setReorderingGroup(group);
+    setMessage("");
+    try {
+      const response = await fetch("/api/rca-tags/reorder", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ orderedIds: reordered.map(({ id }) => id) }),
+      });
+      const body = (await response.json()) as { error?: string };
+      if (!response.ok) {
+        await refresh();
+        setMessage(body.error ?? "Could not reorder tags.");
+      }
+    } catch {
+      await refresh();
+      setMessage("Could not reorder tags.");
+    } finally {
+      setReorderingGroup(null);
+    }
   }
 
   return (
@@ -241,7 +283,7 @@ export function RcaManager({
                 </span>
               </header>
               <ul className="divide-hairline divide-y">
-                {groupTags.map((tag) => (
+                {groupTags.map((tag, index) => (
                   <li key={tag.id} className="px-5 py-3">
                     {editingId === tag.id ? (
                       <form
@@ -321,6 +363,31 @@ export function RcaManager({
                         >
                           Delete
                         </button>
+                        <span className="ml-1 flex shrink-0 items-center gap-0.5">
+                          <button
+                            type="button"
+                            onClick={() => void moveTag(groupTags, index, -1)}
+                            aria-label={`Move ${tag.label} up`}
+                            title={`Move ${tag.label} up`}
+                            disabled={index === 0 || reorderingGroup === group}
+                            className="rounded-ui text-paper-500 hover:bg-ink-800 hover:text-paper-100 inline-flex h-7 w-7 items-center justify-center transition-colors disabled:cursor-not-allowed disabled:opacity-25"
+                          >
+                            <ChevronUpIcon className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void moveTag(groupTags, index, 1)}
+                            aria-label={`Move ${tag.label} down`}
+                            title={`Move ${tag.label} down`}
+                            disabled={
+                              index === groupTags.length - 1 ||
+                              reorderingGroup === group
+                            }
+                            className="rounded-ui text-paper-500 hover:bg-ink-800 hover:text-paper-100 inline-flex h-7 w-7 items-center justify-center transition-colors disabled:cursor-not-allowed disabled:opacity-25"
+                          >
+                            <ChevronDownIcon className="h-4 w-4" />
+                          </button>
+                        </span>
                       </div>
                     )}
                   </li>

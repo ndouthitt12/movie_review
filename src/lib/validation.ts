@@ -324,3 +324,13 @@ export const rcaTagMergeSchema = z.object({
   sourceId: z.number().int().positive(),
   targetId: z.number().int().positive(),
 });
+
+export const rcaTagReorderSchema = z.object({
+  orderedIds: z
+    .array(z.number().int().positive())
+    .min(1)
+    .refine(
+      (ids) => new Set(ids).size === ids.length,
+      "Tag ids must be unique.",
+    ),
+});

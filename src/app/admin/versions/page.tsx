@@ -44,10 +44,9 @@ async function AdminVersionsContent() {
         {versions.map((version) => (
           <div
             key={version.id}
-            className="grid gap-2 px-5 py-4 sm:grid-cols-[5rem_1fr_8rem_12rem]"
+            className="grid gap-2 px-5 py-4 sm:grid-cols-[1fr_8rem_12rem]"
           >
-            <span className="text-paper-500">v{version.id}</span>
-            <span className="text-paper-100 font-medium">{version.label}</span>
+            <span className="text-paper-100 font-medium">v{version.id}</span>
             <span className="text-paper-300 capitalize">{version.status}</span>
             <span className="text-paper-500 text-xs">
               {version.publishedAt ?? version.createdAt}

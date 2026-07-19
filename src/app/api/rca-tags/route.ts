@@ -1,4 +1,4 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, max, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { rcaTags } from "@/db/schema";
@@ -43,8 +43,18 @@ export async function POST(request: Request) {
       { error: "That label already exists for this attribute." },
       { status: 409 },
     );
+  const [lastTag] = await db
+    .select({ sortOrder: max(rcaTags.sortOrder) })
+    .from(rcaTags)
+    .where(eq(rcaTags.questionKey, parsed.data.questionKey));
   try {
-    const [tag] = await db.insert(rcaTags).values(parsed.data).returning();
+    const [tag] = await db
+      .insert(rcaTags)
+      .values({
+        ...parsed.data,
+        sortOrder: (lastTag?.sortOrder ?? -10) + 10,
+      })
+      .returning();
     if (!tag) throw new Error("Could not create RCA tag.");
     return NextResponse.json({ ...tag, usageCount: 0 }, { status: 201 });
   } catch (error) {

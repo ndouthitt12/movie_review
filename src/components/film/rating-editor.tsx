@@ -179,7 +179,7 @@ export function RatingEditor({
             </h2>
             {ratedForm.id !== publishedForm.id ? (
               <span className="text-accent-400 mt-2 inline-block text-xs">
-                rated under {ratedForm.label}
+                rated under v{ratedForm.id}
               </span>
             ) : null}
           </div>
@@ -272,7 +272,7 @@ export function RatingEditor({
         <div>
           <p className="eyebrow">Runtime form</p>
           <h2 className="type-section-heading text-paper-100 mt-1">
-            {publishedForm.label}
+            v{publishedForm.id}
           </h2>
         </div>
         <div className="flex gap-7 sm:text-right">

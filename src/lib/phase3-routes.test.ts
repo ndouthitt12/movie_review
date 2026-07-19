@@ -14,6 +14,7 @@ let deleteTag: (
   context: { params: Promise<{ id: string }> },
 ) => Promise<Response>;
 let mergeTags: (request: Request) => Promise<Response>;
+let reorderTags: (request: Request) => Promise<Response>;
 let saveRating: (
   request: Request,
   context: { params: Promise<{ id: string }> },
@@ -54,6 +55,7 @@ beforeAll(async () => {
   updateTag = item.PATCH;
   deleteTag = item.DELETE;
   mergeTags = (await import("@/app/api/rca-tags/merge/route")).POST;
+  reorderTags = (await import("@/app/api/rca-tags/reorder/route")).PUT;
   saveRating = (await import("@/app/api/films/[id]/rating/route")).PUT;
   updateScale = (await import("@/app/api/admin/scale/route")).PUT;
 });
@@ -64,6 +66,34 @@ describe("Phase 3 RCA integration", () => {
       expect(
         starterRcaTags.filter(([value]) => value === attribute).length,
       ).toBeGreaterThanOrEqual(4);
+  });
+
+  it("persists a custom tag order within a question", async () => {
+    const before = (await (await listTags()).json()) as {
+      tags: Array<{ id: number; questionKey: string }>;
+    };
+    const storyTags = before.tags.filter(
+      ({ questionKey }) => questionKey === "story",
+    );
+    const orderedIds = [
+      storyTags[1]!.id,
+      storyTags[0]!.id,
+      ...storyTags.slice(2).map(({ id }) => id),
+    ];
+
+    const response = await reorderTags(
+      jsonRequest("http://test/api/rca-tags/reorder", "PUT", { orderedIds }),
+    );
+    expect(response.status).toBe(200);
+
+    const after = (await (await listTags()).json()) as {
+      tags: Array<{ id: number; questionKey: string }>;
+    };
+    expect(
+      after.tags
+        .filter(({ questionKey }) => questionKey === "story")
+        .map(({ id }) => id),
+    ).toEqual(orderedIds);
   });
 
   it("creates, counts, renames, merges, persists, and cascade-deletes tags", async () => {

@@ -359,6 +359,7 @@ export const rcaTags = pgTable(
     questionKey: text("question_key").notNull(),
     polarity: text("polarity", { enum: rcaPolarities }).notNull(),
     color: text("color"),
+    sortOrder: integer("sort_order").notNull().default(0),
   },
   (table) => [
     check(
@@ -369,6 +370,7 @@ export const rcaTags = pgTable(
       table.label,
       table.questionKey,
     ),
+    index("rca_tags_question_order_idx").on(table.questionKey, table.sortOrder),
   ],
 );
 

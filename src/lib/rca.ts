@@ -15,7 +15,11 @@ export async function getRcaTagsWithUsage() {
     .from(rcaTags)
     .leftJoin(filmRcaTags, eq(filmRcaTags.rcaTagId, rcaTags.id))
     .groupBy(rcaTags.id)
-    .orderBy(asc(rcaTags.questionKey), asc(rcaTags.label));
+    .orderBy(
+      asc(rcaTags.questionKey),
+      asc(rcaTags.sortOrder),
+      asc(rcaTags.label),
+    );
 }
 
 export type RcaTagWithUsage = Awaited<
