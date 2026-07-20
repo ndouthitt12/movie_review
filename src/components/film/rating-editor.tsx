@@ -18,6 +18,10 @@ import type {
 } from "@/lib/form-config";
 import { getSecondaryFormConfig } from "@/lib/secondary-scoring";
 import {
+  formatButtonScaleValue,
+  normalizeLegacyButtonScaleValue,
+} from "@/lib/button-scale";
+import {
   computeOverallFromForm,
   evaluateFormConditions,
   type AnswerMap,
@@ -325,6 +329,61 @@ export function RatingEditor({
               const retained =
                 answerPresent(answers[question.id]) &&
                 term?.reason === "suppressed";
+              if (question.type === "button_scale")
+                return (
+                  <div
+                    key={question.id}
+                    className={`px-5 py-6 sm:px-7 ${state.enabled ? "" : "opacity-50"}`}
+                    title={
+                      state.enabled
+                        ? undefined
+                        : conditionDescription(question, publishedForm)
+                    }
+                  >
+                    <QuestionRenderer
+                      question={question}
+                      value={answers[question.id]}
+                      disabled={!state.enabled}
+                      onChange={(value) => changeAnswer(question.id, value)}
+                    />
+                    <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_minmax(14rem,1fr)]">
+                      <div>
+                        {retained ? (
+                          <span className="text-accent-400 text-[10px] uppercase">
+                            not counted
+                          </span>
+                        ) : null}
+                        {term ? (
+                          <p className="text-paper-500 text-[10px] tabular-nums">
+                            {term.counted
+                              ? `${term.points.toFixed(3)} weighted points`
+                              : term.reason === "null_option" ||
+                                  term.reason === "na"
+                                ? "N/A — not counted"
+                                : `${term.reason?.replaceAll("_", " ") ?? "not counted"}`}
+                          </p>
+                        ) : null}
+                      </div>
+                      {question.rcaEnabled ? (
+                        <RcaMultiselect
+                          label={`${question.label} why tags`}
+                          options={scopedTags}
+                          selectedIds={selectedForQuestion}
+                          onChange={(next) =>
+                            setSelectedIds((current) => [
+                              ...current.filter(
+                                (id) =>
+                                  !scopedTags.some((tag) => tag.id === id),
+                              ),
+                              ...next,
+                            ])
+                          }
+                          onCreate={(label) => createTag(question.key, label)}
+                        />
+                      ) : null}
+                    </div>
+                  </div>
+                );
               return (
                 <div
                   key={question.id}
@@ -448,7 +507,17 @@ function answersForPublishedForm(
           ({ key }) => key === question.key,
         );
         const previousAnswer = previous ? initial[previous.id] : undefined;
-        if (previousAnswer) return [question.id, { ...previousAnswer }];
+        if (previousAnswer) {
+          if (question.type === "button_scale" && previousAnswer.number != null)
+            return [
+              question.id,
+              {
+                ...previousAnswer,
+                number: normalizeLegacyButtonScaleValue(previousAnswer.number),
+              },
+            ];
+          return [question.id, { ...previousAnswer }];
+        }
         if (question.type === "slider") {
           const min = question.min ?? 0;
           const max = question.max ?? 100;
@@ -464,7 +533,11 @@ function isDisplayElement(question: RuntimeQuestionConfig) {
 }
 
 function isScoreQuestion(question: RuntimeQuestionConfig) {
-  return question.type === "slider" || question.type === "integer";
+  return (
+    question.type === "slider" ||
+    question.type === "button_scale" ||
+    question.type === "integer"
+  );
 }
 
 function selectedTagsForQuestion(
@@ -551,7 +624,10 @@ function formatAnswer(
   answer: AnswerValue | undefined,
 ) {
   if (answer?.isNa) return "N/A";
-  if (answer?.number != null) return String(answer.number);
+  if (answer?.number != null)
+    return question.type === "button_scale"
+      ? formatButtonScaleValue(answer.number)
+      : String(answer.number);
   if (answer?.text) return answer.text;
   if (answer?.optionIds?.length)
     return answer.optionIds

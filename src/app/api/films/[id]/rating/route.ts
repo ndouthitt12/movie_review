@@ -21,6 +21,7 @@ import {
 } from "@/lib/scoring";
 import { ratingSchema } from "@/lib/validation";
 import { invalidateRecommendations } from "@/lib/recs-cache";
+import { isButtonScaleStoredValue } from "@/lib/button-scale";
 
 export async function PUT(
   request: Request,
@@ -185,11 +186,20 @@ type ParsedAnswer = ReturnType<typeof ratingSchema.parse>["answers"][number];
 function validateAnswer(question: RuntimeQuestionConfig, answer: ParsedAnswer) {
   if (answer.isNa && !question.allowNa)
     return `${question.label} does not allow N/A.`;
-  if (question.type === "slider" || question.type === "integer") {
+  if (
+    question.type === "slider" ||
+    question.type === "button_scale" ||
+    question.type === "integer"
+  ) {
     if (answer.isNa) return null;
     if (answer.valueNumber == null) return null;
     if (question.type === "integer" && !Number.isInteger(answer.valueNumber))
       return `${question.label} must be an integer.`;
+    if (
+      question.type === "button_scale" &&
+      !isButtonScaleStoredValue(answer.valueNumber)
+    )
+      return `${question.label} must be a button-scale value from 1 to 10 in half-point steps.`;
     if (question.min != null && answer.valueNumber < question.min)
       return `${question.label} must be at least ${question.min}.`;
     if (question.max != null && answer.valueNumber > question.max)

@@ -308,6 +308,23 @@ describe("form scoring", () => {
     ).toBe(1);
   });
 
+  it("scores button-scale values identically to stored slider values", () => {
+    const slider = question({ id: 1, key: "slider" });
+    const buttons = question({
+      id: 2,
+      key: "buttons",
+      type: "button_scale",
+      min: 10,
+      max: 100,
+    });
+    const result = computeOverallFromForm(manualForm([slider, buttons], 200), {
+      1: { number: 85 },
+      2: { number: 85 },
+    });
+    expect(result.terms.map(({ points }) => points)).toEqual([85, 85]);
+    expect(result.overall).toBe(0.85);
+  });
+
   it("always excludes display elements from scoring", () => {
     const malformedTitle = question({
       id: 1,

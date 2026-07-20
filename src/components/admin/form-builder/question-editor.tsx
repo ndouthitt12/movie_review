@@ -16,6 +16,10 @@ import {
   typeLabels,
 } from "./constants";
 import type { EditableQuestionKey, Mutate } from "./use-form-draft";
+import {
+  buttonScaleStoredValue,
+  formatButtonScaleValue,
+} from "@/lib/button-scale";
 
 type Tab = "basics" | "answers" | "scoring" | "logic";
 
@@ -282,6 +286,32 @@ function AnswersTab({
   if (optionTypes.has(question.type))
     return <OptionsEditor question={question} mutate={mutate} />;
 
+  if (question.type === "button_scale")
+    return (
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Minimum label">
+          <Input
+            value={question.scaleMinLabel}
+            maxLength={100}
+            onChange={(event) => change("scaleMinLabel", event.target.value)}
+            onBlur={flush}
+          />
+        </Field>
+        <Field label="Maximum label">
+          <Input
+            value={question.scaleMaxLabel}
+            maxLength={100}
+            onChange={(event) => change("scaleMaxLabel", event.target.value)}
+            onBlur={flush}
+          />
+        </Field>
+        <p className="text-paper-500 text-xs leading-5 sm:col-span-2">
+          The scale displays 1–10 with half points and stores 10–100 for
+          compatibility with existing scoring.
+        </p>
+      </div>
+    );
+
   if (question.type === "slider" || question.type === "integer")
     return (
       <div className="grid gap-4 sm:grid-cols-2">
@@ -506,8 +536,8 @@ function LogicTab({
     ? sourceId
     : (possibleSources[0]?.id ?? 0);
   const source = form.questions.find(({ id }) => id === effectiveSourceId);
-  const [conditionValue, setConditionValue] = useState<number | null>(
-    source?.options[0]?.id ?? null,
+  const [conditionValue, setConditionValue] = useState<number | null>(() =>
+    defaultConditionValue(source),
   );
   const [effect, setEffect] = useState<"show" | "disable">("show");
 
@@ -522,6 +552,11 @@ function LogicTab({
           const valueLabel = conditionSource?.options.find(
             ({ id }) => id === condition.value,
           )?.label;
+          const formattedValue =
+            conditionSource?.type === "button_scale" &&
+            typeof condition.value === "number"
+              ? formatButtonScaleValue(condition.value)
+              : (valueLabel ?? String(condition.value ?? "a value"));
           return (
             <div
               key={condition.id}
@@ -533,8 +568,7 @@ function LogicTab({
                 </strong>{" "}
                 this {isDisplayType(question.type) ? "element" : "question"}{" "}
                 when <em>{conditionSource?.label ?? "Unknown question"}</em>{" "}
-                equals{" "}
-                <em>{valueLabel ?? String(condition.value ?? "a value")}</em>.
+                equals <em>{formattedValue}</em>.
               </p>
               <button
                 type="button"
@@ -581,7 +615,7 @@ function LogicTab({
                   (candidate) => candidate.id === id,
                 );
                 setSourceId(id);
-                setConditionValue(next?.options[0]?.id ?? null);
+                setConditionValue(defaultConditionValue(next));
               }}
             >
               {possibleSources.map((candidate) => (
@@ -611,6 +645,9 @@ function LogicTab({
                 <Input
                   aria-label="Condition value"
                   type="number"
+                  min={source?.type === "button_scale" ? 1 : undefined}
+                  max={source?.type === "button_scale" ? 10 : undefined}
+                  step={source?.type === "button_scale" ? 0.5 : undefined}
                   value={conditionValue ?? ""}
                   onChange={(event) =>
                     setConditionValue(
@@ -633,7 +670,10 @@ function LogicTab({
                     data: {
                       sourceQuestionId: effectiveSourceId,
                       operator: "equals",
-                      value: conditionValue,
+                      value:
+                        source?.type === "button_scale"
+                          ? buttonScaleStoredValue(conditionValue!)
+                          : conditionValue,
                       effect,
                     },
                   })
@@ -652,6 +692,13 @@ function LogicTab({
       )}
     </div>
   );
+}
+
+function defaultConditionValue(
+  question: RuntimeQuestionConfig | undefined,
+): number | null {
+  if (question?.type === "button_scale") return 1;
+  return question?.options[0]?.id ?? null;
 }
 
 function OptionsEditor({

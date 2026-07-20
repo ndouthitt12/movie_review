@@ -15,6 +15,8 @@ export type RuntimeQuestionConfig = Omit<
 > & {
   label: string;
   helpText: string;
+  scaleMinLabel: string;
+  scaleMaxLabel: string;
   sectionId: number | null;
   sortOrder: number;
   rcaEnabled: boolean;
@@ -110,6 +112,8 @@ async function assembleForm(
       label: question.label,
       helpText: question.helpText,
       type: question.type,
+      scaleMinLabel: question.scaleMinLabel,
+      scaleMaxLabel: question.scaleMaxLabel,
       sectionId: question.sectionId,
       sortOrder: question.sortOrder,
       required: question.required,

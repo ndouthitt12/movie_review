@@ -58,6 +58,8 @@ export const questionSchema = z
     label: z.string().trim().min(1).max(300),
     helpText: z.string().trim().max(2000).default(""),
     type: z.enum(questionTypes),
+    scaleMinLabel: z.string().trim().max(100).default("Poor"),
+    scaleMaxLabel: z.string().trim().max(100).default("Masterpiece"),
     sectionId: z.number().int().positive().nullable().optional(),
     sortOrder: z.number().int().min(0),
     required: z.boolean().default(true),
@@ -137,6 +139,8 @@ export const questionSchema = z
   .transform((question) => {
     if (question.type === "slider")
       return { ...question, min: question.min ?? 0, max: question.max ?? 100 };
+    if (question.type === "button_scale")
+      return { ...question, min: 10, max: 100 };
     if (question.type === "title" || question.type === "divider")
       return {
         ...question,

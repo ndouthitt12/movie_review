@@ -11,6 +11,8 @@ function question(
     label: "Score",
     helpText: "",
     type: "slider",
+    scaleMinLabel: "Poor",
+    scaleMaxLabel: "Masterpiece",
     sectionId: 1,
     sortOrder: 10,
     required: true,

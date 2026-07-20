@@ -30,6 +30,7 @@ export const rcaPolarities = ["positive", "negative", "neutral"] as const;
 export const formVersionStatuses = ["draft", "published", "archived"] as const;
 export const questionTypes = [
   "slider",
+  "button_scale",
   "short_text",
   "paragraph",
   "dropdown",
@@ -197,6 +198,8 @@ export const questions = pgTable(
     label: text("label").notNull(),
     helpText: text("help_text").notNull().default(""),
     type: text("type", { enum: questionTypes }).notNull(),
+    scaleMinLabel: text("scale_min_label").notNull().default("Poor"),
+    scaleMaxLabel: text("scale_max_label").notNull().default("Masterpiece"),
     sectionId: integer("section_id").references(() => formSections.id, {
       onDelete: "set null",
     }),

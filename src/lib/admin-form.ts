@@ -64,6 +64,8 @@ export async function ensureDraftForm(): Promise<RuntimeFormConfig> {
           label: question.label,
           helpText: question.helpText,
           type: question.type,
+          scaleMinLabel: question.scaleMinLabel,
+          scaleMaxLabel: question.scaleMaxLabel,
           sectionId: question.sectionId
             ? sectionIds.get(question.sectionId)
             : null,

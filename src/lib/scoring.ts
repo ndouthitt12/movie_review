@@ -266,6 +266,7 @@ function maximumPoints(question: QuestionConfig) {
   if (!question.scored || question.weight == null) return 0;
   switch (question.type) {
     case "slider":
+    case "button_scale":
     case "integer":
       return Math.max(...numericExtremes(question));
     case "dropdown":
@@ -284,7 +285,11 @@ function answeredScore(
   question: QuestionConfig,
   answer: AnswerValue | undefined,
 ): { value: number | null; reason?: "null_option" } {
-  if (question.type === "slider" || question.type === "integer") {
+  if (
+    question.type === "slider" ||
+    question.type === "button_scale" ||
+    question.type === "integer"
+  ) {
     return { value: answer?.number ?? null };
   }
 

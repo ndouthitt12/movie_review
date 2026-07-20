@@ -1,4 +1,5 @@
 import { MultiselectDemo } from "@/components/rca/multiselect-demo";
+import { ButtonScaleDemo } from "@/components/form/button-scale-demo";
 import { PageShell } from "@/components/page-shell";
 import {
   BarChart,
@@ -26,6 +27,9 @@ export default function ComponentsPage() {
           new neutral tag inline.
         </p>
       </header>
+      <section className="panel mb-8 overflow-hidden p-4 sm:p-6">
+        <ButtonScaleDemo />
+      </section>
       <section className="panel max-w-2xl p-7">
         <label className="text-paper-100 mb-3 block text-sm font-semibold">
           Story

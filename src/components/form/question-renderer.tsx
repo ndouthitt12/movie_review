@@ -7,6 +7,7 @@ import { MultipleChoice } from "./multiple-choice";
 import { Paragraph } from "./paragraph";
 import { ShortText } from "./short-text";
 import { Slider } from "./slider";
+import { ButtonScale } from "./button-scale";
 import { Markdown } from "@/components/markdown";
 import type { RuntimeQuestionConfig } from "@/lib/form-config";
 import type { AnswerValue } from "@/lib/scoring";
@@ -38,6 +39,21 @@ export function QuestionRenderer({
           min={question.min ?? 0}
           max={question.max ?? 100}
           value={value?.number ?? question.min ?? 0}
+          disabled={inputDisabled}
+          onChange={(number) => onChange({ number, isNa: false })}
+        />
+      );
+      break;
+    case "button_scale":
+      input = (
+        <ButtonScale
+          id={`question-${question.id}`}
+          label={question.label}
+          description={question.helpText}
+          required={question.required}
+          minLabel={question.scaleMinLabel}
+          maxLabel={question.scaleMaxLabel}
+          value={value?.number ?? null}
           disabled={inputDisabled}
           onChange={(number) => onChange({ number, isNa: false })}
         />
@@ -125,7 +141,9 @@ export function QuestionRenderer({
     <div className={disabled ? "opacity-60" : undefined}>
       {input}
       {question.allowNa &&
-      (question.type === "slider" || question.type === "integer") ? (
+      (question.type === "slider" ||
+        question.type === "button_scale" ||
+        question.type === "integer") ? (
         <label className="text-paper-500 mt-3 flex items-center gap-2 text-xs">
           <input
             type="checkbox"

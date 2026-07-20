@@ -197,6 +197,15 @@ function QuestionPreview({
         onChange={() => undefined}
       />
     );
+  if (question.type === "button_scale")
+    return (
+      <QuestionRenderer
+        question={question}
+        value={value}
+        disabled={disabled}
+        onChange={onChange}
+      />
+    );
   return (
     <div className={disabled ? "opacity-50" : ""}>
       <label

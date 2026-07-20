@@ -4,6 +4,7 @@ import { answers, films, questionOptions, questions, ratings } from "@/db/schema
 import { getPublishedRuntimeForm, type RuntimeFormConfig } from "./form-config";
 import { getSecondaryFormConfig } from "./secondary-scoring";
 import { computeOverallFromForm, type AnswerMap, type AnswerValue } from "./scoring";
+import { normalizeLegacyButtonScaleValue } from "./button-scale";
 
 type PreparedRating = {
   filmId: number;
@@ -43,7 +44,10 @@ export async function preparePublishedRecompute(): Promise<{ form: RuntimeFormCo
       const target = targetByKey.get(oldKey.get(row.questionId) ?? "");
       if (!target) continue;
       const value: AnswerValue = {
-        number: row.valueNumber,
+        number:
+          target.type === "button_scale" && row.valueNumber != null
+            ? normalizeLegacyButtonScaleValue(row.valueNumber)
+            : row.valueNumber,
         text: row.valueText,
         isNa: row.isNa,
       };

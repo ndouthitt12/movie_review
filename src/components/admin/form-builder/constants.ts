@@ -2,6 +2,7 @@ import type { RuntimeQuestionConfig } from "@/lib/form-config";
 
 export const answerTypes = [
   "slider",
+  "button_scale",
   "short_text",
   "paragraph",
   "dropdown",
@@ -17,6 +18,7 @@ export const displayTypes = [
 
 export const typeLabels: Record<RuntimeQuestionConfig["type"], string> = {
   slider: "Slider",
+  button_scale: "Button scale (1–10)",
   short_text: "Short text",
   paragraph: "Paragraph",
   dropdown: "Dropdown",

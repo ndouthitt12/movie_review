@@ -30,6 +30,23 @@ describe("form configuration validation", () => {
     ).toBe(true);
   });
 
+  it("normalizes button scales and their endpoint labels", () => {
+    const parsed = questionSchema.parse({
+      ...baseQuestion,
+      type: "button_scale",
+      min: 0,
+      max: 20,
+      scaleMinLabel: "Weak",
+      scaleMaxLabel: "Essential",
+    });
+    expect(parsed).toMatchObject({
+      min: 10,
+      max: 100,
+      scaleMinLabel: "Weak",
+      scaleMaxLabel: "Essential",
+    });
+  });
+
   it("prevents text questions from being scored", () => {
     expect(
       questionSchema.safeParse({

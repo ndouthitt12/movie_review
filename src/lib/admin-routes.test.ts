@@ -611,7 +611,7 @@ describe("admin form workflow", () => {
     body = await response.json();
     expect(body.form.sections[0]!.id).toBe(section.id);
 
-    await change({
+    response = await change({
       action: "add_question",
       data: {
         key: "editorial_heading",
@@ -768,6 +768,177 @@ describe("admin form workflow", () => {
       { params: Promise.resolve({ id: String(film.id) }) },
     );
     expect(rated.status).toBe(200);
+  });
+
+  it("creates, publishes, and validates a configurable button scale", async () => {
+    let response = await change({
+      action: "add_question",
+      data: {
+        key: "button_scale_test",
+        label: "Craft",
+        helpText: "How strong is the filmmaking?",
+        type: "button_scale",
+      },
+    });
+    expect(response.status).toBe(200);
+    let body = (await response.json()) as {
+      form: {
+        id: number;
+        questions: Array<{
+          id: number;
+          key: string;
+          type: string;
+          min: number | null;
+          max: number | null;
+          scaleMinLabel: string;
+          scaleMaxLabel: string;
+          conditions: Array<{ value: number | number[] | null }>;
+          options: Array<{ id: number }>;
+        }>;
+      };
+    };
+    let scale = body.form.questions.find(
+      ({ key }) => key === "button_scale_test",
+    )!;
+    expect(scale).toMatchObject({
+      type: "button_scale",
+      min: 10,
+      max: 100,
+      scaleMinLabel: "Poor",
+      scaleMaxLabel: "Masterpiece",
+    });
+
+    response = await change({
+      action: "update_question",
+      questionId: scale.id,
+      data: { scaleMinLabel: "Weak", scaleMaxLabel: "Essential" },
+    });
+    body = await response.json();
+    scale = body.form.questions.find(({ key }) => key === "button_scale_test")!;
+    expect(scale).toMatchObject({
+      scaleMinLabel: "Weak",
+      scaleMaxLabel: "Essential",
+    });
+
+    response = await change({
+      action: "add_question",
+      data: {
+        key: "button_scale_followup",
+        label: "Half-point follow-up",
+        type: "short_text",
+      },
+    });
+    body = await response.json();
+    response = await change({
+      action: "add_condition",
+      questionId: body.form.questions.find(
+        ({ key }) => key === "button_scale_followup",
+      )!.id,
+      data: {
+        sourceQuestionId: scale.id,
+        operator: "equals",
+        value: 55,
+        effect: "show",
+      },
+    });
+    expect(response.status).toBe(200);
+    body = await response.json();
+    expect(
+      body.form.questions.find(
+        ({ key }) => key === "button_scale_followup",
+      )?.conditions[0]?.value,
+    ).toBe(55);
+    const invalidCondition = await change({
+      action: "add_condition",
+      questionId: body.form.questions.find(
+        ({ key }) => key === "button_scale_followup",
+      )!.id,
+      data: {
+        sourceQuestionId: scale.id,
+        operator: "equals",
+        value: 52,
+        effect: "show",
+      },
+    });
+    expect(invalidCondition.status).toBe(400);
+
+    const publishedResponse = await publish();
+    expect(publishedResponse.status).toBe(200);
+    const published = (await publishedResponse.json()) as typeof body;
+    const publishedScale = published.form.questions.find(
+      ({ key }) => key === "button_scale_test",
+    )!;
+    expect(publishedScale.scaleMaxLabel).toBe("Essential");
+
+    const createdFilm = await createFilm(
+      jsonRequest("http://test/api/films", "POST", {
+        tmdbId: 777002,
+        title: "Button Scale Test",
+        releaseYear: 2026,
+        status: "watched",
+        tmdbGenres: [],
+      }),
+    );
+    const film = (await createdFilm.json()) as { id: number };
+    const ratingAnswers = published.form.questions.flatMap<RouteAnswer>(
+      (question) => {
+        if (question.type === "title" || question.type === "divider") return [];
+        if (question.type === "short_text" || question.type === "paragraph")
+          return [{ questionId: question.id, valueText: "Response" }];
+        if (
+          question.type === "dropdown" ||
+          question.type === "multiple_choice" ||
+          question.type === "multi_select"
+        )
+          return question.options[0]
+            ? [
+                {
+                  questionId: question.id,
+                  valueOptionIds: [question.options[0].id],
+                },
+              ]
+            : [];
+        return [
+          {
+            questionId: question.id,
+            valueNumber: question.id === publishedScale.id ? 10 : 50,
+          },
+        ];
+      },
+    );
+
+    for (const valueNumber of [10, 15, 95, 100]) {
+      const rated = await saveRating(
+        jsonRequest(`http://test/api/films/${film.id}/rating`, "PUT", {
+          formVersionId: published.form.id,
+          answers: ratingAnswers.map((answer) =>
+            answer.questionId === publishedScale.id
+              ? { ...answer, valueNumber }
+              : answer,
+          ),
+          rcaTagIds: [],
+        }),
+        { params: Promise.resolve({ id: String(film.id) }) },
+      );
+      expect(rated.status).toBe(200);
+    }
+
+    const rejected = await saveRating(
+      jsonRequest(`http://test/api/films/${film.id}/rating`, "PUT", {
+        formVersionId: published.form.id,
+        answers: ratingAnswers.map((answer) =>
+          answer.questionId === publishedScale.id
+            ? { ...answer, valueNumber: 52 }
+            : answer,
+        ),
+        rcaTagIds: [],
+      }),
+      { params: Promise.resolve({ id: String(film.id) }) },
+    );
+    expect(rejected.status).toBe(400);
+    expect((await rejected.json()) as { error: string }).toMatchObject({
+      error: expect.stringContaining("half-point steps"),
+    });
   });
 });
 

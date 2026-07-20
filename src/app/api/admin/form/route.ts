@@ -24,6 +24,7 @@ import {
   reorderDraftQuestions,
   reorderDraftSections,
 } from "@/lib/admin-form";
+import { isButtonScaleStoredValue } from "@/lib/button-scale";
 
 const finite = z.number().finite();
 const optionQuestionTypes = new Set([
@@ -42,6 +43,8 @@ const questionFields = z.object({
   label: z.string().trim().min(1).max(300).optional(),
   helpText: z.string().trim().max(2000).optional(),
   type: z.enum(questionTypes).optional(),
+  scaleMinLabel: z.string().trim().max(100).optional(),
+  scaleMaxLabel: z.string().trim().max(100).optional(),
   sectionId: z.number().int().positive().nullable().optional(),
   required: z.boolean().optional(),
   scored: z.boolean().optional(),
@@ -241,8 +244,14 @@ export async function POST(request: Request) {
           weight: null,
           secondaryScored: false,
           secondaryWeight: null,
-          min: data.type === "slider" ? 0 : null,
-          max: data.type === "slider" ? 100 : null,
+          min:
+            data.type === "slider"
+              ? 0
+              : data.type === "button_scale"
+                ? 10
+                : null,
+          max:
+            data.type === "slider" || data.type === "button_scale" ? 100 : null,
           offset: 0,
           secondaryOffset: 0,
           blankPolicy: "exclude_and_renormalize",
@@ -311,7 +320,9 @@ export async function POST(request: Request) {
               allowNa: false,
               rcaEnabled: false,
             }
-          : data;
+          : nextType === "button_scale"
+            ? { ...data, min: 10, max: 100 }
+            : data;
         await db.transaction(async (tx) => {
           await tx
             .update(questions)
@@ -396,6 +407,14 @@ export async function POST(request: Request) {
         if (source.sortOrder >= target.sortOrder)
           throw new Error(
             "A condition source must appear before its target question.",
+          );
+        if (
+          source.type === "button_scale" &&
+          (typeof parsed.data.data.value !== "number" ||
+            !isButtonScaleStoredValue(parsed.data.data.value))
+        )
+          throw new Error(
+            "A button-scale condition must use a value from 1 to 10 in half-point steps.",
           );
         await db
           .insert(questionConditions)

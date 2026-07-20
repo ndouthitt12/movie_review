@@ -16,6 +16,8 @@ const editableKeys = [
   "label",
   "helpText",
   "type",
+  "scaleMinLabel",
+  "scaleMaxLabel",
   "sectionId",
   "required",
   "scored",
