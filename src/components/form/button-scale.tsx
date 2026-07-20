@@ -81,7 +81,7 @@ export function ButtonScale({
       <div className="mx-auto max-w-5xl text-center">
         <h3
           id={labelId}
-          className="font-serif text-paper-100 text-3xl leading-tight sm:text-4xl"
+          className="text-paper-100 font-serif text-3xl leading-tight sm:text-4xl"
         >
           {label}
           {required ? <span className="text-accent-400"> *</span> : null}
@@ -143,7 +143,7 @@ export function ButtonScale({
                 }}
                 className={`rounded-ui aspect-[1.05] min-h-12 w-full touch-manipulation border text-xl font-semibold tabular-nums transition-colors sm:text-2xl ${
                   selected
-                    ? "border-accent-400 bg-accent-400/15 text-accent-400 shadow-[0_0_24px_rgb(229_190_103_/_0.12)]"
+                    ? "border-accent-400 bg-accent-400 text-ink-950"
                     : "border-paper-500/50 bg-ink-850 text-paper-100 hover:border-accent-400/70 hover:text-accent-400"
                 } disabled:cursor-not-allowed disabled:opacity-50`}
               >
