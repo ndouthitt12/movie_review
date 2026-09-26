@@ -6,7 +6,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMemo } from "react";
 import { ScoreBar } from "@/components/ui/score-bar";
 import { formatRuntime } from "@/lib/runtime-format";
-import { formatScore } from "@/lib/score-format";
+import { formatScore, type ScoreScale } from "@/lib/score-format";
 import { tmdbImage } from "@/lib/tmdb";
 
 export type RankedFilm = {
@@ -32,9 +32,11 @@ const groupings: Array<[Grouping, string]> = [
 export function RankingsView({
   films,
   highlightId,
+  scale,
 }: {
   films: RankedFilm[];
   highlightId: number | null;
+  scale: ScoreScale;
 }) {
   const params = useSearchParams();
   const router = useRouter();
@@ -94,11 +96,15 @@ export function RankingsView({
                 <p className="text-paper-500 font-mono text-xs tabular-nums">
                   {group.films.length}{" "}
                   {group.films.length === 1 ? "film" : "films"} · average{" "}
-                  {formatScore(group.average)}
+                  {formatScore(group.average, scale)}
                 </p>
               </header>
             ) : null}
-            <RankTable films={group.films} highlightId={highlightId} />
+            <RankTable
+              films={group.films}
+              highlightId={highlightId}
+              scale={scale}
+            />
           </section>
         ))}
       </div>
@@ -109,9 +115,11 @@ export function RankingsView({
 function RankTable({
   films,
   highlightId,
+  scale,
 }: {
   films: RankedFilm[];
   highlightId: number | null;
+  scale: ScoreScale;
 }) {
   return (
     // Fixed column widths keep the columns aligned across grouped tables.
@@ -194,6 +202,7 @@ function RankTable({
               <td className="py-2">
                 <ScoreBar
                   overall={film.overall}
+                  scale={scale}
                   trackClassName="w-14 sm:w-28 xl:w-36"
                 />
               </td>

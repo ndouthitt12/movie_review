@@ -1,16 +1,18 @@
-import { formatScore, scoreOutOfFive } from "@/lib/score-format";
+import { displayScore, formatScore, type ScoreScale } from "@/lib/score-format";
 
-/** A 0–5 bar with the score beside it. Takes the stored 0–10 overall. */
+/** A bar with the score beside it. Takes the stored 0–10 overall. */
 export function ScoreBar({
   overall,
+  scale,
   className = "",
   trackClassName = "w-24 sm:w-36",
 }: {
   overall: number | null;
+  scale: ScoreScale;
   className?: string;
   trackClassName?: string;
 }) {
-  const score = scoreOutOfFive(overall);
+  const score = displayScore(overall, scale);
   return (
     <span className={`flex items-center gap-2.5 ${className}`}>
       <span
@@ -19,11 +21,11 @@ export function ScoreBar({
       >
         <span
           className="bg-accent-400 block h-full rounded-full"
-          style={{ width: `${((score ?? 0) / 5) * 100}%` }}
+          style={{ width: `${((score ?? 0) / scale) * 100}%` }}
         />
       </span>
       <span className="text-paper-100 font-mono text-sm font-semibold tabular-nums">
-        {formatScore(overall)}
+        {formatScore(overall, scale)}
       </span>
     </span>
   );

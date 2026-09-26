@@ -9,6 +9,7 @@ vi.mock("@/lib/recs-server", () => ({
   getRecommendations,
   getTrending: getTrendingData,
 }));
+vi.mock("@/lib/score-scale", () => ({ getScoreScale: async () => 10 }));
 
 import { GET as getRecs } from "@/app/api/recs/route";
 import { GET as getTrendingRoute } from "@/app/api/recs/trending/route";
@@ -29,7 +30,7 @@ beforeEach(() => {
 });
 
 describe("recommendation API routes", () => {
-  it("returns recommendations and forwards the requested limit", async () => {
+  it("returns recommendations and forwards the scale and limit", async () => {
     const response = await getRecs(
       new Request("http://test/api/recs?limit=8"),
     );
@@ -38,15 +39,15 @@ describe("recommendation API routes", () => {
       available: true,
       mode: "personalized",
     });
-    expect(getRecommendations).toHaveBeenCalledWith(8);
+    expect(getRecommendations).toHaveBeenCalledWith(10, 8);
   });
 
-  it("returns trending data and forwards the requested limit", async () => {
+  it("returns trending data and forwards the scale and limit", async () => {
     const response = await getTrendingRoute(
       new Request("http://test/api/recs/trending?limit=16"),
     );
     expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({ available: true, items: [] });
-    expect(getTrendingData).toHaveBeenCalledWith(16);
+    expect(getTrendingData).toHaveBeenCalledWith(10, 16);
   });
 });

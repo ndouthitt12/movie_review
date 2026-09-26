@@ -42,15 +42,24 @@ describe("rankedFilms", () => {
 describe("scoreSpread", () => {
   it("bins by the displayed score and starts at the lowest occupied bin", () => {
     // Displayed: 5.0, 4.5, 4.4, 2.5
-    const bins = scoreSpread([9.94, 8.95, 8.84, 4.92]);
+    const bins = scoreSpread([9.94, 8.95, 8.84, 4.92], 5);
     expect(bins[0]).toEqual({ start: 2.5, label: "2.5–2.9", count: 1 });
     expect(bins.at(-1)).toEqual({ start: 4.5, label: "4.5–5.0", count: 2 });
     expect(bins.find(({ start }) => start === 4)?.count).toBe(1);
     expect(bins.reduce((sum, { count }) => sum + count, 0)).toBe(4);
   });
 
+  it("uses one-point bins out of 10", () => {
+    // Displayed: 9.9, 9.0, 8.8, 4.9
+    const bins = scoreSpread([9.94, 8.95, 8.84, 4.92], 10);
+    expect(bins[0]).toEqual({ start: 4, label: "4.0–4.9", count: 1 });
+    expect(bins.at(-1)).toEqual({ start: 9, label: "9.0–10.0", count: 2 });
+    expect(bins.find(({ start }) => start === 8)?.count).toBe(1);
+    expect(bins).toHaveLength(6);
+  });
+
   it("returns no bins without scores", () => {
-    expect(scoreSpread([])).toEqual([]);
+    expect(scoreSpread([], 5)).toEqual([]);
   });
 });
 

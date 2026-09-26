@@ -4,6 +4,7 @@ import { unstable_cache } from "next/cache";
 import { cache } from "react";
 import { getLibraryFilms, type LibraryFilm } from "./catalog";
 import { RECOMMENDATIONS_CACHE_TAG } from "./recs-cache";
+import { displayScore, type ScoreScale } from "./score-format";
 import type {
   RecommendationCandidate,
   RecommendationSeed,
@@ -59,20 +60,28 @@ const getCachedTrending = unstable_cache(
   { revalidate: 21_600, tags: [RECOMMENDATIONS_CACHE_TAG] },
 );
 
-const getRecommendationPayload = cache(() => getCachedRecommendations());
-const getTrendingPayload = cache(() => getCachedTrending());
+// The payloads hold scores on the display scale, so the scale is an argument.
+// unstable_cache keys on its arguments, so each scale has its own entry.
+const getRecommendationPayload = cache((scale: ScoreScale) =>
+  getCachedRecommendations(scale),
+);
+const getTrendingPayload = cache((scale: ScoreScale) =>
+  getCachedTrending(scale),
+);
 
-export async function getRecommendations(limit = 20) {
-  const payload = await getRecommendationPayload();
+export async function getRecommendations(scale: ScoreScale, limit = 20) {
+  const payload = await getRecommendationPayload(scale);
   return { ...payload, items: payload.items.slice(0, clampLimit(limit)) };
 }
 
-export async function getTrending(limit = 100) {
-  const payload = await getTrendingPayload();
+export async function getTrending(scale: ScoreScale, limit = 100) {
+  const payload = await getTrendingPayload(scale);
   return { ...payload, items: payload.items.slice(0, clampLimit(limit)) };
 }
 
-async function buildRecommendationPayload(): Promise<RecommendationPayload> {
+async function buildRecommendationPayload(
+  scale: ScoreScale,
+): Promise<RecommendationPayload> {
   const generatedAt = new Date().toISOString();
   let films: LibraryFilm[];
   try {
@@ -105,7 +114,7 @@ async function buildRecommendationPayload(): Promise<RecommendationPayload> {
         }),
       };
     }
-    const candidates = await gatherCandidates(films, profile);
+    const candidates = await gatherCandidates(films, profile, scale);
     return {
       available: true,
       generatedAt,
@@ -125,7 +134,9 @@ async function buildRecommendationPayload(): Promise<RecommendationPayload> {
   }
 }
 
-async function buildTrendingPayload(): Promise<TrendingPayload> {
+async function buildTrendingPayload(
+  scale: ScoreScale,
+): Promise<TrendingPayload> {
   const generatedAt = new Date().toISOString();
   try {
     const films = await getLibraryFilms().catch(() => [] as LibraryFilm[]);
@@ -142,6 +153,7 @@ async function buildTrendingPayload(): Promise<TrendingPayload> {
         await getTmdbTrending("week"),
         profile,
         makeLibraryIndex(films),
+        scale,
       ),
     };
   } catch {
@@ -157,6 +169,7 @@ async function buildTrendingPayload(): Promise<TrendingPayload> {
 async function gatherCandidates(
   films: readonly LibraryFilm[],
   profile: TasteProfile,
+  scale: ScoreScale,
 ) {
   const byId = new Map<number, RecommendationCandidate>();
   for (const film of films) {
@@ -164,7 +177,7 @@ async function gatherCandidates(
       upsertCandidate(byId, libraryCandidate(film));
   }
 
-  const seeds = topSeeds(films, profile);
+  const seeds = topSeeds(films, profile, scale);
   const seedTasks = seeds.flatMap((seed) => [
     async () => ({
       movies: (await getTmdbRecommendations(seed.tmdbId)).results,
@@ -287,7 +300,11 @@ async function gatherCandidates(
   return candidates.map((candidate) => byId.get(candidate.tmdbId) ?? candidate);
 }
 
-function topSeeds(films: readonly LibraryFilm[], profile: TasteProfile) {
+function topSeeds(
+  films: readonly LibraryFilm[],
+  profile: TasteProfile,
+  scale: ScoreScale,
+) {
   const rated = films.filter(
     (film): film is LibraryFilm & { overall: number; tmdbId: number } =>
       film.overall !== null && film.tmdbId !== null,
@@ -301,7 +318,7 @@ function topSeeds(films: readonly LibraryFilm[], profile: TasteProfile) {
     .map((film) => ({
       tmdbId: film.tmdbId,
       title: film.title,
-      displayRating: Math.max(0, Math.min(5, film.overall / 2)),
+      displayRating: displayScore(film.overall, scale),
       score: Math.max(
         -1,
         Math.min(1, (film.overall - profile.meanScore) / maximumDeviation),

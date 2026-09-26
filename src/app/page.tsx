@@ -17,7 +17,8 @@ import {
   upNextFilms,
 } from "@/lib/rankings";
 import { formatRuntime } from "@/lib/runtime-format";
-import { formatScore, scoreOutOfFive } from "@/lib/score-format";
+import { displayScore, formatScore, type ScoreScale } from "@/lib/score-format";
+import { getScoreScale } from "@/lib/score-scale";
 import { tmdbImage } from "@/lib/tmdb";
 
 // No unstable_instant here. Its runtime prefetch check made `next build`
@@ -35,7 +36,10 @@ export default function RankingsPage() {
 
 async function RankingsContent() {
   await connection();
-  const films = await getLibraryFilms();
+  const [films, scale] = await Promise.all([
+    getLibraryFilms(),
+    getScoreScale(),
+  ]);
   const ranked = rankedFilms(films);
   const average = ranked.length
     ? ranked.reduce((sum, { overall }) => sum + overall, 0) / ranked.length
@@ -63,12 +67,16 @@ async function RankingsContent() {
           </h1>
           <p className="text-paper-500 mt-2 text-sm">
             {ranked.length
-              ? `${ranked.length} rated ${ranked.length === 1 ? "film" : "films"} · average ${formatScore(average)} out of 5`
+              ? `${ranked.length} rated ${ranked.length === 1 ? "film" : "films"} · average ${formatScore(average, scale)} out of ${scale}`
               : "Rate a film to start your rankings."}
           </p>
         </header>
         {rows.length ? (
-          <RankingsView films={rows} highlightId={lastWatched?.id ?? null} />
+          <RankingsView
+            films={rows}
+            highlightId={lastWatched?.id ?? null}
+            scale={scale}
+          />
         ) : (
           <div className="border-hairline bg-ink-900 rounded-card border p-8">
             <p className="text-paper-300">
@@ -82,7 +90,10 @@ async function RankingsContent() {
       <aside className="grid content-start gap-4 sm:grid-cols-2 xl:grid-cols-1">
         {ranked.length ? (
           <Card title="Score spread">
-            <ScoreSpreadChart overalls={ranked.map(({ overall }) => overall)} />
+            <ScoreSpreadChart
+              overalls={ranked.map(({ overall }) => overall)}
+              scale={scale}
+            />
           </Card>
         ) : null}
         {lastWatched ? (
@@ -93,10 +104,11 @@ async function RankingsContent() {
               film={lastWatched}
               rank={lastWatchedRank}
               total={ranked.length}
+              scale={scale}
             />
           </Card>
         ) : null}
-        <FranchiseCard films={films} />
+        <FranchiseCard films={films} scale={scale} />
         <UpNextCard films={films} />
       </aside>
     </div>
@@ -114,8 +126,14 @@ function Card({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-function ScoreSpreadChart({ overalls }: { overalls: number[] }) {
-  const bins = scoreSpread(overalls);
+function ScoreSpreadChart({
+  overalls,
+  scale,
+}: {
+  overalls: number[];
+  scale: ScoreScale;
+}) {
+  const bins = scoreSpread(overalls, scale);
   const max = Math.max(...bins.map(({ count }) => count), 1);
   const width = 296;
   const baseline = 112;
@@ -181,10 +199,12 @@ function LastWatched({
   film,
   rank,
   total,
+  scale,
 }: {
   film: LibraryFilm;
   rank: number | undefined;
   total: number;
+  scale: ScoreScale;
 }) {
   return (
     <Link
@@ -204,14 +224,20 @@ function LastWatched({
         <span className="text-accent-400 mt-1 font-mono text-[0.8rem] font-semibold">
           {film.overall === null
             ? "Not rated yet"
-            : `${formatScore(film.overall)}${rank ? ` · ranked ${ordinal(rank)} of ${total}` : ""}`}
+            : `${formatScore(film.overall, scale)}${rank ? ` · ranked ${ordinal(rank)} of ${total}` : ""}`}
         </span>
       </span>
     </Link>
   );
 }
 
-function FranchiseCard({ films }: { films: LibraryFilm[] }) {
+function FranchiseCard({
+  films,
+  scale,
+}: {
+  films: LibraryFilm[];
+  scale: ScoreScale;
+}) {
   const franchises = franchiseAverages(films).slice(0, 5);
   if (!franchises.length) return null;
   return (
@@ -230,13 +256,13 @@ function FranchiseCard({ films }: { films: LibraryFilm[] }) {
                 </span>
               </span>
               <span className="text-paper-100 font-mono font-semibold tabular-nums">
-                {formatScore(franchise.average)}
+                {formatScore(franchise.average, scale)}
               </span>
               <span className="bg-ink-850 col-span-2 h-1 overflow-hidden rounded-full">
                 <span
                   className="bg-accent-400 block h-full"
                   style={{
-                    width: `${(scoreOutOfFive(franchise.average) / 5) * 100}%`,
+                    width: `${(displayScore(franchise.average, scale) / scale) * 100}%`,
                   }}
                 />
               </span>

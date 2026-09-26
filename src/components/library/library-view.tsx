@@ -9,7 +9,7 @@ import { RcaChip } from "@/components/rca/rca-chip";
 import { RcaMultiselect } from "@/components/rca/rca-multiselect";
 import { Stars } from "@/components/ui/stars";
 import { rankFilms } from "@/lib/scoring";
-import { formatScore, scoreOutOfFive } from "@/lib/score-format";
+import { displayScore, formatScore, type ScoreScale } from "@/lib/score-format";
 import { useIsOwner } from "@/lib/use-is-owner";
 import { tmdbImage } from "@/lib/tmdb";
 import {
@@ -54,12 +54,15 @@ export function LibraryView({
   genres,
   franchises,
   rcaTags,
+  scale,
   mode = "library",
 }: {
   films: LibraryFilm[];
   genres: string[];
   franchises: string[];
   rcaTags: RcaTagWithUsage[];
+  /** Scores and the minScore and maxScore filters use this scale. */
+  scale: ScoreScale;
   /** The Watchlist page reuses this view for its to-watch and rewatch lists. */
   mode?: "library" | "watchlist";
 }) {
@@ -166,7 +169,7 @@ export function LibraryView({
       )
       .filter((film) =>
         scoreWithinRange(
-          scoreOutOfFive(film.overall),
+          displayScore(film.overall, scale),
           minScore,
           maxScore,
           maxScoreExclusive,
@@ -182,7 +185,17 @@ export function LibraryView({
     return status === "to_watch"
       ? result
       : result.sort((a, b) => compare(a, b, sort, direction, ranks));
-  }, [direction, films, ordered, params, ranks, selectedRcaIds, sort, status]);
+  }, [
+    direction,
+    films,
+    ordered,
+    params,
+    ranks,
+    scale,
+    selectedRcaIds,
+    sort,
+    status,
+  ]);
 
   function changeSort(key: SortKey) {
     const nextDirection = sort === key && direction === "asc" ? "desc" : "asc";
@@ -331,26 +344,26 @@ export function LibraryView({
         {mode === "library" ? (
           <>
             <Input
-              aria-label="Minimum score out of 5"
+              aria-label={`Minimum score out of ${scale}`}
               type="number"
               min="0"
-              max="5"
+              max={scale}
               step="0.1"
               value={params.get("minScore") ?? ""}
               onChange={(event) => setParam("minScore", event.target.value)}
               placeholder="Min score"
-              title="Out of 5"
+              title={`Out of ${scale}`}
             />
             <Input
-              aria-label="Maximum score out of 5"
+              aria-label={`Maximum score out of ${scale}`}
               type="number"
               min="0"
-              max="5"
+              max={scale}
               step="0.1"
               value={params.get("maxScore") ?? ""}
               onChange={(event) => setParam("maxScore", event.target.value)}
               placeholder="Max score"
-              title="Out of 5"
+              title={`Out of ${scale}`}
             />
             <div className="md:col-span-3 lg:col-span-3">
               <RcaMultiselect
@@ -406,10 +419,11 @@ export function LibraryView({
       ) : status === "to_rewatch" ? (
         <RewatchList films={filtered} />
       ) : view === "grid" && isRatingView ? (
-        <PosterGrid films={filtered} />
+        <PosterGrid films={filtered} scale={scale} />
       ) : (
         <FilmTable
           films={filtered}
+          scale={scale}
           ranks={ranks}
           sort={sort}
           direction={direction}
@@ -447,12 +461,14 @@ function FilterSelect({
 
 function FilmTable({
   films,
+  scale,
   ranks,
   sort,
   direction,
   onSort,
 }: {
   films: LibraryFilm[];
+  scale: ScoreScale;
   ranks: Map<number, number>;
   sort: SortKey;
   direction: string;
@@ -528,7 +544,7 @@ function FilmTable({
                 </td>
               ))}
               <td className="border-hairline text-accent-400 border-b px-3 py-2 text-right font-mono font-semibold">
-                {formatScore(film.overall)}
+                {formatScore(film.overall, scale)}
               </td>
               <td className="border-hairline text-paper-500 border-b px-3 py-2">
                 {film.lastWatchDate ?? "—"}
@@ -541,7 +557,13 @@ function FilmTable({
   );
 }
 
-function PosterGrid({ films }: { films: LibraryFilm[] }) {
+function PosterGrid({
+  films,
+  scale,
+}: {
+  films: LibraryFilm[];
+  scale: ScoreScale;
+}) {
   return (
     <div className="grid grid-cols-2 gap-x-4 gap-y-7 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
       {films.map((film) => (
@@ -562,7 +584,7 @@ function PosterGrid({ films }: { films: LibraryFilm[] }) {
             )}
             <div className="bg-ink-950/95 absolute inset-x-0 bottom-0 translate-y-full p-3 transition-transform duration-200 group-hover:translate-y-0 group-focus-visible:translate-y-0">
               <p className="text-accent-400 font-mono text-xl font-bold tabular-nums">
-                {formatScore(film.overall, "Unrated")}
+                {formatScore(film.overall, scale, "Unrated")}
               </p>
               {film.overall !== null ? (
                 <Stars value={film.overall / 2} className="mt-1 text-sm" />
@@ -585,7 +607,9 @@ function PosterGrid({ films }: { films: LibraryFilm[] }) {
           </h3>
           <p className="text-paper-500 mt-1 text-xs">
             {film.releaseYear}{" "}
-            {film.overall !== null ? `· ${formatScore(film.overall)}` : ""}
+            {film.overall !== null
+              ? `· ${formatScore(film.overall, scale)}`
+              : ""}
           </p>
         </Link>
       ))}

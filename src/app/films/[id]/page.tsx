@@ -13,6 +13,7 @@ import { getPublishedRuntimeForm } from "@/lib/form-config";
 import { getRcaTagsWithUsage } from "@/lib/rca";
 import { formatRuntime } from "@/lib/runtime-format";
 import { formatScore } from "@/lib/score-format";
+import { getScoreScale } from "@/lib/score-scale";
 import { tmdbImage } from "@/lib/tmdb";
 
 const statusLabels: Record<string, string> = {
@@ -44,10 +45,11 @@ async function FilmContent({ params, searchParams }: FilmPageProps) {
   // "Rate a film" links here with ?rate=1 to open the rating form.
   const startRating = (await searchParams).rate === "1";
   if (!Number.isInteger(id)) notFound();
-  const [detail, rcaTags, publishedForm] = await Promise.all([
+  const [detail, rcaTags, publishedForm, scale] = await Promise.all([
     getFilmDetail(id),
     getRcaTagsWithUsage(),
     Promise.resolve(getPublishedRuntimeForm()),
+    getScoreScale(),
   ]);
   if (!detail || !publishedForm) notFound();
   const { film, rating, answers, form, watches, selectedRcaTags } = detail;
@@ -136,9 +138,9 @@ async function FilmContent({ params, searchParams }: FilmPageProps) {
                   className="text-2xl sm:text-3xl"
                 />
                 <span className="type-score text-paper-100">
-                  {formatScore(rating.overall)}
+                  {formatScore(rating.overall, scale)}
                 </span>
-                <span className="type-body text-paper-500">/ 5</span>
+                <span className="type-body text-paper-500">/ {scale}</span>
               </div>
             ) : null}
           </div>
@@ -153,6 +155,7 @@ async function FilmContent({ params, searchParams }: FilmPageProps) {
           ratedForm={form}
           initialAnswers={initialAnswers}
           initialOverall={rating?.overall ?? null}
+          scale={scale}
           allRcaTags={rcaTags}
           initialRcaTags={selectedRcaTags}
           startEditing={startRating}

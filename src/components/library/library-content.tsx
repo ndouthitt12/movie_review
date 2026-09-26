@@ -4,6 +4,7 @@ import { LibraryView } from "@/components/library/library-view";
 import { SectionHeader } from "@/components/section-header";
 import { getCatalogOptions, getLibraryFilms } from "@/lib/catalog";
 import { getRcaTagsWithUsage } from "@/lib/rca";
+import { getScoreScale } from "@/lib/score-scale";
 
 /** Shared body of the Library and Watchlist pages. */
 export async function LibraryContent({
@@ -12,10 +13,11 @@ export async function LibraryContent({
   mode: "library" | "watchlist";
 }) {
   await connection();
-  const [films, options, rcaTags] = await Promise.all([
+  const [films, options, rcaTags, scale] = await Promise.all([
     getLibraryFilms(),
     getCatalogOptions(),
     getRcaTagsWithUsage(),
+    getScoreScale(),
   ]);
   const filterFranchises = [
     ...new Set(options.franchises.map(({ name }) => name)),
@@ -44,6 +46,7 @@ export async function LibraryContent({
         genres={options.genres}
         franchises={filterFranchises}
         rcaTags={rcaTags}
+        scale={scale}
         mode={mode}
       />
     </>

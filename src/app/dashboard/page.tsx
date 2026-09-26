@@ -13,7 +13,8 @@ import { RouteContentLoading } from "@/components/route-content-loading";
 import { SectionHeader, statsTabs } from "@/components/section-header";
 import { getDashboardData } from "@/lib/catalog";
 import { dateInTimeZone } from "@/lib/dates";
-import { formatScore } from "@/lib/score-format";
+import { displayScore, formatScore } from "@/lib/score-format";
+import { getScoreScale } from "@/lib/score-scale";
 import { computeStreaks } from "@/lib/streaks";
 import {
   attributeAverages,
@@ -47,24 +48,21 @@ export default function DashboardPage() {
 }
 
 async function DashboardContent() {
-  const {
-    films,
-    watches,
-    attributes: dashboardAttributes,
-  } = await getDashboardData();
+  const [{ films, watches, attributes: dashboardAttributes }, scale] =
+    await Promise.all([getDashboardData(), getScoreScale()]);
   const today = dateInTimeZone();
   const headlines = headlineStats(films, watches, today);
   const streaks = computeStreaks(
     watches.map(({ watchedOn }) => watchedOn),
     today,
   );
-  // One-point bins on the stored 0–10 scale are half-point bins out of 5.
+  // One-point bins on the stored 0–10 scale. Out of 5, each bin is half a point.
   const histogram = overallHistogram(
     films.flatMap(({ rating }) => (rating ? [rating.overall] : [])),
     1,
   ).map((bin) => ({
     ...bin,
-    label: `${formatScore(bin.start)}–${formatScore(bin.end)}`,
+    label: `${formatScore(bin.start, scale)}–${formatScore(bin.end, scale)}`,
   }));
   const monthly = watchesPerMonth(watches, 3, today.slice(0, 7)).slice(-24);
   const yearly = watchesPerYear(watches);
@@ -92,8 +90,8 @@ async function DashboardContent() {
         <Headline label="This year" value={headlines.thisYear} />
         <Headline
           label="Average score"
-          value={formatScore(headlines.meanOverall)}
-          detail="out of 5"
+          value={formatScore(headlines.meanOverall, scale)}
+          detail={`out of ${scale}`}
         />
         <Headline
           label="Current day streak"
@@ -116,15 +114,15 @@ async function DashboardContent() {
         <ChartPanel
           eyebrow="Ratings"
           title="Score spread"
-          caption="Your scores in half-point ranges out of 5, against an expected bell curve centered at 3.25. Select a bar to open those films."
+          caption={`Your scores in ${scale === 5 ? "half-point" : "one-point"} ranges out of ${scale}, against an expected bell curve centered at ${displayScore(6.5, scale)}. Select a bar to open those films.`}
         >
           <HistogramChart
             data={histogram.map((bin, index) => ({
               ...bin,
-              // Library score filters are out of 5.
+              // Library score filters use the display scale.
               href: libraryHref({
-                minScore: bin.start / 2,
-                maxScore: bin.end / 2,
+                minScore: displayScore(bin.start, scale),
+                maxScore: displayScore(bin.end, scale),
                 ...(index < histogram.length - 1
                   ? { maxScoreExclusive: 1 }
                   : {}),
@@ -221,7 +219,7 @@ async function DashboardContent() {
             data={genres.slice(0, 12).map((row) => ({
               label: row.label,
               value: row.count,
-              detail: `${row.count} films · ${formatScore(row.average)} average`,
+              detail: `${row.count} films · ${formatScore(row.average, scale)} average`,
               href: libraryHref({ genre: row.label }),
             }))}
           />
@@ -237,7 +235,7 @@ async function DashboardContent() {
               return {
                 label: row.label,
                 value: row.count,
-                detail: `${row.count} films · ${formatScore(row.average)} average`,
+                detail: `${row.count} films · ${formatScore(row.average, scale)} average`,
                 href: libraryHref({ minYear: start, maxYear: start + 9 }),
               };
             })}
@@ -257,7 +255,7 @@ async function DashboardContent() {
             empty="No rated franchises yet."
             rows={franchises.slice(0, 12).map((row) => ({
               label: row.label,
-              value: formatScore(row.average),
+              value: formatScore(row.average, scale),
               detail: `${row.count} film${row.count === 1 ? "" : "s"}`,
               href: libraryHref({ franchise: row.label }),
             }))}
@@ -275,7 +273,7 @@ async function DashboardContent() {
             rows={tags.slice(0, 12).map((tag) => ({
               label: tag.label,
               value: String(tag.count),
-              detail: `${attributeName(tag.questionKey, dashboardAttributes)} avg ${tag.averageScore === null ? "—" : tag.questionKey === "overall" ? formatScore(tag.averageScore) : tag.averageScore.toFixed(0)}`,
+              detail: `${attributeName(tag.questionKey, dashboardAttributes)} avg ${tag.averageScore === null ? "—" : tag.questionKey === "overall" ? formatScore(tag.averageScore, scale) : tag.averageScore.toFixed(0)}`,
               href: libraryHref({ rca: tag.id }),
             }))}
           />

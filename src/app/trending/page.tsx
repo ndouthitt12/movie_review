@@ -9,6 +9,7 @@ import {
 } from "@/components/discover/poster-grid";
 import { discoverTabs, SectionHeader } from "@/components/section-header";
 import { getTrending } from "@/lib/recs-server";
+import { getScoreScale } from "@/lib/score-scale";
 
 export const unstable_instant = { prefetch: "static" };
 export const metadata: Metadata = { title: "Trending" };
@@ -32,7 +33,8 @@ export default function TrendingPage() {
 
 async function TrendingContent() {
   await connection();
-  const payload = await getTrending(100).catch(() => null);
+  const scale = await getScoreScale();
+  const payload = await getTrending(scale, 100).catch(() => null);
   const items: DiscoverPoster[] =
     payload?.items.map((item) => ({
       key: `trending-${item.tmdbId}`,

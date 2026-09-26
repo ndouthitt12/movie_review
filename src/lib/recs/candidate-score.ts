@@ -19,6 +19,7 @@ export type RecommendationSeed = {
   tmdbId: number;
   title: string;
   score: number;
+  /** The seed's overall score on the display scale. */
   displayRating: number;
 };
 

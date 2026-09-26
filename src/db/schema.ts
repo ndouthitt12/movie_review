@@ -401,5 +401,22 @@ export const settings = pgTable("settings", {
     .default(sql`CURRENT_TIMESTAMP::text`),
 });
 
+// Site-wide display choices, set on the Settings page. There is one row, id 1.
+// A missing row means the defaults.
+export const displaySettings = pgTable(
+  "display_settings",
+  {
+    id: integer("id").primaryKey(),
+    // Overall scores show out of 5 or out of 10. Scores are always stored 0–10.
+    scoreScale: integer("score_scale").notNull().default(5),
+  },
+  (table) => [
+    check(
+      "display_settings_score_scale_check",
+      sql`${table.scoreScale} in (5, 10)`,
+    ),
+  ],
+);
+
 export type Film = typeof films.$inferSelect;
 export type NewFilm = typeof films.$inferInsert;

@@ -1,3 +1,4 @@
+import { displayScore, type ScoreScale } from "../score-format";
 import type { TmdbMoviePage } from "../tmdb";
 import type { RecommendationLibraryIndex } from "./recommend";
 import type { TasteProfile } from "./taste-profile";
@@ -8,6 +9,7 @@ export type TrendingItem = {
   year: number | null;
   posterPath: string;
   backdropPath: string;
+  /** Your overall score if you rated the film, else TMDB's. Display scale. */
   rating: number;
   voteAverage: number;
   popularity: number;
@@ -22,6 +24,7 @@ export function rankTrending(
   page: TmdbMoviePage,
   profile: TasteProfile,
   libraryIndex: RecommendationLibraryIndex,
+  scale: ScoreScale,
   limit = 100,
 ): TrendingItem[] {
   const eligible = page.results.filter(
@@ -48,9 +51,7 @@ export function rankTrending(
       else if (entry?.status === "watched" || entry?.status === "to_rewatch")
         rankingScore -= 0.5;
       const rating = round(
-        entry?.overall !== null && entry?.overall !== undefined
-          ? entry.overall / 2
-          : movie.voteAverage / 2,
+        displayScore(entry?.overall ?? movie.voteAverage, scale),
       );
       return {
         tmdbId: movie.id,

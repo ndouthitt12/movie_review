@@ -10,6 +10,7 @@ import { StatTile } from "@/components/ui/stat-tile";
 import { getDashboardData, getLibraryFilms } from "@/lib/catalog";
 import { dateInTimeZone } from "@/lib/dates";
 import { formatScore } from "@/lib/score-format";
+import { getScoreScale } from "@/lib/score-scale";
 import { tmdbImage } from "@/lib/tmdb";
 
 export const metadata: Metadata = { title: "Admin overview" };
@@ -23,9 +24,10 @@ export default function AdminPage() {
 }
 
 async function AdminOverview() {
-  const [{ films, watches }, libraryFilms] = await Promise.all([
+  const [{ films, watches }, libraryFilms, scale] = await Promise.all([
     getDashboardData(),
     getLibraryFilms(),
+    getScoreScale(),
   ]);
   const filmById = new Map(libraryFilms.map((film) => [film.id, film]));
   const ratedFilms = films.filter((film) => film.rating !== null);
@@ -67,7 +69,7 @@ async function AdminOverview() {
           />
           <StatTile
             icon={<ChartIcon />}
-            value={formatScore(averageScore)}
+            value={formatScore(averageScore, scale)}
             label="Average score"
           />
         </div>
@@ -109,7 +111,7 @@ async function AdminOverview() {
                       <span className="inline-flex items-center gap-2">
                         <Stars value={film.overall / 2} className="text-sm" />
                         <span className="text-paper-300 tabular-nums">
-                          {formatScore(film.overall)}
+                          {formatScore(film.overall, scale)}
                         </span>
                       </span>
                     ) : (

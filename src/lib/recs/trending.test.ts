@@ -41,6 +41,7 @@ describe("rankTrending", () => {
       ]),
       neutralTasteProfile(),
       {},
+      5,
     );
     expect(result.map(({ tmdbId }) => tmdbId)).toEqual([1, 2, 3]);
   });
@@ -56,6 +57,7 @@ describe("rankTrending", () => {
       ]),
       profile,
       {},
+      5,
     );
     expect(result.map(({ tmdbId }) => tmdbId)).toEqual([2, 1, 3]);
   });
@@ -67,6 +69,7 @@ describe("rankTrending", () => {
       {
         1: { filmId: 10, status: "watched", overall: 9.2 },
       },
+      5,
     );
     expect(result.map(({ tmdbId }) => tmdbId)).toEqual([2, 1]);
     expect(result[1]).toMatchObject({
@@ -87,12 +90,28 @@ describe("rankTrending", () => {
       {
         2: { filmId: 20, status: "to_watch", overall: null },
       },
+      5,
     );
     expect(result[0]).toMatchObject({
       tmdbId: 2,
       badge: "Watchlist",
       rating: 3.9,
     });
+  });
+
+  it("shows your score and TMDB's out of 10 on the 10-point scale", () => {
+    const result = rankTrending(
+      page([
+        movie(1, 100, ["Drama"], { voteAverage: 7.7 }),
+        movie(2, 50, ["Drama"]),
+      ]),
+      neutralTasteProfile(),
+      {
+        2: { filmId: 20, status: "watched", overall: 9.2 },
+      },
+      10,
+    );
+    expect(result.map(({ rating }) => rating)).toEqual([7.7, 9.2]);
   });
 
   it("filters adult titles and incomplete artwork", () => {
@@ -105,6 +124,7 @@ describe("rankTrending", () => {
       ]),
       neutralTasteProfile(),
       {},
+      5,
     );
     expect(result.map(({ tmdbId }) => tmdbId)).toEqual([4]);
   });

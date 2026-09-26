@@ -9,6 +9,8 @@ import {
 } from "@/components/discover/poster-grid";
 import { discoverTabs, SectionHeader } from "@/components/section-header";
 import { getRecommendations } from "@/lib/recs-server";
+import { displayScore } from "@/lib/score-format";
+import { getScoreScale } from "@/lib/score-scale";
 
 export const unstable_instant = { prefetch: "static" };
 export const metadata: Metadata = { title: "For you" };
@@ -32,7 +34,8 @@ export default function RecommendationsPage() {
 
 async function RecommendationsContent() {
   await connection();
-  const payload = await getRecommendations(100).catch(() => null);
+  const scale = await getScoreScale();
+  const payload = await getRecommendations(scale, 100).catch(() => null);
   const items: DiscoverPoster[] =
     payload?.items.flatMap((item) =>
       item.posterPath
@@ -44,7 +47,7 @@ async function RecommendationsContent() {
               title: item.title,
               year: item.year,
               posterPath: item.posterPath,
-              rating: Math.max(0, Math.min(5, item.voteAverage / 2)),
+              rating: displayScore(item.voteAverage, scale),
               badge: item.isWatchlist ? "On your watchlist" : undefined,
               reason: item.reasons[0],
             } satisfies DiscoverPoster,

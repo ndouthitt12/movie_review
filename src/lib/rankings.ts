@@ -1,5 +1,5 @@
 import { rankFilms } from "./scoring";
-import { scoreOutOfFive } from "./score-format";
+import { displayScore, type ScoreScale } from "./score-format";
 
 type RankingInput = {
   id: number;
@@ -23,23 +23,25 @@ export function rankedFilms<T extends RankingInput>(films: readonly T[]) {
 }
 
 /**
- * Counts films in half-point bins of the displayed 0–5 score. Bins start at
- * the lowest occupied bin, so the chart does not waste room on empty lows.
- * A film goes in the bin of its rounded, displayed score.
+ * Counts films in ten bins of the displayed score: half-point bins out of 5,
+ * one-point bins out of 10. Bins start at the lowest occupied bin, so the
+ * chart does not waste room on empty lows. A film goes in the bin of its
+ * rounded, displayed score.
  */
-export function scoreSpread(overalls: readonly number[]) {
+export function scoreSpread(overalls: readonly number[], scale: ScoreScale) {
+  const width = scale / 10;
   const shown = overalls.map(
-    (overall) => Math.round(scoreOutOfFive(overall) * 10) / 10,
+    (overall) => Math.round(displayScore(overall, scale) * 10) / 10,
   );
   if (!shown.length) return [];
-  const binOf = (score: number) => Math.min(9, Math.floor(score * 2));
+  const binOf = (score: number) => Math.min(9, Math.floor(score / width));
   const first = Math.min(...shown.map(binOf));
   const bins = Array.from({ length: 10 - first }, (_, index) => {
-    const start = (first + index) / 2;
+    const start = (first + index) * width;
     const last = first + index === 9;
     return {
       start,
-      label: `${start.toFixed(1)}–${(last ? 5 : start + 0.4).toFixed(1)}`,
+      label: `${start.toFixed(1)}–${(last ? scale : start + width - 0.1).toFixed(1)}`,
       count: 0,
     };
   });

@@ -29,6 +29,7 @@ const params = (values: Record<string, string>) =>
 const cases: Array<
   [string, string, () => Promise<Record<string, unknown>>, never?]
 > = [
+  ["PUT", "/api/admin/display", () => import("@/app/api/admin/display/route")],
   ["POST", "/api/films", () => import("@/app/api/films/route")],
   [
     "PATCH",

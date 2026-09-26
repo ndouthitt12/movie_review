@@ -27,7 +27,7 @@ import {
   type AnswerMap,
   type AnswerValue,
 } from "@/lib/scoring";
-import { formatScore } from "@/lib/score-format";
+import { formatScore, type ScoreScale } from "@/lib/score-format";
 import { useIsOwner } from "@/lib/use-is-owner";
 
 export function RatingEditor({
@@ -37,6 +37,7 @@ export function RatingEditor({
   ratedForm,
   initialAnswers,
   initialOverall,
+  scale,
   allRcaTags,
   initialRcaTags,
   startEditing = false,
@@ -47,6 +48,7 @@ export function RatingEditor({
   ratedForm: RuntimeFormConfig | null;
   initialAnswers: AnswerMap;
   initialOverall: number | null;
+  scale: ScoreScale;
   allRcaTags: RcaOption[];
   initialRcaTags: RcaOption[];
   startEditing?: boolean;
@@ -213,8 +215,8 @@ export function RatingEditor({
           </div>
           <div className="text-right">
             <p className="type-score text-accent-400">
-              {formatScore(initialOverall)}
-              <span className="text-paper-500 ml-1 text-base">/ 5</span>
+              {formatScore(initialOverall, scale)}
+              <span className="text-paper-500 ml-1 text-base">/ {scale}</span>
             </p>
             {initialOverall !== null ? (
               <Stars value={initialOverall / 2} className="mt-1 text-sm" />
@@ -311,10 +313,11 @@ export function RatingEditor({
           </h2>
         </div>
         <div className="flex gap-7 sm:text-right">
-          <ScoreReadout label="Second score" value={secondary} />
+          <ScoreReadout label="Second score" value={secondary} scale={scale} />
           <ScoreReadout
             label="Score so far"
             value={score?.overall ?? null}
+            scale={scale}
             large
           />
         </div>
@@ -719,10 +722,12 @@ function conditionDescription(
 function ScoreReadout({
   label,
   value,
+  scale,
   large = false,
 }: {
   label: string;
   value: number | null;
+  scale: ScoreScale;
   large?: boolean;
 }) {
   return (
@@ -735,8 +740,8 @@ function ScoreReadout({
             : "type-card-title text-accent-400 tabular-nums"
         }
       >
-        {formatScore(value)}
-        <span className="text-paper-500 ml-1 text-xs">/ 5</span>
+        {formatScore(value, scale)}
+        <span className="text-paper-500 ml-1 text-xs">/ {scale}</span>
       </p>
     </div>
   );

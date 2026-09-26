@@ -12,7 +12,7 @@ export type DiscoverPoster = {
   title: string;
   year?: number | null;
   posterPath: string;
-  /** Out of 5. */
+  /** On the display scale, out of 5 or 10. */
   rating: number;
   reason?: string;
   badge?: string;
