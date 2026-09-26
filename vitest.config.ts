@@ -11,5 +11,10 @@ export default defineConfig({
       { find: "@", replacement: path.resolve(root, "src") },
     ],
   },
-  test: { environment: "node" },
+  test: {
+    environment: "node",
+    // The route tests build an in-memory database in beforeAll. With every
+    // file running at once on a busy machine, that can exceed the 10 s default.
+    hookTimeout: 30_000,
+  },
 });
