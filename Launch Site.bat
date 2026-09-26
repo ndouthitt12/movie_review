@@ -25,7 +25,12 @@ rem Open the browser when the server answers on port 3000.
 start "" /b powershell -NoProfile -WindowStyle Hidden -Command ^
   "for ($i = 0; $i -lt 120; $i++) { try { (New-Object Net.Sockets.TcpClient).Connect('localhost', 3000); Start-Process 'http://localhost:3000'; break } catch { Start-Sleep -Seconds 1 } }"
 
+rem Find this PC's home network address for the phone link.
+set "LAN_IP="
+for /f "usebackq delims=" %%i in (`powershell -NoProfile -Command "(Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -like '192.168.*' } | Select-Object -First 1).IPAddress"`) do set "LAN_IP=%%i"
+
 echo Starting the site at http://localhost:3000
+if defined LAN_IP echo On your phone, on the same Wi-Fi: http://%LAN_IP%:3000
 echo Close this window to stop the server.
 call npm run dev
 
