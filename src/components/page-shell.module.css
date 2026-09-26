@@ -118,6 +118,26 @@
   background: var(--color-accent-300);
 }
 
+.login {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  border: 1px solid var(--color-ink-700);
+  border-radius: var(--radius-ui);
+  padding: 0 14px;
+  color: var(--color-paper-100);
+  font:
+    600 0.84rem / 1 var(--font-ui),
+    sans-serif;
+  transition: border-color 150ms ease;
+}
+
+.login:hover {
+  border-color: var(--color-accent-400);
+}
+
 .menuAnchor {
   position: relative;
 }
@@ -207,9 +227,22 @@
   transition: 150ms ease;
 }
 
-.accountDropdown > a:hover {
+.accountDropdown > a:hover,
+.menuButton:hover {
   background: var(--color-ink-850);
   color: var(--color-paper-100);
+}
+
+.menuButton {
+  border: 0;
+  border-top: 1px solid var(--color-hairline);
+  border-radius: 0;
+  background: transparent;
+  padding: 10px 11px 9px;
+  color: var(--color-paper-300);
+  font: var(--type-meta);
+  text-align: left;
+  cursor: pointer;
 }
 
 .activityItem {
@@ -246,7 +279,8 @@
 
 @media (max-width: 900px) {
   .nav,
-  .rate {
+  .rate,
+  .login {
     display: none;
   }
 

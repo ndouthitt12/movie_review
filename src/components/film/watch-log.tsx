@@ -5,6 +5,7 @@ import { useState, type FormEvent } from "react";
 import { Button, QuietButton } from "@/components/button";
 import { Input } from "@/components/input";
 import { dateInTimeZone } from "@/lib/dates";
+import { useIsOwner } from "@/lib/use-is-owner";
 
 type Watch = { id: number; watchedOn: string; isRewatch: boolean };
 
@@ -16,6 +17,7 @@ export function WatchLog({
   initial: Watch[];
 }) {
   const router = useRouter();
+  const owner = useIsOwner();
   const [watches, setWatches] = useState(initial);
   const [message, setMessage] = useState("");
   async function add(event: FormEvent<HTMLFormElement>) {
@@ -69,81 +71,108 @@ export function WatchLog({
     <section className="panel p-5 sm:p-7">
       <p className="eyebrow">Viewing history</p>
       <h2 className="type-section-heading text-paper-100 mt-1">Watch log</h2>
-      <form onSubmit={add} className="mt-5 flex flex-wrap items-end gap-3">
-        <label className="text-paper-500 text-xs tracking-widest uppercase">
-          Watched on
-          <Input
-            name="watchedOn"
-            type="date"
-            required
-            defaultValue={dateInTimeZone()}
-            className="mt-2"
-          />
-        </label>
-        <label className="text-paper-300 flex h-10 items-center gap-2 text-sm">
-          <input
-            name="isRewatch"
-            type="checkbox"
-            className="accent-accent-400"
-          />{" "}
-          Rewatch
-        </label>
-        <Button type="submit">Add watch</Button>
-      </form>
-      <div className="border-hairline rounded-ui mt-6 overflow-hidden border">
-        {watches.length ? (
-          watches.map((watch) => (
-            <div
-              key={watch.id}
-              className="border-hairline bg-ink-850 flex flex-wrap items-center gap-3 border-b p-3 last:border-b-0"
-            >
-              <Input
-                aria-label="Watch date"
-                type="date"
-                value={watch.watchedOn}
-                onChange={(event) =>
-                  setWatches((current) =>
-                    current.map((item) =>
-                      item.id === watch.id
-                        ? { ...item, watchedOn: event.target.value }
-                        : item,
-                    ),
-                  )
-                }
-                className="w-auto"
-              />
-              <label className="text-paper-300 flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={watch.isRewatch}
-                  onChange={(event) =>
-                    setWatches((current) =>
-                      current.map((item) =>
-                        item.id === watch.id
-                          ? { ...item, isRewatch: event.target.checked }
-                          : item,
-                      ),
-                    )
-                  }
-                  className="accent-accent-400"
-                />{" "}
-                Rewatch
-              </label>
-              <QuietButton onClick={() => save(watch)}>Save</QuietButton>
-              <button
-                onClick={() => remove(watch.id)}
-                className="text-paper-500 hover:text-paper-100 text-xs underline underline-offset-4"
+      {owner ? null : (
+        <ul className="border-hairline divide-hairline rounded-ui bg-ink-850 mt-5 divide-y border">
+          {watches.length ? (
+            watches.map((watch) => (
+              <li
+                key={watch.id}
+                className="text-paper-300 flex justify-between gap-3 px-4 py-3 text-sm"
               >
-                Delete
-              </button>
-            </div>
-          ))
-        ) : (
-          <p className="text-paper-500 bg-ink-850 px-4 py-6 text-sm">
-            No watches logged yet.
-          </p>
-        )}
-      </div>
+                <span className="font-mono tabular-nums">
+                  {watch.watchedOn}
+                </span>
+                {watch.isRewatch ? (
+                  <span className="text-paper-500">Rewatch</span>
+                ) : null}
+              </li>
+            ))
+          ) : (
+            <li className="text-paper-500 px-4 py-6 text-sm">
+              No watches logged yet.
+            </li>
+          )}
+        </ul>
+      )}
+      {owner ? (
+        <>
+          <form onSubmit={add} className="mt-5 flex flex-wrap items-end gap-3">
+            <label className="text-paper-500 text-xs tracking-widest uppercase">
+              Watched on
+              <Input
+                name="watchedOn"
+                type="date"
+                required
+                defaultValue={dateInTimeZone()}
+                className="mt-2"
+              />
+            </label>
+            <label className="text-paper-300 flex h-10 items-center gap-2 text-sm">
+              <input
+                name="isRewatch"
+                type="checkbox"
+                className="accent-accent-400"
+              />{" "}
+              Rewatch
+            </label>
+            <Button type="submit">Add watch</Button>
+          </form>
+          <div className="border-hairline rounded-ui mt-6 overflow-hidden border">
+            {watches.length ? (
+              watches.map((watch) => (
+                <div
+                  key={watch.id}
+                  className="border-hairline bg-ink-850 flex flex-wrap items-center gap-3 border-b p-3 last:border-b-0"
+                >
+                  <Input
+                    aria-label="Watch date"
+                    type="date"
+                    value={watch.watchedOn}
+                    onChange={(event) =>
+                      setWatches((current) =>
+                        current.map((item) =>
+                          item.id === watch.id
+                            ? { ...item, watchedOn: event.target.value }
+                            : item,
+                        ),
+                      )
+                    }
+                    className="w-auto"
+                  />
+                  <label className="text-paper-300 flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={watch.isRewatch}
+                      onChange={(event) =>
+                        setWatches((current) =>
+                          current.map((item) =>
+                            item.id === watch.id
+                              ? { ...item, isRewatch: event.target.checked }
+                              : item,
+                          ),
+                        )
+                      }
+                      className="accent-accent-400"
+                    />{" "}
+                    Rewatch
+                  </label>
+                  <QuietButton onClick={() => save(watch)}>Save</QuietButton>
+                  <button
+                    onClick={() => remove(watch.id)}
+                    className="text-paper-500 hover:text-paper-100 text-xs underline underline-offset-4"
+                  >
+                    Delete
+                  </button>
+                </div>
+              ))
+            ) : (
+              <p className="text-paper-500 bg-ink-850 px-4 py-6 text-sm">
+                No watches logged yet.
+              </p>
+            )}
+          </div>
+        </>
+      ) : null}
       {message ? (
         <p className="text-paper-500 mt-4 text-sm" role="status">
           {message}

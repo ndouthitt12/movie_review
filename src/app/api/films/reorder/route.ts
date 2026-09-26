@@ -1,11 +1,14 @@
 import { and, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { db } from "@/db";
+import { requireAdminApi } from "@/lib/admin-auth";
 import { films } from "@/db/schema";
 import { sameIdSet } from "@/lib/library";
 import { reorderSchema } from "@/lib/validation";
 
 export async function PATCH(request: Request) {
+  const unauthorized = await requireAdminApi();
+  if (unauthorized) return unauthorized;
   const parsed = reorderSchema.safeParse(
     await request.json().catch(() => null),
   );
@@ -22,11 +25,12 @@ export async function PATCH(request: Request) {
     );
   try {
     const updated = await db.transaction(async (tx) => {
-      const currentIds = (await tx
-        .select({ id: films.id })
-        .from(films)
-        .where(eq(films.status, "to_watch")))
-        .map(({ id }) => id);
+      const currentIds = (
+        await tx
+          .select({ id: films.id })
+          .from(films)
+          .where(eq(films.status, "to_watch"))
+      ).map(({ id }) => id);
       if (!sameIdSet(parsed.data.filmIds, currentIds))
         throw new Error("invalid-order");
       let count = 0;

@@ -34,7 +34,7 @@ async function AuthenticatedAdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  if (!(await isAdminAuthenticated())) redirect("/admin-login");
+  if (!(await isAdminAuthenticated())) redirect("/login?next=/admin");
 
   return (
     <div className="mx-auto min-h-screen w-full max-w-[1500px] px-4 py-7 sm:px-6 sm:py-9 lg:px-10">

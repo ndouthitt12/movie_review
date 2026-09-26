@@ -1,10 +1,13 @@
 import { eq, inArray } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { db } from "@/db";
+import { requireAdminApi } from "@/lib/admin-auth";
 import { rcaTags } from "@/db/schema";
 import { rcaTagReorderSchema } from "@/lib/validation";
 
 export async function PUT(request: Request) {
+  const unauthorized = await requireAdminApi();
+  if (unauthorized) return unauthorized;
   const parsed = rcaTagReorderSchema.safeParse(
     await request.json().catch(() => null),
   );

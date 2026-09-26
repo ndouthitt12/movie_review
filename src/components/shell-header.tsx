@@ -5,8 +5,14 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useCommandPalette } from "@/components/command-palette";
 import { isNavItemActive, primaryNav } from "@/components/nav-items";
-import { BellIcon, PlusIcon, SearchIcon } from "@/components/ui/icons";
+import {
+  BellIcon,
+  LoginIcon,
+  PlusIcon,
+  SearchIcon,
+} from "@/components/ui/icons";
 import { Wordmark } from "@/components/ui/wordmark";
+import { loginHref, useIsOwner } from "@/lib/use-is-owner";
 import styles from "./page-shell.module.css";
 
 type Activity = {
@@ -19,6 +25,7 @@ type Activity = {
 
 export function ShellHeader({ displayName }: { displayName: string }) {
   const pathname = usePathname();
+  const owner = useIsOwner();
   const { openPalette } = useCommandPalette();
   const accountRef = useRef<HTMLDivElement>(null);
   const activityRef = useRef<HTMLDivElement>(null);
@@ -36,6 +43,12 @@ export function ShellHeader({ displayName }: { displayName: string }) {
     document.addEventListener("mousedown", closeMenus);
     return () => document.removeEventListener("mousedown", closeMenus);
   }, []);
+
+  async function logOut() {
+    await fetch("/api/admin/logout", { method: "POST" });
+    // A full load, so every page drops its edit controls.
+    window.location.assign(pathname);
+  }
 
   async function toggleActivity() {
     setActivityOpen((open) => !open);
@@ -97,14 +110,21 @@ export function ShellHeader({ displayName }: { displayName: string }) {
           <kbd>Ctrl K</kbd>
         </button>
 
-        <button
-          type="button"
-          className={styles.rate}
-          onClick={() => openPalette("rate")}
-        >
-          <PlusIcon className="h-4 w-4" />
-          Rate a film
-        </button>
+        {owner ? (
+          <button
+            type="button"
+            className={styles.rate}
+            onClick={() => openPalette("rate")}
+          >
+            <PlusIcon className="h-4 w-4" />
+            Rate a film
+          </button>
+        ) : (
+          <Link href={loginHref(pathname)} className={styles.login}>
+            <LoginIcon className="h-4 w-4" />
+            Log in
+          </Link>
+        )}
 
         <div className={styles.accountArea}>
           <div className={styles.menuAnchor} ref={activityRef}>
@@ -145,31 +165,40 @@ export function ShellHeader({ displayName }: { displayName: string }) {
               </div>
             ) : null}
           </div>
-          <div className={styles.menuAnchor} ref={accountRef}>
-            <button
-              type="button"
-              className={styles.userChip}
-              aria-label="Open account menu"
-              aria-expanded={accountOpen}
-              onClick={() => {
-                setAccountOpen((open) => !open);
-                setActivityOpen(false);
-              }}
-            >
-              <span className={styles.avatar}>{initials}</span>
-            </button>
-            {accountOpen ? (
-              <div className={styles.accountDropdown}>
-                <p className={styles.menuTitle}>{displayName}</p>
-                <Link href="/settings" onClick={() => setAccountOpen(false)}>
-                  Settings
-                </Link>
-                <Link href="/admin" onClick={() => setAccountOpen(false)}>
-                  Admin
-                </Link>
-              </div>
-            ) : null}
-          </div>
+          {owner ? (
+            <div className={styles.menuAnchor} ref={accountRef}>
+              <button
+                type="button"
+                className={styles.userChip}
+                aria-label="Open account menu"
+                aria-expanded={accountOpen}
+                onClick={() => {
+                  setAccountOpen((open) => !open);
+                  setActivityOpen(false);
+                }}
+              >
+                <span className={styles.avatar}>{initials}</span>
+              </button>
+              {accountOpen ? (
+                <div className={styles.accountDropdown}>
+                  <p className={styles.menuTitle}>{displayName}</p>
+                  <Link href="/settings" onClick={() => setAccountOpen(false)}>
+                    Settings
+                  </Link>
+                  <Link href="/admin" onClick={() => setAccountOpen(false)}>
+                    Admin
+                  </Link>
+                  <button
+                    type="button"
+                    className={styles.menuButton}
+                    onClick={logOut}
+                  >
+                    Log out
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       </div>
     </header>

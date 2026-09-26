@@ -11,6 +11,7 @@ import {
 } from "react";
 import { Button, QuietButton } from "@/components/button";
 import { Input } from "@/components/input";
+import { useIsOwner } from "@/lib/use-is-owner";
 import {
   tmdbImage,
   type TmdbMovieDetails,
@@ -21,6 +22,7 @@ type Props = { genres: string[]; franchiseNames: string[] };
 
 export function AddFilmDialog({ genres, franchiseNames }: Props) {
   const router = useRouter();
+  const owner = useIsOwner();
   const triggerRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
@@ -174,6 +176,9 @@ export function AddFilmDialog({ genres, franchiseNames }: Props) {
       setSaving(false);
     }
   }
+
+  // Guests can browse the library but not add to it.
+  if (!owner) return null;
 
   return (
     <>

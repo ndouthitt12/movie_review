@@ -1,6 +1,7 @@
 import { and, eq, max, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { db } from "@/db";
+import { requireAdminApi } from "@/lib/admin-auth";
 import { rcaTags } from "@/db/schema";
 import { getRcaTagsWithUsage, isUniqueConstraint } from "@/lib/rca";
 import { ensureDraftForm } from "@/lib/admin-form";
@@ -11,6 +12,8 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const unauthorized = await requireAdminApi();
+  if (unauthorized) return unauthorized;
   const parsed = rcaTagCreateSchema.safeParse(
     await request.json().catch(() => null),
   );

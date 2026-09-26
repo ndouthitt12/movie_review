@@ -1,10 +1,13 @@
 import { and, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { db } from "@/db";
+import { requireAdminApi } from "@/lib/admin-auth";
 import { filmRcaTags, rcaTags } from "@/db/schema";
 import { rcaTagMergeSchema } from "@/lib/validation";
 
 export async function POST(request: Request) {
+  const unauthorized = await requireAdminApi();
+  if (unauthorized) return unauthorized;
   const parsed = rcaTagMergeSchema.safeParse(
     await request.json().catch(() => null),
   );

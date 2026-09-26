@@ -1,6 +1,7 @@
 import { and, count, eq, ne, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { db } from "@/db";
+import { requireAdminApi } from "@/lib/admin-auth";
 import { filmRcaTags, rcaTags } from "@/db/schema";
 import { isUniqueConstraint } from "@/lib/rca";
 import { rcaTagUpdateSchema } from "@/lib/validation";
@@ -9,13 +10,19 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const unauthorized = await requireAdminApi();
+  if (unauthorized) return unauthorized;
   const id = Number((await params).id);
   const parsed = rcaTagUpdateSchema.safeParse(
     await request.json().catch(() => null),
   );
   if (!Number.isInteger(id) || !parsed.success)
     return NextResponse.json({ error: "Invalid tag update." }, { status: 400 });
-  const [existing] = await db.select().from(rcaTags).where(eq(rcaTags.id, id)).limit(1);
+  const [existing] = await db
+    .select()
+    .from(rcaTags)
+    .where(eq(rcaTags.id, id))
+    .limit(1);
   if (!existing)
     return NextResponse.json({ error: "Tag not found." }, { status: 404 });
   if (parsed.data.label) {
@@ -57,10 +64,16 @@ export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const unauthorized = await requireAdminApi();
+  if (unauthorized) return unauthorized;
   const id = Number((await params).id);
   if (!Number.isInteger(id))
     return NextResponse.json({ error: "Invalid tag id." }, { status: 400 });
-  const [tag] = await db.select().from(rcaTags).where(eq(rcaTags.id, id)).limit(1);
+  const [tag] = await db
+    .select()
+    .from(rcaTags)
+    .where(eq(rcaTags.id, id))
+    .limit(1);
   if (!tag)
     return NextResponse.json({ error: "Tag not found." }, { status: 404 });
   const [usageRow] = await db

@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { Button } from "@/components/button";
+import { useIsOwner } from "@/lib/use-is-owner";
 
 export function FilmEditor({
   filmId,
@@ -14,6 +15,7 @@ export function FilmEditor({
   notes: string;
 }) {
   const router = useRouter();
+  const owner = useIsOwner();
   const [message, setMessage] = useState("");
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -34,10 +36,25 @@ export function FilmEditor({
     );
     if (response.ok) router.refresh();
   }
+
+  // Guests see the notes, if any, but not the form.
+  if (!owner)
+    return notes.trim() ? (
+      <section className="panel p-5 sm:p-7">
+        <p className="eyebrow">Film details</p>
+        <h2 className="type-section-heading text-paper-100 mt-1">Notes</h2>
+        <p className="text-paper-300 mt-4 text-sm leading-6 whitespace-pre-line">
+          {notes}
+        </p>
+      </section>
+    ) : null;
+
   return (
     <form onSubmit={submit} className="panel p-5 sm:p-7">
       <p className="eyebrow">Film details</p>
-      <h2 className="type-section-heading text-paper-100 mt-1">Library notes</h2>
+      <h2 className="type-section-heading text-paper-100 mt-1">
+        Library notes
+      </h2>
       <div className="mt-5 grid gap-5 md:grid-cols-[14rem_1fr]">
         <label className="text-paper-500 text-xs tracking-widest uppercase">
           Status

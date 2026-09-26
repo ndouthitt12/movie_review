@@ -17,6 +17,7 @@ import { useFilmActions } from "@/components/film-actions-provider";
 import { jumpPages } from "@/components/nav-items";
 import { SearchIcon } from "@/components/ui/icons";
 import { addTmdbFilm, fetchTmdbDetails } from "@/lib/add-film-client";
+import type { RateQueue } from "@/lib/rate-queue";
 import { tmdbImage, type TmdbSearchResult } from "@/lib/tmdb";
 
 type PaletteMode = "jump" | "rate";
@@ -101,7 +102,19 @@ function Palette({
   const [activeIndex, setActiveIndex] = useState(0);
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
+  const [queue, setQueue] = useState<RateQueue | null>(null);
   const trimmed = query.trim();
+
+  // In rate mode, offer likely films before anything is typed.
+  useEffect(() => {
+    if (mode !== "rate") return;
+    const controller = new AbortController();
+    fetch("/api/films/rate-queue", { signal: controller.signal })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((body: RateQueue | null) => setQueue(body))
+      .catch(() => {});
+    return () => controller.abort();
+  }, [mode]);
 
   useEffect(() => {
     if (trimmed.length < 2) return;
@@ -138,9 +151,23 @@ function Palette({
   }, [mode, trimmed]);
 
   const searched = trimmed.length >= 2;
+  const suggestions = useMemo(
+    () =>
+      mode === "rate" && !searched && queue
+        ? [
+            { title: "Watched, not rated yet", items: queue.unrated },
+            { title: "On your watchlist", items: queue.watchlist },
+            { title: "Rate again", items: queue.recent },
+          ].filter(({ items }) => items.length)
+        : [],
+    [mode, queue, searched],
+  );
   const choices: Choice[] = useMemo(
     () => [
       ...pages.map((page) => ({ kind: "page" as const, ...page })),
+      ...suggestions.flatMap(({ items }) =>
+        items.map((item) => ({ kind: "library" as const, item })),
+      ),
       ...(searched
         ? [
             ...results.library.map((item) => ({
@@ -151,7 +178,7 @@ function Palette({
           ]
         : []),
     ],
-    [pages, results, searched],
+    [pages, results, searched, suggestions],
   );
 
   async function choose(choice: Choice | undefined) {
@@ -254,9 +281,14 @@ function Palette({
             }
             className="text-paper-100 placeholder:text-paper-500 h-14 min-w-0 flex-1 bg-transparent text-base outline-none focus-visible:outline-none"
           />
-          <kbd className="border-hairline text-paper-500 rounded border px-1.5 py-0.5 font-mono text-[11px]">
-            Esc
-          </kbd>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-keyshortcuts="Escape"
+            className="border-hairline text-paper-300 hover:text-paper-100 rounded border px-2 py-1 text-xs"
+          >
+            Close
+          </button>
         </div>
 
         <div
@@ -266,11 +298,40 @@ function Palette({
           className="max-h-[60vh] overflow-y-auto p-2"
         >
           {mode === "rate" && !searched ? (
-            <p className="text-paper-500 px-3 py-6 text-sm">
-              Type at least two letters. Pick a film from your library to rate
-              it. Pick a TMDB film to add it as watched today, then rate it.
+            <p className="text-paper-500 px-3 pt-3 pb-1 text-sm">
+              Pick a film below, or type its name. A film from TMDB gets added
+              as watched today.
             </p>
           ) : null}
+
+          {suggestions.map((group, groupIndex) => {
+            const start = suggestions
+              .slice(0, groupIndex)
+              .reduce((sum, { items }) => sum + items.length, 0);
+            return (
+              <Group key={group.title} title={group.title}>
+                {group.items.map((item, index) => (
+                  <Option
+                    key={item.id}
+                    index={start + index}
+                    active={activeIndex === start + index}
+                    onHover={setActiveIndex}
+                    onChoose={() => choose(choices[start + index])}
+                  >
+                    <FilmResult
+                      title={item.title}
+                      detail={
+                        item.lastWatchDate
+                          ? `${item.releaseYear} · watched ${formatWatchDate(item.lastWatchDate)}`
+                          : String(item.releaseYear)
+                      }
+                      posterPath={item.posterPath}
+                    />
+                  </Option>
+                ))}
+              </Group>
+            );
+          })}
 
           {pages.length ? (
             <Group title="Pages">
@@ -424,4 +485,13 @@ function FilmResult({
       </span>
     </>
   );
+}
+
+/** "2026-09-25" → "Sep 25". */
+function formatWatchDate(date: string) {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(`${date}T00:00:00Z`));
 }

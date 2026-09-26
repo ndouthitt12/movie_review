@@ -1,6 +1,7 @@
 import { eq, max } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { db } from "@/db";
+import { requireAdminApi } from "@/lib/admin-auth";
 import { films, watchLog } from "@/db/schema";
 import { watchSchema } from "@/lib/validation";
 import { invalidateRecommendations } from "@/lib/recs-cache";
@@ -9,6 +10,8 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const unauthorized = await requireAdminApi();
+  if (unauthorized) return unauthorized;
   const filmId = Number((await params).id);
   const parsed = watchSchema.safeParse(await request.json().catch(() => null));
   if (!Number.isInteger(filmId) || !parsed.success)
@@ -32,7 +35,8 @@ export async function POST(
       .select({ date: max(watchLog.watchedOn).as("date") })
       .from(watchLog)
       .where(eq(watchLog.filmId, filmId));
-    await tx.update(films)
+    await tx
+      .update(films)
       .set({
         lastWatchDate: latest?.date ?? null,
         updatedAt: new Date().toISOString(),

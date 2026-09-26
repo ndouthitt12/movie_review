@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import { revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
 import { db } from "@/db";
+import { requireAdminApi } from "@/lib/admin-auth";
 import { films } from "@/db/schema";
 import { CATALOG_OPTIONS_CACHE_TAG } from "@/lib/cache-tags";
 import { filmUpdateSchema } from "@/lib/validation";
@@ -11,6 +12,8 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const unauthorized = await requireAdminApi();
+  if (unauthorized) return unauthorized;
   const id = Number((await params).id);
   const parsed = filmUpdateSchema.safeParse(
     await request.json().catch(() => null),

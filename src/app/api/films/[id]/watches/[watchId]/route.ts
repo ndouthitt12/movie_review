@@ -1,6 +1,7 @@
 import { and, eq, max } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { db } from "@/db";
+import { requireAdminApi } from "@/lib/admin-auth";
 import { films, watchLog } from "@/db/schema";
 import { watchSchema } from "@/lib/validation";
 import { invalidateRecommendations } from "@/lib/recs-cache";
@@ -15,12 +16,18 @@ async function updateLastWatch(
     .select({ date: max(watchLog.watchedOn).as("date") })
     .from(watchLog)
     .where(eq(watchLog.filmId, filmId));
-  await tx.update(films)
-    .set({ lastWatchDate: latest?.date ?? null, updatedAt: new Date().toISOString() })
+  await tx
+    .update(films)
+    .set({
+      lastWatchDate: latest?.date ?? null,
+      updatedAt: new Date().toISOString(),
+    })
     .where(eq(films.id, filmId));
 }
 
 export async function PATCH(request: Request, { params }: Context) {
+  const unauthorized = await requireAdminApi();
+  if (unauthorized) return unauthorized;
   const values = await params;
   const filmId = Number(values.id);
   const watchId = Number(values.watchId);
@@ -50,6 +57,8 @@ export async function PATCH(request: Request, { params }: Context) {
 }
 
 export async function DELETE(_request: Request, { params }: Context) {
+  const unauthorized = await requireAdminApi();
+  if (unauthorized) return unauthorized;
   const values = await params;
   const filmId = Number(values.id);
   const watchId = Number(values.watchId);

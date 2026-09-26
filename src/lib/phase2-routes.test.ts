@@ -6,6 +6,8 @@ import { queryRow, queryRows, resetTestDatabase } from "@/test/database";
 const revalidateCatalogTag = vi.hoisted(() => vi.fn());
 
 vi.mock("next/cache", () => ({ revalidateTag: revalidateCatalogTag }));
+// These tests cover the logged-in owner. owner-auth-routes.test.ts covers guests.
+vi.mock("@/lib/admin-auth", () => ({ requireAdminApi: async () => null }));
 
 let createFilm: (request: Request) => Promise<Response>;
 let reorderFilms: (request: Request) => Promise<Response>;

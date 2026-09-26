@@ -10,6 +10,7 @@ import { RcaMultiselect } from "@/components/rca/rca-multiselect";
 import { Stars } from "@/components/ui/stars";
 import { rankFilms } from "@/lib/scoring";
 import { formatScore, scoreOutOfFive } from "@/lib/score-format";
+import { useIsOwner } from "@/lib/use-is-owner";
 import { tmdbImage } from "@/lib/tmdb";
 import {
   compareLibraryValues,
@@ -65,6 +66,7 @@ export function LibraryView({
   const params = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
+  const owner = useIsOwner();
   const status =
     params.get("status") ?? (mode === "watchlist" ? "to_watch" : "watched");
   const isRatingView = status === "watched" || status === "rated";
@@ -385,7 +387,7 @@ export function LibraryView({
       {orderError ? (
         <p className="text-accent-400 mb-4 text-sm">{orderError}</p>
       ) : null}
-      {status === "to_watch" && hasFilters ? (
+      {owner && status === "to_watch" && hasFilters ? (
         <p className="text-paper-500 mb-4 text-xs">
           Clear filters to drag and persist the complete watchlist order.
         </p>
@@ -395,7 +397,8 @@ export function LibraryView({
       ) : status === "to_watch" ? (
         <WatchOrderList
           films={filtered}
-          draggable={!hasFilters}
+          draggable={owner && !hasFilters}
+          editable={owner}
           onDrag={setDragging}
           onDrop={drop}
           onMove={move}
@@ -593,12 +596,15 @@ function PosterGrid({ films }: { films: LibraryFilm[] }) {
 function WatchOrderList({
   films,
   draggable,
+  editable,
   onDrag,
   onDrop,
   onMove,
 }: {
   films: LibraryFilm[];
   draggable: boolean;
+  /** False for guests, who see the order but cannot change it. */
+  editable: boolean;
   onDrag: (id: number) => void;
   onDrop: (id: number) => void;
   onMove: (id: number, delta: -1 | 1) => void;
@@ -632,26 +638,30 @@ function WatchOrderList({
                 .join(" · ")}
             </p>
           </div>
-          <span className="flex items-center gap-1">
-            <button
-              type="button"
-              disabled={!draggable || index === 0}
-              onClick={() => onMove(film.id, -1)}
-              aria-label={`Move ${film.title} up`}
-              className="rounded-ui border-hairline text-paper-500 hover:text-paper-100 border px-2 py-1 text-xs disabled:opacity-30"
-            >
-              ↑
-            </button>
-            <button
-              type="button"
-              disabled={!draggable || index === films.length - 1}
-              onClick={() => onMove(film.id, 1)}
-              aria-label={`Move ${film.title} down`}
-              className="rounded-ui border-hairline text-paper-500 hover:text-paper-100 border px-2 py-1 text-xs disabled:opacity-30"
-            >
-              ↓
-            </button>
-          </span>
+          {editable ? (
+            <span className="flex items-center gap-1">
+              <button
+                type="button"
+                disabled={!draggable || index === 0}
+                onClick={() => onMove(film.id, -1)}
+                aria-label={`Move ${film.title} up`}
+                className="rounded-ui border-hairline text-paper-500 hover:text-paper-100 border px-2 py-1 text-xs disabled:opacity-30"
+              >
+                ↑
+              </button>
+              <button
+                type="button"
+                disabled={!draggable || index === films.length - 1}
+                onClick={() => onMove(film.id, 1)}
+                aria-label={`Move ${film.title} down`}
+                className="rounded-ui border-hairline text-paper-500 hover:text-paper-100 border px-2 py-1 text-xs disabled:opacity-30"
+              >
+                ↓
+              </button>
+            </span>
+          ) : (
+            <span />
+          )}
         </li>
       ))}
     </ol>

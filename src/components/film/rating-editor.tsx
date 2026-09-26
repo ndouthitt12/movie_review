@@ -28,6 +28,7 @@ import {
   type AnswerValue,
 } from "@/lib/scoring";
 import { formatScore } from "@/lib/score-format";
+import { useIsOwner } from "@/lib/use-is-owner";
 
 export function RatingEditor({
   filmId,
@@ -60,6 +61,9 @@ export function RatingEditor({
   );
   // "Rate a film" opens the form even when the film already has a rating.
   const [editing, setEditing] = useState(!ratedForm || startEditing);
+  // Guests only ever see the saved rating.
+  const owner = useIsOwner();
+  const showEditor = owner && (editing || !ratedForm);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const formRef = useRef<HTMLElement>(null);
@@ -67,8 +71,9 @@ export function RatingEditor({
   // The page streams in after navigation, so the browser's own jump to #rate
   // happens too early. Scroll once the form exists.
   useEffect(() => {
-    if (startEditing) formRef.current?.scrollIntoView({ block: "start" });
-  }, [startEditing]);
+    if (startEditing && showEditor)
+      formRef.current?.scrollIntoView({ block: "start" });
+  }, [startEditing, showEditor]);
   const conditionStates = useMemo(
     () => evaluateFormConditions(publishedForm, answers),
     [answers, publishedForm],
@@ -174,7 +179,15 @@ export function RatingEditor({
     setMessage("");
   }
 
-  if (!editing && ratedForm) {
+  if (!showEditor && !ratedForm)
+    return (
+      <section className="panel px-5 py-6 sm:px-7">
+        <p className="eyebrow">Your rating</p>
+        <p className="text-paper-300 mt-2 text-sm">Not rated yet.</p>
+      </section>
+    );
+
+  if (!showEditor && ratedForm) {
     const breakdownSections = formSections(ratedForm)
       .map((section) => ({
         ...section,
@@ -206,13 +219,15 @@ export function RatingEditor({
             {initialOverall !== null ? (
               <Stars value={initialOverall / 2} className="mt-1 text-sm" />
             ) : null}
-            <button
-              type="button"
-              onClick={() => setEditing(true)}
-              className="link-button mt-1"
-            >
-              Edit rating
-            </button>
+            {owner ? (
+              <button
+                type="button"
+                onClick={() => setEditing(true)}
+                className="link-button mt-1"
+              >
+                Edit rating
+              </button>
+            ) : null}
           </div>
         </header>
         <div className="divide-hairline divide-y">

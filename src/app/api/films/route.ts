@@ -2,6 +2,7 @@ import { and, eq, isNull, max, sql } from "drizzle-orm";
 import { revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
 import { db } from "@/db";
+import { requireAdminApi } from "@/lib/admin-auth";
 import { films, franchises } from "@/db/schema";
 import { CATALOG_OPTIONS_CACHE_TAG } from "@/lib/cache-tags";
 import { filmCreateSchema } from "@/lib/validation";
@@ -39,6 +40,8 @@ async function findOrCreateFranchise(
 }
 
 export async function POST(request: Request) {
+  const unauthorized = await requireAdminApi();
+  if (unauthorized) return unauthorized;
   const parsed = filmCreateSchema.safeParse(
     await request.json().catch(() => null),
   );

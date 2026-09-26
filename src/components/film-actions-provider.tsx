@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   createContext,
   useCallback,
@@ -14,6 +14,7 @@ import {
 } from "react";
 import { Button, QuietButton } from "@/components/button";
 import { addTmdbFilm } from "@/lib/add-film-client";
+import { loginHref, useIsOwner } from "@/lib/use-is-owner";
 import { tmdbImage, type TmdbMovieDetails } from "@/lib/tmdb";
 
 type AddTarget = { tmdbId: number; title: string };
@@ -23,6 +24,8 @@ const FilmActionsContext = createContext<FilmActions | null>(null);
 
 export function FilmActionsProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const owner = useIsOwner();
   const dialogRef = useRef<HTMLDivElement>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
   const [target, setTarget] = useState<AddTarget | null>(null);
@@ -156,7 +159,7 @@ export function FilmActionsProvider({ children }: { children: ReactNode }) {
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="type-label text-accent-400 tracking-[0.18em] uppercase">
-                  Add to watchlist
+                  {owner ? "Add to your library" : "On TMDB"}
                 </p>
                 <h2
                   id="quick-add-title"
@@ -215,6 +218,13 @@ export function FilmActionsProvider({ children }: { children: ReactNode }) {
                   className="bg-accent-400 text-ink-950 inline-flex min-h-10 items-center rounded-lg px-4 text-sm font-semibold"
                 >
                   Open in library
+                </Link>
+              ) : !owner ? (
+                <Link
+                  href={loginHref(pathname)}
+                  className="bg-accent-400 text-ink-950 inline-flex min-h-10 items-center rounded-lg px-4 text-sm font-semibold"
+                >
+                  Log in to add this film
                 </Link>
               ) : (
                 <>

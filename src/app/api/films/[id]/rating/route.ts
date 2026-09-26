@@ -1,6 +1,7 @@
 import { eq, inArray } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { db } from "@/db";
+import { requireAdminApi } from "@/lib/admin-auth";
 import {
   answers,
   filmRcaTags,
@@ -27,6 +28,8 @@ export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const unauthorized = await requireAdminApi();
+  if (unauthorized) return unauthorized;
   const id = Number((await params).id);
   const parsed = ratingSchema.safeParse(await request.json().catch(() => null));
   if (!Number.isInteger(id) || !parsed.success)

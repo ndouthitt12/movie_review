@@ -4,6 +4,10 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
 export const adminCookieName = "movie_admin_session";
+// Readable by the page, so it can show edit controls. It grants nothing:
+// every change still needs the httpOnly session cookie above.
+export const ownerHintCookieName = "reeler_owner";
+const sessionMaxAge = 60 * 60 * 24 * 30;
 
 function configuredPasscode() {
   return process.env.ADMIN_PASSCODE ?? null;
@@ -36,17 +40,33 @@ export async function isAdminAuthenticated() {
 export async function setAdminSession() {
   const passcode = configuredPasscode();
   if (!passcode) throw new Error("ADMIN_PASSCODE is not configured.");
-  (await cookies()).set(adminCookieName, tokenFor(passcode), {
+  const store = await cookies();
+  const secure = process.env.NODE_ENV === "production";
+  store.set(adminCookieName, tokenFor(passcode), {
     httpOnly: true,
     sameSite: "strict",
-    secure: process.env.NODE_ENV === "production",
+    secure,
     path: "/",
-    maxAge: 60 * 60 * 12,
+    maxAge: sessionMaxAge,
+  });
+  store.set(ownerHintCookieName, "1", {
+    httpOnly: false,
+    sameSite: "strict",
+    secure,
+    path: "/",
+    maxAge: sessionMaxAge,
   });
 }
 
+export async function clearAdminSession() {
+  const store = await cookies();
+  store.delete(adminCookieName);
+  store.delete(ownerHintCookieName);
+}
+
+/** Returns a 401 response unless the owner is logged in, else null. */
 export async function requireAdminApi() {
   return (await isAdminAuthenticated())
     ? null
-    : NextResponse.json({ error: "Admin authentication required." }, { status: 401 });
+    : NextResponse.json({ error: "Log in to make changes." }, { status: 401 });
 }
