@@ -172,3 +172,30 @@ export function VerifiedIcon(props: IconProps) {
     </svg>
   );
 }
+
+export function RankingsIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M9 6h11M9 12h11M9 18h11" />
+      <path d="M4 6h1M4 12h1M4 18h1" />
+    </Icon>
+  );
+}
+
+export function TrendIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="m3 17 6-6 4 4 8-8" />
+      <path d="M15 7h6v6" />
+    </Icon>
+  );
+}
+
+export function SettingsIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <circle cx="12" cy="12" r="3" />
+      <path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1" />
+    </Icon>
+  );
+}

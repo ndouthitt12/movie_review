@@ -1,9 +1,9 @@
 export function Wordmark({ className = "" }: { className?: string }) {
   return (
     <span
-      className={`font-serif text-[2.15rem] leading-none font-semibold tracking-[-0.045em] ${className}`}
+      className={`font-expanded text-paper-100 font-sans text-[1.6rem] leading-none font-extrabold tracking-[-0.02em] ${className}`}
     >
-      <span className="text-accent-400">Reeler</span>
+      reeler<span className="text-accent-400">.</span>
     </span>
   );
 }

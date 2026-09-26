@@ -11,7 +11,7 @@ const tabs: TabItem[] = [
   { label: "Form", href: "/admin/form" },
   { label: "Scoring", href: "/admin/scoring" },
   { label: "Scale", href: "/admin/scale" },
-  { label: "RCA", href: "/admin/rca" },
+  { label: "Why tags", href: "/admin/rca" },
   { label: "Versions", href: "/admin/versions" },
 ];
 
@@ -39,9 +39,17 @@ async function AuthenticatedAdminLayout({
   return (
     <div className="mx-auto min-h-screen w-full max-w-[1500px] px-4 py-7 sm:px-6 sm:py-9 lg:px-10">
       <header>
-        <Link href="/" aria-label="Picture House home">
-          <Wordmark className="text-3xl sm:text-4xl" />
-        </Link>
+        <div className="flex items-center justify-between gap-4">
+          <Link href="/" aria-label="Reeler rankings">
+            <Wordmark />
+          </Link>
+          <Link
+            href="/settings"
+            className="text-paper-500 hover:text-paper-100 text-sm transition-colors"
+          >
+            ← Back to Settings
+          </Link>
+        </div>
         <h1 className="type-page-heading text-paper-100 mt-7 tracking-[-0.03em]">
           Admin
         </h1>

@@ -15,7 +15,7 @@ export function RcaChip({
     tag.polarity === "positive"
       ? "border-positive/35 bg-positive/10 text-positive"
       : tag.polarity === "negative"
-        ? "border-accent-400/35 bg-accent-400/10 text-accent-300"
+        ? "border-negative/35 bg-negative/10 text-negative"
         : "border-sky/30 bg-sky/10 text-sky";
   return (
     <span

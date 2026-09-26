@@ -7,6 +7,7 @@ export const unstable_instant = {
   prefetch: "runtime",
   samples: [
     {
+      // The shared library view reads every filter, even the hidden ones.
       searchParams: {
         status: null,
         view: null,
@@ -27,11 +28,11 @@ export const unstable_instant = {
   ],
 };
 
-export default function LibraryPage() {
+export default function WatchlistPage() {
   return (
     <PageShell>
-      <Suspense fallback={<RouteContentLoading label="Loading library" />}>
-        <LibraryContent mode="library" />
+      <Suspense fallback={<RouteContentLoading label="Loading watchlist" />}>
+        <LibraryContent mode="watchlist" />
       </Suspense>
     </PageShell>
   );

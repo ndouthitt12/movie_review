@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button, QuietButton } from "@/components/button";
 import { QuestionRenderer } from "@/components/form/question-renderer";
 import { Markdown } from "@/components/markdown";
@@ -27,6 +27,7 @@ import {
   type AnswerMap,
   type AnswerValue,
 } from "@/lib/scoring";
+import { formatScore } from "@/lib/score-format";
 
 export function RatingEditor({
   filmId,
@@ -37,6 +38,7 @@ export function RatingEditor({
   initialOverall,
   allRcaTags,
   initialRcaTags,
+  startEditing = false,
 }: {
   filmId: number;
   status: string;
@@ -46,6 +48,7 @@ export function RatingEditor({
   initialOverall: number | null;
   allRcaTags: RcaOption[];
   initialRcaTags: RcaOption[];
+  startEditing?: boolean;
 }) {
   const router = useRouter();
   const makeEditingAnswers = () =>
@@ -55,9 +58,17 @@ export function RatingEditor({
   const [selectedIds, setSelectedIds] = useState(
     initialRcaTags.map(({ id }) => id),
   );
-  const [editing, setEditing] = useState(!ratedForm);
+  // "Rate a film" opens the form even when the film already has a rating.
+  const [editing, setEditing] = useState(!ratedForm || startEditing);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const formRef = useRef<HTMLElement>(null);
+
+  // The page streams in after navigation, so the browser's own jump to #rate
+  // happens too early. Scroll once the form exists.
+  useEffect(() => {
+    if (startEditing) formRef.current?.scrollIntoView({ block: "start" });
+  }, [startEditing]);
   const conditionStates = useMemo(
     () => evaluateFormConditions(publishedForm, answers),
     [answers, publishedForm],
@@ -174,7 +185,7 @@ export function RatingEditor({
       .filter((section) => section.questions.length > 0);
 
     return (
-      <section className="panel overflow-hidden">
+      <section id="rate" className="panel scroll-mt-20 overflow-hidden">
         <header className="border-hairline flex items-end justify-between gap-5 border-b px-5 py-5 sm:px-7">
           <div>
             <p className="eyebrow">Your rating</p>
@@ -189,7 +200,8 @@ export function RatingEditor({
           </div>
           <div className="text-right">
             <p className="type-score text-accent-400">
-              {initialOverall?.toFixed(3) ?? "—"}
+              {formatScore(initialOverall)}
+              <span className="text-paper-500 ml-1 text-base">/ 5</span>
             </p>
             {initialOverall !== null ? (
               <Stars value={initialOverall / 2} className="mt-1 text-sm" />
@@ -271,18 +283,22 @@ export function RatingEditor({
   }
 
   return (
-    <section className="panel overflow-hidden">
+    <section
+      id="rate"
+      ref={formRef}
+      className="panel scroll-mt-20 overflow-hidden"
+    >
       <header className="border-hairline flex flex-col gap-4 border-b px-5 py-5 sm:flex-row sm:items-end sm:justify-between sm:px-7">
         <div>
-          <p className="eyebrow">Runtime form</p>
+          <p className="eyebrow">Rate this film</p>
           <h2 className="type-section-heading text-paper-100 mt-1">
-            v{publishedForm.id}
+            Rating form, version {publishedForm.id}
           </h2>
         </div>
         <div className="flex gap-7 sm:text-right">
-          <ScoreReadout label="Secondary" value={secondary} />
+          <ScoreReadout label="Second score" value={secondary} />
           <ScoreReadout
-            label="Live overall"
+            label="Score so far"
             value={score?.overall ?? null}
             large
           />
@@ -704,7 +720,8 @@ function ScoreReadout({
             : "type-card-title text-accent-400 tabular-nums"
         }
       >
-        {value?.toFixed(3) ?? "—"}
+        {formatScore(value)}
+        <span className="text-paper-500 ml-1 text-xs">/ 5</span>
       </p>
     </div>
   );

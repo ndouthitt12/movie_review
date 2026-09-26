@@ -1,18 +1,19 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Sans, Sora } from "next/font/google";
+import { Archivo, Chivo_Mono } from "next/font/google";
 import "./globals.css";
 
-const ui = IBM_Plex_Sans({
+// Archivo carries both body text and the wide headings (via its width axis).
+const ui = Archivo({
   variable: "--font-ui",
   subsets: ["latin"],
-  weight: ["400", "500", "600"],
+  axes: ["wdth"],
   display: "swap",
 });
 
-const display = Sora({
-  variable: "--font-display",
+const data = Chivo_Mono({
+  variable: "--font-data",
   subsets: ["latin"],
-  weight: "600",
+  weight: ["400", "600"],
   display: "swap",
 });
 
@@ -25,10 +26,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html
-      lang="en"
-      className={`${ui.variable} ${display.variable} antialiased`}
-    >
+    <html lang="en" className={`${ui.variable} ${data.variable} antialiased`}>
       <body>{children}</body>
     </html>
   );

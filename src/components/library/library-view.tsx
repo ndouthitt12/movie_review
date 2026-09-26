@@ -7,9 +7,9 @@ import { useMemo, useState } from "react";
 import { Input } from "@/components/input";
 import { RcaChip } from "@/components/rca/rca-chip";
 import { RcaMultiselect } from "@/components/rca/rca-multiselect";
-import { Pill } from "@/components/ui/pill";
 import { Stars } from "@/components/ui/stars";
 import { rankFilms } from "@/lib/scoring";
+import { formatScore, scoreOutOfFive } from "@/lib/score-format";
 import { tmdbImage } from "@/lib/tmdb";
 import {
   compareLibraryValues,
@@ -37,21 +37,36 @@ type SortKey =
   | "overall"
   | (typeof attributes)[number];
 
+const statusTabs = {
+  library: [
+    ["watched", "Watched"],
+    ["rated", "Rated"],
+  ],
+  watchlist: [
+    ["to_watch", "To watch"],
+    ["to_rewatch", "To rewatch"],
+  ],
+} as const;
+
 export function LibraryView({
   films,
   genres,
   franchises,
   rcaTags,
+  mode = "library",
 }: {
   films: LibraryFilm[];
   genres: string[];
   franchises: string[];
   rcaTags: RcaTagWithUsage[];
+  /** The Watchlist page reuses this view for its to-watch and rewatch lists. */
+  mode?: "library" | "watchlist";
 }) {
   const params = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
-  const status = params.get("status") ?? "watched";
+  const status =
+    params.get("status") ?? (mode === "watchlist" ? "to_watch" : "watched");
   const isRatingView = status === "watched" || status === "rated";
   const view = params.get("view") ?? "table";
   const sort = (params.get("sort") ??
@@ -148,7 +163,12 @@ export function LibraryView({
         (film) => film.releaseYear >= minYear && film.releaseYear <= maxYear,
       )
       .filter((film) =>
-        scoreWithinRange(film.overall, minScore, maxScore, maxScoreExclusive),
+        scoreWithinRange(
+          scoreOutOfFive(film.overall),
+          minScore,
+          maxScore,
+          maxScoreExclusive,
+        ),
       )
       .filter((film) => {
         if (!selectedRcaIds.length) return true;
@@ -217,37 +237,58 @@ export function LibraryView({
     "rca",
   ].some((key) => params.has(key));
 
+  const tabClass = (active: boolean) =>
+    `relative -mb-px border-b-2 pb-3 text-sm transition-colors ${
+      active
+        ? "border-accent-400 text-paper-100"
+        : "text-paper-500 hover:text-paper-300 border-transparent"
+    }`;
+
   return (
     <div>
-      <div className="flex flex-wrap gap-2">
-        {[
-          ["watched", "Watched"],
-          ["rated", "All Rated"],
-          ["to_watch", "To Watch"],
-          ["to_rewatch", "To Re-Watch"],
-        ].map(([value, label]) => (
-          <Pill
+      <div className="border-hairline flex flex-wrap items-end gap-x-7 gap-y-3 border-b">
+        {statusTabs[mode].map(([value, label]) => (
+          <button
             key={value}
-            active={status === value}
+            type="button"
+            aria-pressed={status === value}
+            className={tabClass(status === value)}
             onClick={() => setStatus(value)}
           >
             {label}
-          </Pill>
+          </button>
         ))}
+        {mode === "library" ? (
+          <Link href="/watchlist" className={tabClass(false)}>
+            Watchlist
+          </Link>
+        ) : null}
         {isRatingView ? (
-          <div className="flex gap-2 sm:ml-auto">
-            <Pill
-              active={view === "table"}
-              onClick={() => setDiscreteParam("view", "table")}
-            >
-              Table
-            </Pill>
-            <Pill
-              active={view === "grid"}
-              onClick={() => setDiscreteParam("view", "grid")}
-            >
-              Posters
-            </Pill>
+          <div
+            role="group"
+            aria-label="Layout"
+            className="border-hairline bg-ink-900 rounded-ui mb-2 ml-auto inline-flex border p-[3px]"
+          >
+            {(
+              [
+                ["table", "Table"],
+                ["grid", "Posters"],
+              ] as const
+            ).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={view === value}
+                onClick={() => setDiscreteParam("view", value)}
+                className={`rounded-md px-3 py-1 text-[0.8rem] ${
+                  view === value
+                    ? "bg-ink-850 text-paper-100"
+                    : "text-paper-500 hover:text-paper-300"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
           </div>
         ) : null}
       </div>
@@ -285,47 +326,57 @@ export function LibraryView({
           onChange={(event) => setParam("maxYear", event.target.value)}
           placeholder="Year to"
         />
-        <Input
-          aria-label="Minimum overall"
-          type="number"
-          step="0.1"
-          value={params.get("minScore") ?? ""}
-          onChange={(event) => setParam("minScore", event.target.value)}
-          placeholder="Score from"
-        />
-        <Input
-          aria-label="Maximum overall"
-          type="number"
-          step="0.1"
-          value={params.get("maxScore") ?? ""}
-          onChange={(event) => setParam("maxScore", event.target.value)}
-          placeholder="Score to"
-        />
-        <div className="md:col-span-3 lg:col-span-3">
-          <RcaMultiselect
-            label="Filter by why tags"
-            options={rcaTags}
-            selectedIds={selectedRcaIds}
-            onChange={(ids) =>
-              setDiscreteParam("rca", ids.length ? ids.join(",") : null)
-            }
-            placeholder="Filter by why tags…"
-          />
-        </div>
-        <select
-          value={params.get("rcaMode") === "all" ? "all" : "any"}
-          onChange={(event) =>
-            setDiscreteParam(
-              "rcaMode",
-              event.target.value === "all" ? "all" : null,
-            )
-          }
-          aria-label="Why tag match mode"
-          className="select-field"
-        >
-          <option value="any">Match any tag</option>
-          <option value="all">Match all tags</option>
-        </select>
+        {mode === "library" ? (
+          <>
+            <Input
+              aria-label="Minimum score out of 5"
+              type="number"
+              min="0"
+              max="5"
+              step="0.1"
+              value={params.get("minScore") ?? ""}
+              onChange={(event) => setParam("minScore", event.target.value)}
+              placeholder="Min score"
+              title="Out of 5"
+            />
+            <Input
+              aria-label="Maximum score out of 5"
+              type="number"
+              min="0"
+              max="5"
+              step="0.1"
+              value={params.get("maxScore") ?? ""}
+              onChange={(event) => setParam("maxScore", event.target.value)}
+              placeholder="Max score"
+              title="Out of 5"
+            />
+            <div className="md:col-span-3 lg:col-span-3">
+              <RcaMultiselect
+                label="Filter by why tags"
+                options={rcaTags}
+                selectedIds={selectedRcaIds}
+                onChange={(ids) =>
+                  setDiscreteParam("rca", ids.length ? ids.join(",") : null)
+                }
+                placeholder="Filter by why tags…"
+              />
+            </div>
+            <select
+              value={params.get("rcaMode") === "all" ? "all" : "any"}
+              onChange={(event) =>
+                setDiscreteParam(
+                  "rcaMode",
+                  event.target.value === "all" ? "all" : null,
+                )
+              }
+              aria-label="Why tag match mode"
+              className="select-field"
+            >
+              <option value="any">Match any tag</option>
+              <option value="all">Match all tags</option>
+            </select>
+          </>
+        ) : null}
       </div>
 
       <p className="text-paper-500 my-5 text-xs tracking-widest uppercase">
@@ -415,7 +466,7 @@ function FilmTable({
           key === "genreFit" ? "Genre" : key[0].toUpperCase() + key.slice(1),
         ] as [SortKey, string],
     ),
-    ["overall", "Overall"],
+    ["overall", "Score"],
     ["lastWatchDate", "Last watch"],
   ];
   return (
@@ -473,8 +524,8 @@ function FilmTable({
                   {film[key] ?? "—"}
                 </td>
               ))}
-              <td className="border-hairline text-accent-400 border-b px-3 py-2 text-right font-semibold">
-                {film.overall?.toFixed(3) ?? "—"}
+              <td className="border-hairline text-accent-400 border-b px-3 py-2 text-right font-mono font-semibold">
+                {formatScore(film.overall)}
               </td>
               <td className="border-hairline text-paper-500 border-b px-3 py-2">
                 {film.lastWatchDate ?? "—"}
@@ -507,8 +558,8 @@ function PosterGrid({ films }: { films: LibraryFilm[] }) {
               </div>
             )}
             <div className="bg-ink-950/95 absolute inset-x-0 bottom-0 translate-y-full p-3 transition-transform duration-200 group-hover:translate-y-0 group-focus-visible:translate-y-0">
-              <p className="text-accent-400 text-xl font-bold tabular-nums">
-                {film.overall?.toFixed(3) ?? "Unrated"}
+              <p className="text-accent-400 font-mono text-xl font-bold tabular-nums">
+                {formatScore(film.overall, "Unrated")}
               </p>
               {film.overall !== null ? (
                 <Stars value={film.overall / 2} className="mt-1 text-sm" />
@@ -531,7 +582,7 @@ function PosterGrid({ films }: { films: LibraryFilm[] }) {
           </h3>
           <p className="text-paper-500 mt-1 text-xs">
             {film.releaseYear}{" "}
-            {film.overall !== null ? `· ${film.overall.toFixed(3)}` : ""}
+            {film.overall !== null ? `· ${formatScore(film.overall)}` : ""}
           </p>
         </Link>
       ))}
@@ -576,7 +627,9 @@ function WatchOrderList({
               {film.title}
             </Link>
             <p className="text-paper-500 mt-1 text-xs">
-              {film.releaseYear} · {film.genrePrimary ?? "Unclassified"}
+              {[film.releaseYear, film.genrePrimary ?? film.tmdbGenres?.[0]]
+                .filter(Boolean)
+                .join(" · ")}
             </p>
           </div>
           <span className="flex items-center gap-1">
@@ -621,11 +674,15 @@ function RewatchList({ films }: { films: LibraryFilm[] }) {
               {film.title}
             </Link>
             <p className="text-paper-500 mt-1 text-xs">
-              {film.releaseYear} · {film.genrePrimary ?? "Unclassified"}
+              {[film.releaseYear, film.genrePrimary ?? film.tmdbGenres?.[0]]
+                .filter(Boolean)
+                .join(" · ")}
             </p>
           </div>
           <p className="text-paper-500 text-xs tabular-nums">
-            Last watched {film.lastWatchDate ?? "unknown"}
+            {film.lastWatchDate
+              ? `Last watched ${film.lastWatchDate}`
+              : "No watch logged"}
           </p>
         </li>
       ))}
@@ -636,11 +693,9 @@ function RewatchList({ films }: { films: LibraryFilm[] }) {
 function EmptyState() {
   return (
     <div className="border-hairline bg-ink-900 rounded-card border py-16 text-center">
-      <h2 className="type-section-heading text-paper-100">
-        No films in this cut.
-      </h2>
+      <h2 className="type-section-heading text-paper-100">No films match.</h2>
       <p className="type-body text-paper-500 mt-3">
-        Adjust the filters or add something new.
+        Change the filters, or add a film.
       </p>
     </div>
   );

@@ -328,9 +328,7 @@ function FilmFields({
             ) : null}
           </div>
           <div>
-            <h3 className="type-card-title text-paper-100">
-              {selected.title}
-            </h3>
+            <h3 className="type-card-title text-paper-100">{selected.title}</h3>
             <p className="text-paper-500 mt-1 text-sm">
               {selected.year} · {selected.director ?? "Director unknown"} ·{" "}
               {selected.runtime ? `${selected.runtime} min` : "Runtime unknown"}
@@ -362,9 +360,9 @@ function FilmFields({
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
         <Field label="Status">
           <select name="status" className="select-field bg-ink-850">
-            <option value="to_watch">To Watch</option>
+            <option value="to_watch">To watch</option>
             <option value="watched">Watched</option>
-            <option value="to_rewatch">To Re-Watch</option>
+            <option value="to_rewatch">To rewatch</option>
           </select>
         </Field>
         <Field label="Watch order (optional)">

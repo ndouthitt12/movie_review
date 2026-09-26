@@ -10,8 +10,10 @@ import {
 import { CalendarPanel } from "@/components/dashboard/calendar-panel";
 import { PageShell } from "@/components/page-shell";
 import { RouteContentLoading } from "@/components/route-content-loading";
+import { SectionHeader, statsTabs } from "@/components/section-header";
 import { getDashboardData } from "@/lib/catalog";
 import { dateInTimeZone } from "@/lib/dates";
+import { formatScore } from "@/lib/score-format";
 import { computeStreaks } from "@/lib/streaks";
 import {
   attributeAverages,
@@ -27,11 +29,16 @@ import {
 } from "@/lib/stats";
 
 export const unstable_instant = { prefetch: "static" };
-export const metadata: Metadata = { title: "Dashboard" };
+export const metadata: Metadata = { title: "Stats" };
 
 export default function DashboardPage() {
   return (
     <PageShell>
+      <SectionHeader
+        title="Stats"
+        description="Score spread, viewing habits, taste, and the reasons behind your ratings."
+        tabs={statsTabs}
+      />
       <Suspense fallback={<RouteContentLoading label="Loading dashboard" />}>
         <DashboardContent />
       </Suspense>
@@ -51,9 +58,14 @@ async function DashboardContent() {
     watches.map(({ watchedOn }) => watchedOn),
     today,
   );
+  // One-point bins on the stored 0–10 scale are half-point bins out of 5.
   const histogram = overallHistogram(
     films.flatMap(({ rating }) => (rating ? [rating.overall] : [])),
-  );
+    1,
+  ).map((bin) => ({
+    ...bin,
+    label: `${formatScore(bin.start)}–${formatScore(bin.end)}`,
+  }));
   const monthly = watchesPerMonth(watches, 3, today.slice(0, 7)).slice(-24);
   const yearly = watchesPerYear(watches);
   const attributes = attributeAverages(films, dashboardAttributes);
@@ -71,15 +83,6 @@ async function DashboardContent() {
 
   return (
     <>
-      <header className="page-heading">
-        <p className="eyebrow">Dashboard / trends</p>
-        <h1>Your viewing, in focus</h1>
-        <p>
-          Distribution, habits, taste, and the reasons behind your ratings—all
-          computed from the same film and watch records as the library.
-        </p>
-      </header>
-
       <section
         aria-label="Headline statistics"
         className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-7"
@@ -88,8 +91,9 @@ async function DashboardContent() {
         <Headline label="This month" value={headlines.thisMonth} />
         <Headline label="This year" value={headlines.thisYear} />
         <Headline
-          label="Mean overall"
-          value={headlines.meanOverall?.toFixed(2) ?? "—"}
+          label="Average score"
+          value={formatScore(headlines.meanOverall)}
+          detail="out of 5"
         />
         <Headline
           label="Current day streak"
@@ -111,15 +115,16 @@ async function DashboardContent() {
       <div className="mt-10 grid gap-6 xl:grid-cols-2">
         <ChartPanel
           eyebrow="Ratings"
-          title="Overall distribution"
-          caption="Actual ratings in 0.5-point buckets against a normalized expected bell curve centered at 6.5."
+          title="Score spread"
+          caption="Your scores in half-point ranges out of 5, against an expected bell curve centered at 3.25. Select a bar to open those films."
         >
           <HistogramChart
             data={histogram.map((bin, index) => ({
               ...bin,
+              // Library score filters are out of 5.
               href: libraryHref({
-                minScore: bin.start,
-                maxScore: bin.end,
+                minScore: bin.start / 2,
+                maxScore: bin.end / 2,
                 ...(index < histogram.length - 1
                   ? { maxScoreExclusive: 1 }
                   : {}),
@@ -216,7 +221,7 @@ async function DashboardContent() {
             data={genres.slice(0, 12).map((row) => ({
               label: row.label,
               value: row.count,
-              detail: `${row.count} films · ${row.average?.toFixed(2) ?? "—"} average`,
+              detail: `${row.count} films · ${formatScore(row.average)} average`,
               href: libraryHref({ genre: row.label }),
             }))}
           />
@@ -232,7 +237,7 @@ async function DashboardContent() {
               return {
                 label: row.label,
                 value: row.count,
-                detail: `${row.count} films · ${row.average?.toFixed(2) ?? "—"} average`,
+                detail: `${row.count} films · ${formatScore(row.average)} average`,
                 href: libraryHref({ minYear: start, maxYear: start + 9 }),
               };
             })}
@@ -252,7 +257,7 @@ async function DashboardContent() {
             empty="No rated franchises yet."
             rows={franchises.slice(0, 12).map((row) => ({
               label: row.label,
-              value: row.average?.toFixed(2) ?? "—",
+              value: formatScore(row.average),
               detail: `${row.count} film${row.count === 1 ? "" : "s"}`,
               href: libraryHref({ franchise: row.label }),
             }))}
@@ -260,7 +265,7 @@ async function DashboardContent() {
         </section>
         <section className="panel overflow-hidden">
           <header className="border-hairline border-b p-5 sm:p-7">
-            <p className="eyebrow">RCA analytics</p>
+            <p className="eyebrow">Why tags</p>
             <h2 className="type-section-heading text-paper-100 mt-1">
               Your most common why tags
             </h2>
@@ -270,7 +275,7 @@ async function DashboardContent() {
             rows={tags.slice(0, 12).map((tag) => ({
               label: tag.label,
               value: String(tag.count),
-              detail: `${attributeName(tag.questionKey, dashboardAttributes)} avg ${tag.averageScore === null ? "—" : tag.questionKey === "overall" ? tag.averageScore.toFixed(2) : tag.averageScore.toFixed(0)}`,
+              detail: `${attributeName(tag.questionKey, dashboardAttributes)} avg ${tag.averageScore === null ? "—" : tag.questionKey === "overall" ? formatScore(tag.averageScore) : tag.averageScore.toFixed(0)}`,
               href: libraryHref({ rca: tag.id }),
             }))}
           />

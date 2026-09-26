@@ -11,29 +11,40 @@ import { Stars } from "@/components/ui/stars";
 import { getFilmDetail } from "@/lib/catalog";
 import { getPublishedRuntimeForm } from "@/lib/form-config";
 import { getRcaTagsWithUsage } from "@/lib/rca";
+import { formatRuntime } from "@/lib/runtime-format";
+import { formatScore } from "@/lib/score-format";
 import { tmdbImage } from "@/lib/tmdb";
+
+const statusLabels: Record<string, string> = {
+  watched: "Watched",
+  to_watch: "On your watchlist",
+  to_rewatch: "To rewatch",
+};
 
 export const unstable_instant = {
   prefetch: "runtime",
-  samples: [{ params: { id: "1" } }],
+  samples: [{ params: { id: "1" }, searchParams: { rate: null } }],
 };
 
-export default function FilmPage({
-  params,
-}: {
+type FilmPageProps = {
   params: Promise<{ id: string }>;
-}) {
+  searchParams: Promise<{ rate?: string | string[] }>;
+};
+
+export default function FilmPage({ params, searchParams }: FilmPageProps) {
   return (
     <PageShell>
       <Suspense fallback={<RouteContentLoading label="Loading film details" />}>
-        <FilmContent params={params} />
+        <FilmContent params={params} searchParams={searchParams} />
       </Suspense>
     </PageShell>
   );
 }
 
-async function FilmContent({ params }: { params: Promise<{ id: string }> }) {
+async function FilmContent({ params, searchParams }: FilmPageProps) {
   const id = Number((await params).id);
+  // "Rate a film" links here with ?rate=1 to open the rating form.
+  const startRating = (await searchParams).rate === "1";
   if (!Number.isInteger(id)) notFound();
   const [detail, rcaTags, publishedForm] = await Promise.all([
     getFilmDetail(id),
@@ -95,9 +106,9 @@ async function FilmContent({ params }: { params: Promise<{ id: string }> }) {
           </div>
           <div>
             <p className="type-label text-accent-400 tracking-[0.2em] uppercase">
-              {film.status.replaceAll("_", " ")}
+              {statusLabels[film.status] ?? film.status}
             </p>
-            <h1 className="type-hero text-paper-100 mt-3 max-w-4xl tracking-[-0.04em]">
+            <h1 className="type-hero text-paper-100 mt-3 max-w-4xl tracking-[-0.02em]">
               {film.title}
             </h1>
             <p className="type-meta text-paper-300 mt-5">
@@ -105,7 +116,7 @@ async function FilmContent({ params }: { params: Promise<{ id: string }> }) {
                 film.genrePrimary,
                 film.genreSecondary,
                 film.releaseYear,
-                film.runtime ? `${film.runtime} min` : null,
+                formatRuntime(film.runtime, ""),
               ]
                 .filter(Boolean)
                 .join(" · ")}
@@ -127,7 +138,7 @@ async function FilmContent({ params }: { params: Promise<{ id: string }> }) {
                   className="text-2xl sm:text-3xl"
                 />
                 <span className="type-score text-paper-100">
-                  {(rating.overall / 2).toFixed(1)}
+                  {formatScore(rating.overall)}
                 </span>
                 <span className="type-body text-paper-500">/ 5</span>
               </div>
@@ -146,6 +157,7 @@ async function FilmContent({ params }: { params: Promise<{ id: string }> }) {
           initialOverall={rating?.overall ?? null}
           allRcaTags={rcaTags}
           initialRcaTags={selectedRcaTags}
+          startEditing={startRating}
         />
         <WatchLog
           filmId={film.id}

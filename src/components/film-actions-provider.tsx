@@ -13,6 +13,7 @@ import {
   type ReactNode,
 } from "react";
 import { Button, QuietButton } from "@/components/button";
+import { addTmdbFilm } from "@/lib/add-film-client";
 import { tmdbImage, type TmdbMovieDetails } from "@/lib/tmdb";
 
 type AddTarget = { tmdbId: number; title: string };
@@ -107,47 +108,35 @@ export function FilmActionsProvider({ children }: { children: ReactNode }) {
   }, [close, target]);
 
   async function addToWatchlist() {
-    if (!details || details.year === null) {
-      setError("This title has no release year, so it cannot be added yet.");
-      return;
-    }
+    if (!details) return;
     setSaving(true);
     setError("");
     try {
-      const response = await fetch("/api/films", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          tmdbId: details.id,
-          title: details.title,
-          releaseYear: details.year,
-          status: "to_watch",
-          genrePrimary: details.genres[0] ?? null,
-          genreSecondary: details.genres[1] ?? null,
-          notes: "",
-          posterPath: details.posterPath,
-          backdropPath: details.backdropPath,
-          runtime: details.runtime,
-          director: details.director,
-          overview: details.overview,
-          tmdbGenres: details.genres,
-        }),
-      });
-      const body = (await response.json()) as { id?: number; error?: string };
-      if (response.status === 409 && body.id) {
-        setLibraryFilmId(body.id);
-        setError("This movie is already in your library.");
-        return;
-      }
-      if (!response.ok || !body.id)
-        throw new Error(body.error ?? "Could not add this movie.");
-      setLibraryFilmId(body.id);
-      router.refresh();
+      const { id, alreadyInLibrary } = await addTmdbFilm(details, "to_watch");
+      setLibraryFilmId(id);
+      if (alreadyInLibrary) setError("This movie is already in your library.");
+      else router.refresh();
     } catch (caught) {
       setError(
         caught instanceof Error ? caught.message : "Could not add this movie.",
       );
     } finally {
+      setSaving(false);
+    }
+  }
+
+  async function rateNow() {
+    if (!details) return;
+    setSaving(true);
+    setError("");
+    try {
+      const { id } = await addTmdbFilm(details, "watched");
+      close();
+      router.push(`/films/${id}?rate=1#rate`);
+    } catch (caught) {
+      setError(
+        caught instanceof Error ? caught.message : "Could not add this movie.",
+      );
       setSaving(false);
     }
   }
@@ -197,7 +186,11 @@ export function FilmActionsProvider({ children }: { children: ReactNode }) {
                 </div>
                 <div className="min-w-0">
                   <p className="text-paper-300 text-sm">
-                    {[details.year, details.director, details.genres.slice(0, 2).join(", ")]
+                    {[
+                      details.year,
+                      details.director,
+                      details.genres.slice(0, 2).join(", "),
+                    ]
                       .filter(Boolean)
                       .join(" · ")}
                   </p>
@@ -208,7 +201,10 @@ export function FilmActionsProvider({ children }: { children: ReactNode }) {
               </div>
             ) : null}
             {error ? (
-              <p className="border-accent-400 text-paper-300 mt-5 border-l pl-3 text-sm" role="alert">
+              <p
+                className="border-accent-400 text-paper-300 mt-5 border-l pl-3 text-sm"
+                role="alert"
+              >
                 {error}
               </p>
             ) : null}
@@ -221,12 +217,22 @@ export function FilmActionsProvider({ children }: { children: ReactNode }) {
                   Open in library
                 </Link>
               ) : (
-                <Button
-                  onClick={addToWatchlist}
-                  disabled={!details || loading || saving}
-                >
-                  {saving ? "Adding…" : "Add to watchlist"}
-                </Button>
+                <>
+                  <Button
+                    onClick={addToWatchlist}
+                    disabled={!details || loading || saving}
+                  >
+                    {saving ? "Adding…" : "Add to watchlist"}
+                  </Button>
+                  <button
+                    type="button"
+                    onClick={rateNow}
+                    disabled={!details || loading || saving}
+                    className="border-hairline text-paper-100 hover:border-accent-400 inline-flex min-h-10 items-center rounded-lg border px-4 text-sm font-medium transition-colors disabled:opacity-50"
+                  >
+                    I watched it · rate now
+                  </button>
+                </>
               )}
               <a
                 href={`https://www.themoviedb.org/movie/${target.tmdbId}`}

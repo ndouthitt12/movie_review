@@ -9,6 +9,7 @@ import { Stars } from "@/components/ui/stars";
 import { StatTile } from "@/components/ui/stat-tile";
 import { getDashboardData, getLibraryFilms } from "@/lib/catalog";
 import { dateInTimeZone } from "@/lib/dates";
+import { formatScore } from "@/lib/score-format";
 import { tmdbImage } from "@/lib/tmdb";
 
 export const metadata: Metadata = { title: "Admin overview" };
@@ -66,7 +67,7 @@ async function AdminOverview() {
           />
           <StatTile
             icon={<ChartIcon />}
-            value={averageScore === null ? "—" : averageScore.toFixed(2)}
+            value={formatScore(averageScore)}
             label="Average score"
           />
         </div>
@@ -108,7 +109,7 @@ async function AdminOverview() {
                       <span className="inline-flex items-center gap-2">
                         <Stars value={film.overall / 2} className="text-sm" />
                         <span className="text-paper-300 tabular-nums">
-                          {film.overall.toFixed(2)}
+                          {formatScore(film.overall)}
                         </span>
                       </span>
                     ) : (
@@ -140,7 +141,7 @@ async function AdminOverview() {
       <div className="grid gap-5 sm:gap-6 lg:grid-cols-[minmax(17rem,0.8fr)_minmax(0,1.2fr)]">
         <SectionCard title="Library counts">
           <ListRow
-            href="/library?status=to_watch"
+            href="/watchlist"
             leading={<BookmarkIcon className="h-5 w-5" />}
             title="To watch"
             trailing={films.filter((film) => film.status === "to_watch").length}
@@ -154,7 +155,7 @@ async function AdminOverview() {
             }
           />
           <ListRow
-            href="/library?status=to_rewatch"
+            href="/watchlist?status=to_rewatch"
             leading={<RewatchIcon className="h-5 w-5" />}
             title="To rewatch"
             trailing={
