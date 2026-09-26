@@ -20,10 +20,8 @@ import { formatRuntime } from "@/lib/runtime-format";
 import { formatScore, scoreOutOfFive } from "@/lib/score-format";
 import { tmdbImage } from "@/lib/tmdb";
 
-export const unstable_instant = {
-  prefetch: "runtime",
-  samples: [{ searchParams: { group: null } }],
-};
+// No unstable_instant here. Its runtime prefetch check made `next build`
+// hang on this page (Next.js 16.2.10), so production deploys failed.
 
 export default function RankingsPage() {
   return (

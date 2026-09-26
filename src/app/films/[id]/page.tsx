@@ -21,10 +21,8 @@ const statusLabels: Record<string, string> = {
   to_rewatch: "To rewatch",
 };
 
-export const unstable_instant = {
-  prefetch: "runtime",
-  samples: [{ params: { id: "1" }, searchParams: { rate: null } }],
-};
+// No unstable_instant here. Its runtime prefetch check made `next build`
+// hang on this page (Next.js 16.2.10), so production deploys failed.
 
 type FilmPageProps = {
   params: Promise<{ id: string }>;

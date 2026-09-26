@@ -3,30 +3,8 @@ import { LibraryContent } from "@/components/library/library-content";
 import { PageShell } from "@/components/page-shell";
 import { RouteContentLoading } from "@/components/route-content-loading";
 
-export const unstable_instant = {
-  prefetch: "runtime",
-  samples: [
-    {
-      // The shared library view reads every filter, even the hidden ones.
-      searchParams: {
-        status: null,
-        view: null,
-        sort: null,
-        dir: null,
-        rca: null,
-        q: null,
-        genre: null,
-        franchise: null,
-        minYear: null,
-        maxYear: null,
-        minScore: null,
-        maxScore: null,
-        maxScoreExclusive: null,
-        rcaMode: null,
-      },
-    },
-  ],
-};
+// No unstable_instant here. Its runtime prefetch check made `next build`
+// hang on this page (Next.js 16.2.10), so production deploys failed.
 
 export default function WatchlistPage() {
   return (
