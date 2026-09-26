@@ -202,7 +202,7 @@ function validateAnswer(question: RuntimeQuestionConfig, answer: ParsedAnswer) {
       question.type === "button_scale" &&
       !isButtonScaleStoredValue(answer.valueNumber)
     )
-      return `${question.label} must be a button-scale value from 1 to 10 in half-point steps.`;
+      return `${question.label} must be a button-scale value from 1 to 10 in steps of 0.1.`;
     if (question.min != null && answer.valueNumber < question.min)
       return `${question.label} must be at least ${question.min}.`;
     if (question.max != null && answer.valueNumber > question.max)

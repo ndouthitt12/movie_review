@@ -306,8 +306,9 @@ function AnswersTab({
           />
         </Field>
         <p className="text-paper-500 text-xs leading-5 sm:col-span-2">
-          The scale displays 1–10 with half points and stores 10–100 for
-          compatibility with existing scoring.
+          The scale displays 1–10 with half points. Shift-click or a long press
+          enters any tenth. It stores 10–100 for compatibility with existing
+          scoring.
         </p>
       </div>
     );
@@ -647,7 +648,7 @@ function LogicTab({
                   type="number"
                   min={source?.type === "button_scale" ? 1 : undefined}
                   max={source?.type === "button_scale" ? 10 : undefined}
-                  step={source?.type === "button_scale" ? 0.5 : undefined}
+                  step={source?.type === "button_scale" ? 0.1 : undefined}
                   value={conditionValue ?? ""}
                   onChange={(event) =>
                     setConditionValue(

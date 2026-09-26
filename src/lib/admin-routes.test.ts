@@ -856,7 +856,7 @@ describe("admin form workflow", () => {
       data: {
         sourceQuestionId: scale.id,
         operator: "equals",
-        value: 52,
+        value: 52.5,
         effect: "show",
       },
     });
@@ -907,7 +907,7 @@ describe("admin form workflow", () => {
       },
     );
 
-    for (const valueNumber of [10, 15, 95, 100]) {
+    for (const valueNumber of [10, 15, 93, 95, 100]) {
       const rated = await saveRating(
         jsonRequest(`http://test/api/films/${film.id}/rating`, "PUT", {
           formVersionId: published.form.id,
@@ -928,7 +928,7 @@ describe("admin form workflow", () => {
         formVersionId: published.form.id,
         answers: ratingAnswers.map((answer) =>
           answer.questionId === publishedScale.id
-            ? { ...answer, valueNumber: 52 }
+            ? { ...answer, valueNumber: 52.5 }
             : answer,
         ),
         rcaTagIds: [],
@@ -937,7 +937,7 @@ describe("admin form workflow", () => {
     );
     expect(rejected.status).toBe(400);
     expect((await rejected.json()) as { error: string }).toMatchObject({
-      error: expect.stringContaining("half-point steps"),
+      error: expect.stringContaining("steps of 0.1"),
     });
   });
 });

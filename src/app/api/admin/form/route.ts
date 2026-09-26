@@ -414,7 +414,7 @@ export async function POST(request: Request) {
             !isButtonScaleStoredValue(parsed.data.data.value))
         )
           throw new Error(
-            "A button-scale condition must use a value from 1 to 10 in half-point steps.",
+            "A button-scale condition must use a value from 1 to 10 in steps of 0.1.",
           );
         await db
           .insert(questionConditions)

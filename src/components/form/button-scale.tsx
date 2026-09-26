@@ -1,6 +1,7 @@
 "use client";
 
-import { useId, useRef } from "react";
+import { useEffect, useId, useRef, useState } from "react";
+import { Button, QuietButton } from "@/components/button";
 import { Markdown } from "@/components/markdown";
 import {
   BUTTON_SCALE_MAX,
@@ -10,9 +11,12 @@ import {
   buttonScaleStoredValue,
   formatButtonScaleValue,
   isButtonScaleStoredValue,
+  parseButtonScaleInput,
 } from "@/lib/button-scale";
 
 const ACTIVATION_WINDOW_MS = 350;
+// How long a touch must stay on a button to open the exact-score box.
+const LONG_PRESS_MS = 500;
 const BUTTONS = Array.from({ length: 10 }, (_, index) => index + 1);
 
 export function ButtonScale({
@@ -38,11 +42,38 @@ export function ButtonScale({
 }) {
   const generatedId = useId();
   const labelId = `${generatedId}-label`;
+  const hintId = `${generatedId}-hint`;
+  const exactInputId = `${generatedId}-exact`;
+  const exactErrorId = `${generatedId}-exact-error`;
   const lastActivation = useRef<{ button: number; at: number } | null>(null);
+  const pressTimer = useRef<number | null>(null);
+  // Some browsers send a click when a long press ends. This skips that click.
+  const longPressed = useRef(false);
+  const exactInput = useRef<HTMLInputElement>(null);
+  // The exact-score box. Shift-click or a long press on a button opens it.
+  const [exact, setExact] = useState<{
+    button: number;
+    text: string;
+    error: string;
+  } | null>(null);
   const validValue =
     value != null && isButtonScaleStoredValue(value) ? value : null;
   const selectedButton =
     validValue == null ? null : Math.floor(buttonScaleDisplayValue(validValue));
+  const exactButton = exact?.button;
+
+  useEffect(() => {
+    if (exactButton === undefined) return;
+    exactInput.current?.focus();
+    exactInput.current?.select();
+  }, [exactButton]);
+
+  useEffect(() => {
+    const timers = pressTimer;
+    return () => {
+      if (timers.current !== null) window.clearTimeout(timers.current);
+    };
+  }, []);
 
   function activate(button: number, timestamp: number) {
     if (disabled) return;
@@ -62,14 +93,61 @@ export function ButtonScale({
     if (disabled) return;
     lastActivation.current = null;
     const initial = delta > 0 ? BUTTON_SCALE_MIN : BUTTON_SCALE_MAX;
+    // Moves to the next half point, so 9.3 goes up to 9.5 or down to 9.
     const next =
       validValue == null
         ? initial
-        : Math.max(
-            BUTTON_SCALE_MIN,
-            Math.min(BUTTON_SCALE_MAX, validValue + delta),
-          );
-    onChange(next);
+        : delta > 0
+          ? Math.floor(validValue / BUTTON_SCALE_STEP) * BUTTON_SCALE_STEP +
+            BUTTON_SCALE_STEP
+          : Math.ceil(validValue / BUTTON_SCALE_STEP) * BUTTON_SCALE_STEP -
+            BUTTON_SCALE_STEP;
+    onChange(Math.max(BUTTON_SCALE_MIN, Math.min(BUTTON_SCALE_MAX, next)));
+  }
+
+  function openExact(button: number) {
+    if (disabled) return;
+    lastActivation.current = null;
+    setExact({
+      button,
+      text:
+        selectedButton === button && validValue != null
+          ? formatButtonScaleValue(validValue)
+          : String(button),
+      error: "",
+    });
+  }
+
+  function submitExact() {
+    if (!exact) return;
+    const stored = parseButtonScaleInput(exact.text);
+    if (stored == null) {
+      setExact({
+        ...exact,
+        error:
+          "Enter a number from 1 to 10 with one decimal at most, like 9.3.",
+      });
+      return;
+    }
+    onChange(stored);
+    setExact(null);
+  }
+
+  function startPress(button: number, pointerType: string) {
+    longPressed.current = false;
+    clearPress();
+    if (disabled || pointerType === "mouse") return;
+    pressTimer.current = window.setTimeout(() => {
+      pressTimer.current = null;
+      longPressed.current = true;
+      openExact(button);
+    }, LONG_PRESS_MS);
+  }
+
+  function clearPress() {
+    if (pressTimer.current === null) return;
+    window.clearTimeout(pressTimer.current);
+    pressTimer.current = null;
   }
 
   return (
@@ -99,7 +177,11 @@ export function ButtonScale({
           <span className="bg-hairline h-px w-20" />
         </div>
 
-        <div className="grid grid-cols-5 gap-2.5 lg:grid-cols-10" role="group">
+        <div
+          className="grid grid-cols-5 gap-2.5 lg:grid-cols-10"
+          role="group"
+          aria-describedby={hintId}
+        >
           {BUTTONS.map((button) => {
             const selected = selectedButton === button;
             const buttonLabel =
@@ -120,8 +202,30 @@ export function ButtonScale({
                       ? `Rate ${button}; activate twice for ${button}.5`
                       : "Rate 10"
                 }
-                onClick={(event) => activate(button, event.timeStamp)}
+                onClick={(event) => {
+                  if (longPressed.current) {
+                    longPressed.current = false;
+                    return;
+                  }
+                  if (event.shiftKey) {
+                    openExact(button);
+                    return;
+                  }
+                  setExact(null);
+                  activate(button, event.timeStamp);
+                }}
+                onPointerDown={(event) => startPress(button, event.pointerType)}
+                onPointerUp={() => {
+                  clearPress();
+                  // iOS opens the keyboard only for focus during a touch.
+                  if (longPressed.current) exactInput.current?.focus();
+                }}
+                onPointerLeave={clearPress}
+                onPointerCancel={clearPress}
+                // A long press would otherwise open the phone's context menu.
+                onContextMenu={(event) => event.preventDefault()}
                 onKeyDown={(event) => {
+                  longPressed.current = false;
                   if (event.key === "ArrowRight" || event.key === "ArrowUp") {
                     event.preventDefault();
                     step(BUTTON_SCALE_STEP);
@@ -141,7 +245,7 @@ export function ButtonScale({
                     onChange(BUTTON_SCALE_MAX);
                   }
                 }}
-                className={`rounded-ui aspect-[1.05] min-h-12 w-full touch-manipulation border text-xl font-semibold tabular-nums transition-colors sm:text-2xl ${
+                className={`rounded-ui aspect-[1.05] min-h-12 w-full touch-manipulation border text-xl font-semibold tabular-nums transition-colors select-none [-webkit-touch-callout:none] sm:text-2xl ${
                   selected
                     ? "border-accent-400 bg-accent-400 text-ink-950"
                     : "border-paper-500/50 bg-ink-850 text-paper-100 hover:border-accent-400/70 hover:text-accent-400"
@@ -153,9 +257,61 @@ export function ButtonScale({
           })}
         </div>
 
-        <p className="text-paper-500 mt-3 text-[10px] tracking-wide uppercase">
-          Double-click or double-tap for half points
+        <p
+          id={hintId}
+          className="text-paper-500 mt-3 text-[10px] tracking-wide uppercase"
+        >
+          Double-click or double-tap for half points. Shift-click or press and
+          hold for an exact score.
         </p>
+
+        {exact && !disabled ? (
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+            <label htmlFor={exactInputId} className="text-paper-300 text-sm">
+              Exact score
+            </label>
+            <input
+              ref={exactInput}
+              id={exactInputId}
+              type="text"
+              inputMode="decimal"
+              autoComplete="off"
+              value={exact.text}
+              aria-invalid={exact.error ? true : undefined}
+              aria-describedby={exact.error ? exactErrorId : undefined}
+              onChange={(event) =>
+                setExact({ ...exact, text: event.target.value, error: "" })
+              }
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  submitExact();
+                } else if (event.key === "Escape") {
+                  event.preventDefault();
+                  setExact(null);
+                }
+              }}
+              className="rounded-ui border-hairline bg-ink-850 text-paper-100 hover:border-paper-500 focus:border-accent-400 h-10 w-20 border px-3 text-center text-sm tabular-nums transition-colors focus:outline-none"
+            />
+            <span className="text-paper-500 text-sm">/ 10</span>
+            <Button type="button" onClick={submitExact}>
+              Set
+            </Button>
+            <QuietButton type="button" onClick={() => setExact(null)}>
+              Cancel
+            </QuietButton>
+            {exact.error ? (
+              <p
+                id={exactErrorId}
+                role="alert"
+                className="text-negative w-full text-sm"
+              >
+                {exact.error}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+
         <output className="sr-only" aria-live="polite">
           {validValue == null
             ? "No rating selected"
