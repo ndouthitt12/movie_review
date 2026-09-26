@@ -15,8 +15,10 @@ import type { AnswerMap, AnswerValue } from "@/lib/scoring";
 
 export function FormBuilder({
   initialForm,
+  genres,
 }: {
   initialForm: RuntimeFormConfig;
+  genres: string[];
 }) {
   const [selectedId, setSelectedId] = useState<number | null>(
     initialForm.questions[0]?.id ?? null,
@@ -193,6 +195,7 @@ export function FormBuilder({
               key={selected.id}
               question={selected}
               form={form}
+              genres={genres}
               updateQuestion={updateQuestion}
               flushQuestion={flushQuestion}
               mutate={mutate}
@@ -208,6 +211,7 @@ export function FormBuilder({
         <div className="min-w-0 xl:col-start-2 2xl:col-start-3 2xl:row-start-1">
           <Preview
             form={form}
+            genres={genres}
             selectedId={selectedId}
             answers={answers}
             onAnswer={changeAnswer}

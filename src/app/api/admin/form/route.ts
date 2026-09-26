@@ -25,6 +25,8 @@ import {
   reorderDraftSections,
 } from "@/lib/admin-form";
 import { isButtonScaleStoredValue } from "@/lib/button-scale";
+import { applicableGenresSchema } from "@/lib/validation";
+import { uniqueGenres } from "@/lib/genres";
 
 const finite = z.number().finite();
 const optionQuestionTypes = new Set([
@@ -60,6 +62,7 @@ const questionFields = z.object({
   multiSelectScoring: z.enum(multiSelectScorings).nullable().optional(),
   allowNa: z.boolean().optional(),
   conditionLogic: z.enum(conditionLogics).optional(),
+  applicableGenres: applicableGenresSchema.transform(uniqueGenres).optional(),
   rcaEnabled: z.boolean().optional(),
 });
 

@@ -155,7 +155,7 @@ function RankTable({
           return (
             <tr
               key={film.id}
-              className={`border-hairline hover:bg-ink-900 relative border-b transition-colors ${
+              className={`border-hairline hover:bg-ink-900 border-b transition-colors ${
                 highlight ? "bg-accent-400/[0.07]" : ""
               }`}
             >
@@ -166,8 +166,11 @@ function RankTable({
               >
                 {film.rank}
               </td>
-              <td className="py-2 pr-3">
-                <div className="flex min-w-0 items-center gap-3">
+              <td>
+                <Link
+                  href={`/films/${film.id}`}
+                  className="group flex min-w-0 items-center gap-3 py-2 pr-3"
+                >
                   <span className="bg-ink-800 relative h-[42px] w-7 shrink-0 overflow-hidden rounded-[3px]">
                     {film.posterPath ? (
                       <Image
@@ -180,18 +183,15 @@ function RankTable({
                     ) : null}
                   </span>
                   <span className="grid min-w-0">
-                    <Link
-                      href={`/films/${film.id}`}
-                      className="text-paper-100 hover:text-accent-300 truncate font-semibold after:absolute after:inset-0"
-                    >
+                    <span className="text-paper-100 group-hover:text-accent-300 truncate font-semibold">
                       {film.title}
-                    </Link>
+                    </span>
                     <span className="text-paper-500 truncate text-xs">
                       {film.franchise || film.director || " "}
                       {highlight ? " · last watched" : ""}
                     </span>
                   </span>
-                </div>
+                </Link>
               </td>
               <td className="text-paper-300 hidden py-2 pr-3 font-mono text-[0.8rem] tabular-nums md:table-cell">
                 {film.releaseYear}

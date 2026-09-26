@@ -3,11 +3,13 @@
 import { useMemo, useState } from "react";
 import { Button, QuietButton } from "@/components/button";
 import { QuestionRenderer } from "@/components/form/question-renderer";
+import { GenreSelector } from "@/components/form/genre-selector";
 import { Input } from "@/components/input";
 import type { RuntimeFormConfig } from "@/lib/form-config";
 import { getSecondaryFormConfig } from "@/lib/secondary-scoring";
 import {
   computeOverallFromForm,
+  evaluateFormConditions,
   questionContribution,
   type AnswerMap,
 } from "@/lib/scoring";
@@ -28,18 +30,25 @@ type Summary = {
 
 export function ScoringAdmin({
   initialForm,
+  genres,
 }: {
   initialForm: RuntimeFormConfig;
+  genres: string[];
 }) {
   const [form, setForm] = useState(initialForm);
   const [answers, setAnswers] = useState<AnswerMap>({});
+  const [sampleGenres, setSampleGenres] = useState<string[]>([]);
   const [message, setMessage] = useState("");
   const [summary, setSummary] = useState<Summary | null>(null);
-  const primary = useMemo(() => safeCompute(form, answers), [form, answers]);
-  const secondary = useMemo(
-    () => safeCompute(getSecondaryFormConfig(form), answers),
-    [form, answers],
+  const primary = useMemo(
+    () => safeCompute(form, answers, sampleGenres),
+    [form, answers, sampleGenres],
   );
+  const secondary = useMemo(
+    () => safeCompute(getSecondaryFormConfig(form), answers, sampleGenres),
+    [form, answers, sampleGenres],
+  );
+  const states = evaluateFormConditions(form, answers, sampleGenres);
 
   async function mutate(payload: Record<string, unknown>) {
     const response = await fetch("/api/admin/form", {
@@ -109,10 +118,29 @@ export function ScoringAdmin({
       </div>
       <section className="panel mt-6 p-5">
         <p className="eyebrow">Scoring sandbox</p>
+        {form.questions.some(
+          (question) => question.applicableGenres?.length,
+        ) ? (
+          <div className="mt-4 max-w-lg">
+            <GenreSelector
+              genres={genres}
+              selected={sampleGenres}
+              onChange={setSampleGenres}
+              legend="Sample film genres"
+              description="Choose genres to test which attributes apply and how they affect the score."
+            />
+            <p className="text-paper-500 mt-2 text-xs leading-5">
+              For a form with genre conditions, a manual divisor is reduced in
+              proportion to excluded points. Configure it for the full form.
+            </p>
+          </div>
+        ) : null}
         <div className="mt-5 grid gap-6 xl:grid-cols-[1fr_20rem]">
           <div className="space-y-5">
             {form.questions
-              .filter((q) => q.scored || q.secondaryScored)
+              .filter(
+                (q) => (q.scored || q.secondaryScored) && states[q.id]?.visible,
+              )
               .map((question) => (
                 <label key={question.id} className="block">
                   <span className="mb-2 block text-sm font-semibold">
@@ -121,6 +149,7 @@ export function ScoringAdmin({
                   <QuestionRenderer
                     question={question}
                     value={answers[question.id]}
+                    disabled={!states[question.id]?.enabled}
                     onChange={(value) =>
                       setAnswers((current) => ({
                         ...current,
@@ -312,9 +341,10 @@ function FormulaCard({
 function safeCompute(
   form: Parameters<typeof computeOverallFromForm>[0],
   answers: AnswerMap,
+  genres: string[],
 ) {
   try {
-    return computeOverallFromForm(form, answers);
+    return computeOverallFromForm(form, answers, genres);
   } catch {
     return null;
   }

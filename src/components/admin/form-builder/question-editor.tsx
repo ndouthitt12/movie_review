@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Button, QuietButton } from "@/components/button";
 import { Input } from "@/components/input";
 import { Markdown } from "@/components/markdown";
+import { GenreSelector } from "@/components/form/genre-selector";
 import type {
   RuntimeFormConfig,
   RuntimeQuestionConfig,
@@ -26,6 +27,7 @@ type Tab = "basics" | "answers" | "scoring" | "logic";
 export function QuestionEditor({
   question,
   form,
+  genres,
   updateQuestion,
   flushQuestion,
   mutate,
@@ -33,6 +35,7 @@ export function QuestionEditor({
 }: {
   question: RuntimeQuestionConfig;
   form: RuntimeFormConfig;
+  genres: string[];
   updateQuestion: <K extends EditableQuestionKey>(
     questionId: number,
     key: K,
@@ -102,9 +105,12 @@ export function QuestionEditor({
             }`}
           >
             {value}
-            {value === "logic" && question.conditions.length ? (
+            {value === "logic" &&
+            (question.conditions.length ||
+              question.applicableGenres?.length) ? (
               <span className="bg-accent-400 text-ink-950 ml-2 rounded-full px-1.5 py-0.5 text-[10px]">
-                {question.conditions.length}
+                {question.conditions.length +
+                  (question.applicableGenres?.length ? 1 : 0)}
               </span>
             ) : null}
           </button>
@@ -137,7 +143,16 @@ export function QuestionEditor({
           />
         ) : null}
         {tab === "logic" ? (
-          <LogicTab question={question} form={form} mutate={mutate} />
+          <div className="space-y-6">
+            <GenreSelector
+              genres={genres}
+              selected={question.applicableGenres ?? []}
+              onChange={(value) => change("applicableGenres", value, true)}
+              legend="Show for genres"
+              description="Leave all unchecked for every film. Select genres to show this question when a film matches any of them. Films with multiple genres get every matching question. Any answer conditions below must also be met."
+            />
+            <LogicTab question={question} form={form} mutate={mutate} />
+          </div>
         ) : null}
       </div>
     </section>

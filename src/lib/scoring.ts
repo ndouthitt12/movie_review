@@ -1,4 +1,5 @@
 import type { BlankPolicy, ConditionOperator, QuestionType } from "@/db/schema";
+import { matchesGenres } from "./genres";
 
 export const scoreAttributes = [
   "story",
@@ -72,6 +73,8 @@ export type QuestionConfig = {
   multiSelectScoring: "sum" | "avg" | null;
   allowNa: boolean;
   conditionLogic: "all" | "any";
+  /** Empty or absent means this question applies to every film. */
+  applicableGenres?: string[];
   conditions: Array<{
     sourceQuestionId: number;
     operator: ConditionOperator;
@@ -158,10 +161,16 @@ function evaluateConditionsInForm(
   questions: readonly QuestionConfig[],
   visiting: Set<number>,
   memo: Map<number, ConditionState>,
+  genres: readonly string[],
 ): ConditionState {
   const cached = memo.get(question.id);
   if (cached) return cached;
   if (visiting.has(question.id)) return { visible: false, enabled: false };
+  if (!matchesGenres(question.applicableGenres, genres)) {
+    const state = { visible: false, enabled: false };
+    memo.set(question.id, state);
+    return state;
+  }
 
   visiting.add(question.id);
   const matches = question.conditions.map((condition) => {
@@ -169,7 +178,14 @@ function evaluateConditionsInForm(
       (candidate) => candidate.id === condition.sourceQuestionId,
     );
     const sourceState = source
-      ? evaluateConditionsInForm(source, answers, questions, visiting, memo)
+      ? evaluateConditionsInForm(
+          source,
+          answers,
+          questions,
+          visiting,
+          memo,
+          genres,
+        )
       : { visible: true, enabled: true };
     const met =
       sourceState.visible &&
@@ -198,6 +214,7 @@ function evaluateConditionsInForm(
 export function evaluateConditions(
   question: QuestionConfig,
   answers: AnswerMap,
+  genres: readonly string[] = [],
 ): ConditionState {
   return evaluateConditionsInForm(
     question,
@@ -205,12 +222,14 @@ export function evaluateConditions(
     [question],
     new Set(),
     new Map(),
+    genres,
   );
 }
 
 export function evaluateFormConditions(
   form: FormConfig,
   answers: AnswerMap,
+  genres: readonly string[] = [],
 ): Record<number, ConditionState> {
   const memo = new Map<number, ConditionState>();
   for (const question of form.questions)
@@ -220,6 +239,7 @@ export function evaluateFormConditions(
       form.questions,
       new Set(),
       memo,
+      genres,
     );
   return Object.fromEntries(memo);
 }
@@ -377,15 +397,20 @@ function contributionForState(
 export function questionContribution(
   question: QuestionConfig,
   answers: AnswerMap,
+  genres: readonly string[] = [],
 ): QuestionContribution {
   return contributionForState(
     question,
     answers,
-    evaluateConditions(question, answers),
+    evaluateConditions(question, answers, genres),
   );
 }
 
-export function computeOverallFromForm(form: FormConfig, answers: AnswerMap) {
+export function computeOverallFromForm(
+  form: FormConfig,
+  answers: AnswerMap,
+  genres: readonly string[] = [],
+) {
   const memo = new Map<number, ConditionState>();
   const terms = form.questions.map((question) => ({
     questionId: question.id,
@@ -398,18 +423,27 @@ export function computeOverallFromForm(form: FormConfig, answers: AnswerMap) {
         form.questions,
         new Set(),
         memo,
+        genres,
       ),
     ),
   }));
+  const countedMaximum = terms
+    .filter((term) => term.counted)
+    .reduce((total, term) => total + term.maxPoints, 0);
+  const totalMaximum = terms.reduce((total, term) => total + term.maxPoints, 0);
+  // Genre-specific forms can use a manual divisor calibrated to a 0–10 score
+  // while answers are stored on a 0–100 scale. Remove the same proportion of
+  // the divisor as the excluded points, rather than subtracting raw points.
+  const genreSpecific = form.questions.some((q) => q.applicableGenres?.length);
   const divisor =
     form.divisorMode === "auto"
-      ? terms
-          .filter((term) => term.counted)
-          .reduce((total, term) => total + term.maxPoints, 0)
-      : (form.manualDivisor ?? 0) -
-        terms
-          .filter((term) => !term.counted)
-          .reduce((total, term) => total + term.maxPoints, 0);
+      ? countedMaximum
+      : genreSpecific && totalMaximum > 0
+        ? (form.manualDivisor ?? 0) * (countedMaximum / totalMaximum)
+        : (form.manualDivisor ?? 0) -
+          terms
+            .filter((term) => !term.counted)
+            .reduce((total, term) => total + term.maxPoints, 0);
 
   if (!Number.isFinite(divisor) || divisor <= 0) {
     throw new RangeError("divisor must be greater than zero");

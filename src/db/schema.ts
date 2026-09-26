@@ -228,6 +228,10 @@ export const questions = pgTable(
     conditionLogic: text("condition_logic", { enum: conditionLogics })
       .notNull()
       .default("all"),
+    applicableGenres: jsonb("applicable_genres")
+      .$type<string[]>()
+      .notNull()
+      .default([]),
     rcaEnabled: boolean("rca_enabled").notNull().default(false),
     archivedAt: text("archived_at"),
   },

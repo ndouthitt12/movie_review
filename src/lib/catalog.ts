@@ -17,6 +17,7 @@ import {
 import { getFormVersionConfig, getPublishedRuntimeForm } from "./form-config";
 import { CATALOG_OPTIONS_CACHE_TAG } from "./cache-tags";
 import type { DashboardFilm } from "./stats";
+import { getFilmGenres, uniqueGenres } from "./genres";
 
 export async function getLibraryFilms() {
   const subFranchises = alias(franchises, "sub_franchises");
@@ -118,21 +119,13 @@ export async function getCatalogOptions() {
   cacheTag(CATALOG_OPTIONS_CACHE_TAG);
   const filmRows = await db
     .select({
-      primary: films.genrePrimary,
-      secondary: films.genreSecondary,
+      genrePrimary: films.genrePrimary,
+      genreSecondary: films.genreSecondary,
       tmdbGenres: films.tmdbGenres,
     })
     .from(films);
-  const genreSet = new Set<string>();
-  filmRows.forEach(({ primary, secondary, tmdbGenres }) => {
-    if (primary) genreSet.add(primary);
-    if (secondary) genreSet.add(secondary);
-    tmdbGenres?.forEach((genre) =>
-      genreSet.add(genre === "Science Fiction" ? "Sci-Fi" : genre),
-    );
-  });
   return {
-    genres: [...genreSet].sort(),
+    genres: uniqueGenres(filmRows.flatMap(getFilmGenres)),
     franchises: await db
       .select({
         id: franchises.id,

@@ -14,6 +14,7 @@ import { getRcaTagsWithUsage } from "@/lib/rca";
 import { formatRuntime } from "@/lib/runtime-format";
 import { formatScore } from "@/lib/score-format";
 import { getScoreScale } from "@/lib/score-scale";
+import { getFilmGenres } from "@/lib/genres";
 import { tmdbImage } from "@/lib/tmdb";
 
 const statusLabels: Record<string, string> = {
@@ -149,7 +150,9 @@ async function FilmContent({ params, searchParams }: FilmPageProps) {
 
       <div className="mt-8 space-y-6">
         <RatingEditor
+          key={film.id}
           filmId={film.id}
+          genres={getFilmGenres(film)}
           status={film.status}
           publishedForm={publishedForm}
           ratedForm={form}

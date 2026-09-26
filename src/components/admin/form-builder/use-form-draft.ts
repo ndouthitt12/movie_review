@@ -33,6 +33,7 @@ const editableKeys = [
   "multiSelectScoring",
   "allowNa",
   "conditionLogic",
+  "applicableGenres",
   "rcaEnabled",
 ] as const satisfies readonly (keyof RuntimeQuestionConfig)[];
 

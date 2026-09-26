@@ -32,6 +32,7 @@ import { useIsOwner } from "@/lib/use-is-owner";
 
 export function RatingEditor({
   filmId,
+  genres,
   status,
   publishedForm,
   ratedForm,
@@ -43,6 +44,7 @@ export function RatingEditor({
   startEditing = false,
 }: {
   filmId: number;
+  genres: string[];
   status: string;
   publishedForm: RuntimeFormConfig;
   ratedForm: RuntimeFormConfig | null;
@@ -77,20 +79,20 @@ export function RatingEditor({
       formRef.current?.scrollIntoView({ block: "start" });
   }, [startEditing, showEditor]);
   const conditionStates = useMemo(
-    () => evaluateFormConditions(publishedForm, answers),
-    [answers, publishedForm],
+    () => evaluateFormConditions(publishedForm, answers, genres),
+    [answers, publishedForm, genres],
   );
   const score = useMemo(() => {
     try {
-      return computeOverallFromForm(publishedForm, answers);
+      return computeOverallFromForm(publishedForm, answers, genres);
     } catch {
       return null;
     }
-  }, [answers, publishedForm]);
+  }, [answers, publishedForm, genres]);
   const terms = new Map(
     score?.terms.map((term) => [term.questionId, term]) ?? [],
   );
-  const secondary = secondaryScore(publishedForm, answers);
+  const secondary = secondaryScore(publishedForm, answers, genres);
 
   async function createTag(questionKey: string, label: string) {
     const response = await fetch("/api/rca-tags", {
@@ -190,11 +192,17 @@ export function RatingEditor({
     );
 
   if (!showEditor && ratedForm) {
+    const savedStates = evaluateFormConditions(
+      ratedForm,
+      initialAnswers,
+      genres,
+    );
     const breakdownSections = formSections(ratedForm)
       .map((section) => ({
         ...section,
         questions: section.questions.filter(
-          (question) => !isDisplayElement(question),
+          (question) =>
+            !isDisplayElement(question) && savedStates[question.id]?.visible,
         ),
       }))
       .filter((section) => section.questions.length > 0);
@@ -671,9 +679,13 @@ function formatAnswer(
   return "—";
 }
 
-function secondaryScore(form: RuntimeFormConfig, answers: AnswerMap) {
+function secondaryScore(
+  form: RuntimeFormConfig,
+  answers: AnswerMap,
+  genres: string[],
+) {
   try {
-    return computeOverallFromForm(getSecondaryFormConfig(form), answers)
+    return computeOverallFromForm(getSecondaryFormConfig(form), answers, genres)
       .overall;
   } catch {
     return null;

@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { FormBuilder } from "@/components/admin/form-builder";
 import { RouteContentLoading } from "@/components/route-content-loading";
 import { ensureDraftForm } from "@/lib/admin-form";
+import { getCatalogOptions } from "@/lib/catalog";
 
 export default function AdminFormPage() {
   return (
@@ -12,5 +13,9 @@ export default function AdminFormPage() {
 }
 
 async function AdminFormContent() {
-  return <FormBuilder initialForm={await ensureDraftForm()} />;
+  const [form, options] = await Promise.all([
+    ensureDraftForm(),
+    getCatalogOptions(),
+  ]);
+  return <FormBuilder initialForm={form} genres={options.genres} />;
 }

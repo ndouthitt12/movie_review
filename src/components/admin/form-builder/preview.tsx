@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { QuestionRenderer } from "@/components/form/question-renderer";
+import { GenreSelector } from "@/components/form/genre-selector";
 import { Markdown } from "@/components/markdown";
 import type {
   RuntimeFormConfig,
@@ -16,21 +17,24 @@ import { isDisplayType } from "./constants";
 
 export function Preview({
   form,
+  genres,
   selectedId,
   answers,
   onAnswer,
 }: {
   form: RuntimeFormConfig;
+  genres: string[];
   selectedId: number | null;
   answers: AnswerMap;
   onAnswer: (questionId: number, value: AnswerValue) => void;
 }) {
   const [mode, setMode] = useState<"question" | "full">("question");
+  const [sampleGenres, setSampleGenres] = useState<string[]>([]);
   const selectedRef = useRef<HTMLDivElement>(null);
   const selected = form.questions.find(({ id }) => id === selectedId);
   const states = useMemo(
-    () => evaluateFormConditions(form, answers),
-    [answers, form],
+    () => evaluateFormConditions(form, answers, sampleGenres),
+    [answers, form, sampleGenres],
   );
 
   useEffect(() => {
@@ -69,12 +73,25 @@ export function Preview({
       </header>
 
       <div className="max-h-[70vh] overflow-y-auto p-5">
+        {form.questions.some(
+          (question) => question.applicableGenres?.length,
+        ) ? (
+          <div className="border-hairline mb-5 border-b pb-5">
+            <GenreSelector
+              genres={genres}
+              selected={sampleGenres}
+              onChange={setSampleGenres}
+              legend="Preview film genres"
+              description="Choose one or more genres to try their conditional questions. No selection previews a film without genres."
+            />
+          </div>
+        ) : null}
         {mode === "question" ? (
           selected ? (
             <div>
               {states[selected.id] && !states[selected.id]!.visible ? (
                 <p className="text-accent-400 mb-3 text-xs font-semibold">
-                  Hidden by current sample answers
+                  Hidden by current sample genres or answers
                 </p>
               ) : null}
               <QuestionPreview

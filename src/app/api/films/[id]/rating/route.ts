@@ -23,6 +23,7 @@ import {
 import { ratingSchema } from "@/lib/validation";
 import { invalidateRecommendations } from "@/lib/recs-cache";
 import { isButtonScaleStoredValue } from "@/lib/button-scale";
+import { getFilmGenres } from "@/lib/genres";
 
 export async function PUT(
   request: Request,
@@ -42,7 +43,12 @@ export async function PUT(
       { status: 400 },
     );
   const [film] = await db
-    .select({ status: films.status })
+    .select({
+      status: films.status,
+      genrePrimary: films.genrePrimary,
+      genreSecondary: films.genreSecondary,
+      tmdbGenres: films.tmdbGenres,
+    })
     .from(films)
     .where(eq(films.id, id))
     .limit(1);
@@ -86,7 +92,8 @@ export async function PUT(
     const error = validateAnswer(question, answer);
     if (error) return NextResponse.json({ error }, { status: 400 });
   }
-  const states = evaluateFormConditions(form, answerMap);
+  const genres = getFilmGenres(film);
+  const states = evaluateFormConditions(form, answerMap, genres);
   const missing = form.questions.filter((question) => {
     const state = states[question.id] ?? { visible: true, enabled: true };
     return (
@@ -108,7 +115,7 @@ export async function PUT(
 
   let overall: number;
   try {
-    overall = computeOverallFromForm(form, answerMap).overall;
+    overall = computeOverallFromForm(form, answerMap, genres).overall;
   } catch (error) {
     return NextResponse.json(
       {
@@ -118,7 +125,7 @@ export async function PUT(
       { status: 400 },
     );
   }
-  const secondary = secondaryScore(form, answerMap);
+  const secondary = secondaryScore(form, answerMap, genres);
   const uniqueRcaTagIds = [...new Set(parsed.data.rcaTagIds)];
   const validTags = uniqueRcaTagIds.length
     ? await db
@@ -243,10 +250,14 @@ function answerPresent(answer: AnswerMap[number]) {
 function secondaryScore(
   form: NonNullable<Awaited<ReturnType<typeof getPublishedRuntimeForm>>>,
   answerMap: AnswerMap,
+  genres: string[],
 ) {
   try {
-    return computeOverallFromForm(getSecondaryFormConfig(form), answerMap)
-      .overall;
+    return computeOverallFromForm(
+      getSecondaryFormConfig(form),
+      answerMap,
+      genres,
+    ).overall;
   } catch {
     return null;
   }

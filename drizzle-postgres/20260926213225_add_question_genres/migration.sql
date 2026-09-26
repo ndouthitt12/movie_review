@@ -1,0 +1,1 @@
+ALTER TABLE "questions" ADD COLUMN "applicable_genres" jsonb DEFAULT '[]' NOT NULL;

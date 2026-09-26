@@ -42,6 +42,10 @@ export const filmUpdateSchema = z
 
 const finiteNumber = z.number().finite();
 
+export const applicableGenresSchema = z
+  .array(z.string().trim().min(1).max(80))
+  .max(100);
+
 export const questionSchema = z
   .object({
     id: z.number().int().positive().optional(),
@@ -78,6 +82,7 @@ export const questionSchema = z
     multiSelectScoring: z.enum(multiSelectScorings).nullable().default(null),
     allowNa: z.boolean().default(false),
     conditionLogic: z.enum(conditionLogics).default("all"),
+    applicableGenres: applicableGenresSchema.default([]),
     rcaEnabled: z.boolean().default(false),
     archivedAt: z.string().nullable().optional(),
   })

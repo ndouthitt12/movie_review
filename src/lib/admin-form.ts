@@ -84,6 +84,7 @@ export async function ensureDraftForm(): Promise<RuntimeFormConfig> {
           multiSelectScoring: question.multiSelectScoring,
           allowNa: question.allowNa,
           conditionLogic: question.conditionLogic,
+          applicableGenres: question.applicableGenres ?? [],
           rcaEnabled: question.rcaEnabled,
         })
         .returning({ id: questions.id });
