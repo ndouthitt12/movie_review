@@ -71,7 +71,7 @@ export function RankingsView({
             role="tab"
             aria-selected={grouping === value}
             onClick={() => setGrouping(value)}
-            className={`rounded-md px-3 py-1.5 text-[0.8rem] transition-colors ${
+            className={`rounded-md px-3 py-2.5 text-[0.8rem] transition-colors sm:py-1.5 ${
               grouping === value
                 ? "bg-ink-850 text-paper-100"
                 : "text-paper-500 hover:text-paper-300"
@@ -126,7 +126,7 @@ function RankTable({
     <table className="w-full table-fixed border-collapse text-left text-sm">
       <thead>
         <tr className="text-paper-500 border-hairline border-b text-[0.68rem] font-semibold tracking-[0.12em] uppercase">
-          <th scope="col" className="w-10 pb-2.5 font-semibold">
+          <th scope="col" className="w-8 pb-2.5 font-semibold sm:w-10">
             #
           </th>
           <th scope="col" className="pb-2.5 font-semibold">
@@ -144,7 +144,7 @@ function RankTable({
           >
             Runtime
           </th>
-          <th scope="col" className="w-28 pb-2.5 font-semibold sm:w-44 xl:w-52">
+          <th scope="col" className="w-14 pb-2.5 font-semibold sm:w-44 xl:w-52">
             Score
           </th>
         </tr>
@@ -183,7 +183,7 @@ function RankTable({
                     ) : null}
                   </span>
                   <span className="grid min-w-0">
-                    <span className="text-paper-100 group-hover:text-accent-300 truncate font-semibold">
+                    <span className="text-paper-100 group-hover:text-accent-300 line-clamp-2 font-semibold sm:line-clamp-1">
                       {film.title}
                     </span>
                     <span className="text-paper-500 truncate text-xs">
@@ -203,7 +203,8 @@ function RankTable({
                 <ScoreBar
                   overall={film.overall}
                   scale={scale}
-                  trackClassName="w-14 sm:w-28 xl:w-36"
+                  // Phones drop the bar so the title has room.
+                  trackClassName="hidden sm:block sm:w-28 xl:w-36"
                 />
               </td>
             </tr>

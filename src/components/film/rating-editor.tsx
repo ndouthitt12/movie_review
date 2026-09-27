@@ -32,6 +32,7 @@ import { useIsOwner } from "@/lib/use-is-owner";
 
 export function RatingEditor({
   filmId,
+  filmTitle,
   genres,
   status,
   publishedForm,
@@ -44,6 +45,7 @@ export function RatingEditor({
   startEditing = false,
 }: {
   filmId: number;
+  filmTitle: string;
   genres: string[];
   status: string;
   publishedForm: RuntimeFormConfig;
@@ -71,6 +73,10 @@ export function RatingEditor({
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const formRef = useRef<HTMLElement>(null);
+  const formHeaderRef = useRef<HTMLElement>(null);
+  const bannerRef = useRef<HTMLDivElement>(null);
+  // True while the form's own score header is scrolled out of view.
+  const [bannerShown, setBannerShown] = useState(false);
 
   // The page streams in after navigation, so the browser's own jump to #rate
   // happens too early. Scroll once the form exists.
@@ -78,6 +84,37 @@ export function RatingEditor({
     if (startEditing && showEditor)
       formRef.current?.scrollIntoView({ block: "start" });
   }, [startEditing, showEditor]);
+
+  // Show the banner once the form header passes under the site header, and
+  // hide it again after the end of the form scrolls past.
+  useEffect(() => {
+    if (!showEditor) return;
+    let frame = 0;
+    function update() {
+      frame = 0;
+      const header = formHeaderRef.current;
+      const form = formRef.current;
+      const banner = bannerRef.current;
+      if (!header || !form || !banner) return;
+      // The banner's CSS top is the site header height plus the notch inset.
+      const top = parseFloat(getComputedStyle(banner).top) || 0;
+      setBannerShown(
+        header.getBoundingClientRect().bottom < top &&
+          form.getBoundingClientRect().bottom > top + banner.offsetHeight,
+      );
+    }
+    function schedule() {
+      if (!frame) frame = window.requestAnimationFrame(update);
+    }
+    update();
+    window.addEventListener("scroll", schedule, { passive: true });
+    window.addEventListener("resize", schedule);
+    return () => {
+      window.removeEventListener("scroll", schedule);
+      window.removeEventListener("resize", schedule);
+      if (frame) window.cancelAnimationFrame(frame);
+    };
+  }, [showEditor]);
   const conditionStates = useMemo(
     () => evaluateFormConditions(publishedForm, answers, genres),
     [answers, publishedForm, genres],
@@ -93,6 +130,22 @@ export function RatingEditor({
     score?.terms.map((term) => [term.questionId, term]) ?? [],
   );
   const secondary = secondaryScore(publishedForm, answers, genres);
+  const progress = useMemo(() => {
+    const open = publishedForm.questions.filter((question) => {
+      const state = conditionStates[question.id];
+      return (
+        !isDisplayElement(question) &&
+        !question.archivedAt &&
+        (state?.visible ?? true) &&
+        (state?.enabled ?? true)
+      );
+    });
+    return {
+      answered: open.filter((question) => answerPresent(answers[question.id]))
+        .length,
+      total: open.length,
+    };
+  }, [answers, conditionStates, publishedForm]);
 
   async function createTag(questionKey: string, label: string) {
     const response = await fetch("/api/rca-tags", {
@@ -133,6 +186,10 @@ export function RatingEditor({
       setMessage(
         `Answer required: ${missing.map(({ label }) => label).join(", ")}.`,
       );
+      // Take the user to the first unanswered question.
+      document
+        .getElementById(`question-row-${missing[0].id}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
     if (!score) {
@@ -308,231 +365,300 @@ export function RatingEditor({
   }
 
   return (
-    <section
-      id="rate"
-      ref={formRef}
-      className="panel scroll-mt-20 overflow-hidden"
-    >
-      <header className="border-hairline flex flex-col gap-4 border-b px-5 py-5 sm:flex-row sm:items-end sm:justify-between sm:px-7">
-        <div>
-          <p className="eyebrow">Rate this film</p>
-          <h2 className="type-section-heading text-paper-100 mt-1">
-            Rating form, version {publishedForm.id}
-          </h2>
-        </div>
-        <div className="flex gap-7 sm:text-right">
-          <ScoreReadout label="Second score" value={secondary} scale={scale} />
-          <ScoreReadout
-            label="Score so far"
-            value={score?.overall ?? null}
-            scale={scale}
-            large
-          />
-        </div>
-      </header>
-      {formSections(publishedForm).map((section) => (
-        <div key={section.id}>
-          <div className="border-hairline bg-ink-850 border-y px-5 py-2.5 sm:px-7">
-            <h3 className="type-label text-paper-500 tracking-widest uppercase">
-              {section.title}
-            </h3>
-            {section.description ? (
-              <Markdown className="mt-1">{section.description}</Markdown>
-            ) : null}
+    <>
+      {/* Pinned under the site header while the user scrolls the form, so the
+          score so far and the Save button stay in reach. */}
+      <div
+        ref={bannerRef}
+        aria-hidden={!bannerShown}
+        inert={!bannerShown}
+        className={`border-hairline bg-ink-900/95 fixed inset-x-0 top-[calc(58px+env(safe-area-inset-top))] z-40 border-b shadow-lg shadow-black/30 backdrop-blur-md transition-[translate,opacity] duration-200 ${
+          bannerShown
+            ? "translate-y-0 opacity-100"
+            : "pointer-events-none -translate-y-full opacity-0"
+        }`}
+      >
+        <div className="mx-auto flex max-w-[1480px] items-center gap-3 px-4 py-2 sm:px-[clamp(16px,2.4vw,32px)]">
+          <div className="min-w-0 flex-1">
+            <p className="text-paper-500 truncate text-[11px] font-semibold tracking-[0.12em] uppercase">
+              Rating {filmTitle}
+            </p>
+            <p className="flex items-baseline gap-x-2 whitespace-nowrap">
+              <span className="text-accent-400 font-mono text-2xl leading-8 font-semibold tabular-nums">
+                {formatScore(score?.overall ?? null, scale)}
+              </span>
+              <span className="text-paper-500 text-xs">/ {scale}</span>
+              <span className="text-paper-500 hidden text-xs tabular-nums sm:inline">
+                · second score {formatScore(secondary, scale)}
+              </span>
+              <span className="text-paper-500 truncate text-xs tabular-nums">
+                · {progress.answered} of {progress.total} answered
+              </span>
+            </p>
           </div>
-          <div className="divide-hairline divide-y">
-            {section.questions.map((question) => {
-              const state = conditionStates[question.id] ?? {
-                visible: true,
-                enabled: true,
-              };
-              if (!state.visible) return null;
-              if (isDisplayElement(question))
-                return (
-                  <div
-                    key={question.id}
-                    className={`px-5 py-5 sm:px-7 ${state.enabled ? "" : "opacity-50"}`}
-                  >
-                    <QuestionRenderer
-                      question={question}
-                      value={undefined}
-                      disabled={!state.enabled}
-                      onChange={() => undefined}
-                    />
-                  </div>
+          {/* A wrapper hides Cancel on phones, where the bar has room for
+              one button. QuietButton's own inline-flex would override
+              "hidden" on the button itself. */}
+          {ratedForm ? (
+            <span className="hidden sm:block">
+              <QuietButton onClick={cancel}>Cancel</QuietButton>
+            </span>
+          ) : null}
+          <Button
+            onClick={() => void save()}
+            disabled={saving}
+            className="shrink-0"
+          >
+            {saving ? "Saving…" : "Save"}
+          </Button>
+        </div>
+        {message ? (
+          // No role="status" here: the footer copy already announces it.
+          <p className="text-paper-300 mx-auto line-clamp-2 max-w-[1480px] px-4 pb-2 text-xs sm:px-[clamp(16px,2.4vw,32px)]">
+            {message}
+          </p>
+        ) : null}
+      </div>
+      <section
+        id="rate"
+        ref={formRef}
+        className="panel scroll-mt-20 overflow-hidden"
+      >
+        <header
+          ref={formHeaderRef}
+          className="border-hairline flex flex-col gap-4 border-b px-5 py-5 sm:flex-row sm:items-end sm:justify-between sm:px-7"
+        >
+          <div>
+            <p className="eyebrow">Rate this film</p>
+            <h2 className="type-section-heading text-paper-100 mt-1">
+              Rating form, version {publishedForm.id}
+            </h2>
+          </div>
+          <div className="flex gap-7 sm:text-right">
+            <ScoreReadout
+              label="Second score"
+              value={secondary}
+              scale={scale}
+            />
+            <ScoreReadout
+              label="Score so far"
+              value={score?.overall ?? null}
+              scale={scale}
+              large
+            />
+          </div>
+        </header>
+        {formSections(publishedForm).map((section) => (
+          <div key={section.id}>
+            <div className="border-hairline bg-ink-850 border-y px-5 py-2.5 sm:px-7">
+              <h3 className="type-label text-paper-500 tracking-widest uppercase">
+                {section.title}
+              </h3>
+              {section.description ? (
+                <Markdown className="mt-1">{section.description}</Markdown>
+              ) : null}
+            </div>
+            <div className="divide-hairline divide-y">
+              {section.questions.map((question) => {
+                const state = conditionStates[question.id] ?? {
+                  visible: true,
+                  enabled: true,
+                };
+                if (!state.visible) return null;
+                if (isDisplayElement(question))
+                  return (
+                    <div
+                      key={question.id}
+                      className={`px-5 py-5 sm:px-7 ${state.enabled ? "" : "opacity-50"}`}
+                    >
+                      <QuestionRenderer
+                        question={question}
+                        value={undefined}
+                        disabled={!state.enabled}
+                        onChange={() => undefined}
+                      />
+                    </div>
+                  );
+                const scopedTags = tags.filter(
+                  (tag) => tag.questionKey === question.key,
                 );
-              const scopedTags = tags.filter(
-                (tag) => tag.questionKey === question.key,
-              );
-              const selectedForQuestion = selectedIds.filter((id) =>
-                scopedTags.some((tag) => tag.id === id),
-              );
-              const term = terms.get(question.id);
-              const retained =
-                answerPresent(answers[question.id]) &&
-                term?.reason === "suppressed";
-              if (question.type === "button_scale")
+                const selectedForQuestion = selectedIds.filter((id) =>
+                  scopedTags.some((tag) => tag.id === id),
+                );
+                const term = terms.get(question.id);
+                const retained =
+                  answerPresent(answers[question.id]) &&
+                  term?.reason === "suppressed";
+                if (question.type === "button_scale")
+                  return (
+                    <div
+                      key={question.id}
+                      id={`question-row-${question.id}`}
+                      className={`px-5 py-6 sm:px-7 ${state.enabled ? "" : "opacity-50"}`}
+                      title={
+                        state.enabled
+                          ? undefined
+                          : conditionDescription(question, publishedForm)
+                      }
+                    >
+                      <QuestionRenderer
+                        question={question}
+                        value={answers[question.id]}
+                        disabled={!state.enabled}
+                        onChange={(value) => changeAnswer(question.id, value)}
+                      />
+                      <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_minmax(14rem,1fr)]">
+                        <div>
+                          {retained ? (
+                            <span className="text-accent-400 text-[10px] uppercase">
+                              not counted
+                            </span>
+                          ) : null}
+                          {term ? (
+                            <p className="text-paper-500 text-[10px] tabular-nums">
+                              {term.counted
+                                ? `${term.points.toFixed(3)} weighted points`
+                                : term.reason === "null_option" ||
+                                    term.reason === "na"
+                                  ? "N/A — not counted"
+                                  : `${term.reason?.replaceAll("_", " ") ?? "not counted"}`}
+                            </p>
+                          ) : null}
+                        </div>
+                        {question.rcaEnabled ? (
+                          <RcaMultiselect
+                            label={`${question.label} why tags`}
+                            options={scopedTags}
+                            selectedIds={selectedForQuestion}
+                            onChange={(next) =>
+                              setSelectedIds((current) => [
+                                ...current.filter(
+                                  (id) =>
+                                    !scopedTags.some((tag) => tag.id === id),
+                                ),
+                                ...next,
+                              ])
+                            }
+                            onCreate={(label) => createTag(question.key, label)}
+                          />
+                        ) : null}
+                      </div>
+                    </div>
+                  );
                 return (
                   <div
                     key={question.id}
-                    className={`px-5 py-6 sm:px-7 ${state.enabled ? "" : "opacity-50"}`}
+                    id={`question-row-${question.id}`}
+                    className={`grid gap-4 px-5 py-5 sm:px-7 lg:grid-cols-[12rem_minmax(14rem,1fr)_minmax(14rem,1fr)] ${state.enabled ? "" : "opacity-50"}`}
                     title={
                       state.enabled
                         ? undefined
                         : conditionDescription(question, publishedForm)
                     }
                   >
-                    <QuestionRenderer
-                      question={question}
-                      value={answers[question.id]}
-                      disabled={!state.enabled}
-                      onChange={(value) => changeAnswer(question.id, value)}
-                    />
-                    <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_minmax(14rem,1fr)]">
-                      <div>
-                        {retained ? (
-                          <span className="text-accent-400 text-[10px] uppercase">
-                            not counted
-                          </span>
+                    <div>
+                      <label
+                        htmlFor={`question-${question.id}`}
+                        className="text-paper-100 font-semibold"
+                      >
+                        {question.label}
+                        {question.required ? (
+                          <span className="text-accent-400"> *</span>
                         ) : null}
-                        {term ? (
-                          <p className="text-paper-500 text-[10px] tabular-nums">
-                            {term.counted
-                              ? `${term.points.toFixed(3)} weighted points`
-                              : term.reason === "null_option" ||
-                                  term.reason === "na"
-                                ? "N/A — not counted"
-                                : `${term.reason?.replaceAll("_", " ") ?? "not counted"}`}
-                          </p>
-                        ) : null}
-                      </div>
-                      {question.rcaEnabled ? (
-                        <RcaMultiselect
-                          label={`${question.label} why tags`}
-                          options={scopedTags}
-                          selectedIds={selectedForQuestion}
-                          onChange={(next) =>
-                            setSelectedIds((current) => [
-                              ...current.filter(
-                                (id) =>
-                                  !scopedTags.some((tag) => tag.id === id),
-                              ),
-                              ...next,
-                            ])
-                          }
-                          onCreate={(label) => createTag(question.key, label)}
-                        />
+                      </label>
+                      {question.helpText ? (
+                        <Markdown className="mt-1">
+                          {question.helpText}
+                        </Markdown>
+                      ) : null}
+                      {retained ? (
+                        <span className="text-accent-400 mt-2 inline-block text-[10px] uppercase">
+                          not counted
+                        </span>
                       ) : null}
                     </div>
+                    <div>
+                      <QuestionRenderer
+                        question={question}
+                        value={answers[question.id]}
+                        disabled={!state.enabled}
+                        onChange={(value) => changeAnswer(question.id, value)}
+                      />
+                      {term ? (
+                        <p className="text-paper-500 mt-2 text-[10px] tabular-nums">
+                          {term.counted
+                            ? `${term.points.toFixed(3)} weighted points`
+                            : term.reason === "null_option" ||
+                                term.reason === "na"
+                              ? "N/A — not counted"
+                              : `${term.reason?.replaceAll("_", " ") ?? "not counted"}`}
+                        </p>
+                      ) : null}
+                    </div>
+                    {question.rcaEnabled ? (
+                      <RcaMultiselect
+                        label={`${question.label} why tags`}
+                        options={scopedTags}
+                        selectedIds={selectedForQuestion}
+                        onChange={(next) =>
+                          setSelectedIds((current) => [
+                            ...current.filter(
+                              (id) => !scopedTags.some((tag) => tag.id === id),
+                            ),
+                            ...next,
+                          ])
+                        }
+                        onCreate={(label) => createTag(question.key, label)}
+                      />
+                    ) : (
+                      <div />
+                    )}
                   </div>
                 );
-              return (
-                <div
-                  key={question.id}
-                  className={`grid gap-4 px-5 py-5 sm:px-7 lg:grid-cols-[12rem_minmax(14rem,1fr)_minmax(14rem,1fr)] ${state.enabled ? "" : "opacity-50"}`}
-                  title={
-                    state.enabled
-                      ? undefined
-                      : conditionDescription(question, publishedForm)
-                  }
-                >
-                  <div>
-                    <label
-                      htmlFor={`question-${question.id}`}
-                      className="text-paper-100 font-semibold"
-                    >
-                      {question.label}
-                      {question.required ? (
-                        <span className="text-accent-400"> *</span>
-                      ) : null}
-                    </label>
-                    {question.helpText ? (
-                      <Markdown className="mt-1">{question.helpText}</Markdown>
-                    ) : null}
-                    {retained ? (
-                      <span className="text-accent-400 mt-2 inline-block text-[10px] uppercase">
-                        not counted
-                      </span>
-                    ) : null}
-                  </div>
-                  <div>
-                    <QuestionRenderer
-                      question={question}
-                      value={answers[question.id]}
-                      disabled={!state.enabled}
-                      onChange={(value) => changeAnswer(question.id, value)}
-                    />
-                    {term ? (
-                      <p className="text-paper-500 mt-2 text-[10px] tabular-nums">
-                        {term.counted
-                          ? `${term.points.toFixed(3)} weighted points`
-                          : term.reason === "null_option" ||
-                              term.reason === "na"
-                            ? "N/A — not counted"
-                            : `${term.reason?.replaceAll("_", " ") ?? "not counted"}`}
-                      </p>
-                    ) : null}
-                  </div>
-                  {question.rcaEnabled ? (
-                    <RcaMultiselect
-                      label={`${question.label} why tags`}
-                      options={scopedTags}
-                      selectedIds={selectedForQuestion}
-                      onChange={(next) =>
-                        setSelectedIds((current) => [
-                          ...current.filter(
-                            (id) => !scopedTags.some((tag) => tag.id === id),
-                          ),
-                          ...next,
-                        ])
-                      }
-                      onCreate={(label) => createTag(question.key, label)}
-                    />
-                  ) : (
-                    <div />
-                  )}
-                </div>
-              );
-            })}
+              })}
+            </div>
           </div>
+        ))}
+        <div className="border-hairline bg-ink-850 grid gap-4 border-t px-5 py-5 sm:px-7 lg:grid-cols-[12rem_1fr]">
+          <span className="text-paper-100 font-semibold">Overall why tags</span>
+          <RcaMultiselect
+            label="Overall why tags"
+            options={tags.filter((tag) => tag.questionKey === "overall")}
+            selectedIds={selectedIds.filter(
+              (id) =>
+                tags.find((tag) => tag.id === id)?.questionKey === "overall",
+            )}
+            onChange={(next) =>
+              setSelectedIds((current) => [
+                ...current.filter(
+                  (id) =>
+                    tags.find((tag) => tag.id === id)?.questionKey !==
+                    "overall",
+                ),
+                ...next,
+              ])
+            }
+            onCreate={(label) => createTag("overall", label)}
+          />
         </div>
-      ))}
-      <div className="border-hairline bg-ink-850 grid gap-4 border-t px-5 py-5 sm:px-7 lg:grid-cols-[12rem_1fr]">
-        <span className="text-paper-100 font-semibold">Overall why tags</span>
-        <RcaMultiselect
-          label="Overall why tags"
-          options={tags.filter((tag) => tag.questionKey === "overall")}
-          selectedIds={selectedIds.filter(
-            (id) =>
-              tags.find((tag) => tag.id === id)?.questionKey === "overall",
-          )}
-          onChange={(next) =>
-            setSelectedIds((current) => [
-              ...current.filter(
-                (id) =>
-                  tags.find((tag) => tag.id === id)?.questionKey !== "overall",
-              ),
-              ...next,
-            ])
-          }
-          onCreate={(label) => createTag("overall", label)}
-        />
-      </div>
-      <footer className="border-hairline flex flex-wrap items-center gap-3 border-t px-5 py-5 sm:px-7">
-        <Button onClick={() => void save()} disabled={saving}>
-          {saving ? "Saving…" : "Save rating"}
-        </Button>
-        {ratedForm ? <QuietButton onClick={cancel}>Cancel</QuietButton> : null}
-        <a href="/rubric" className="link-button ml-1">
-          Rating rubric
-        </a>
-        {message ? (
-          <p className="text-paper-300 text-sm" role="status">
-            {message}
-          </p>
-        ) : null}
-      </footer>
-    </section>
+        <footer className="border-hairline flex flex-wrap items-center gap-3 border-t px-5 py-5 sm:px-7">
+          <Button onClick={() => void save()} disabled={saving}>
+            {saving ? "Saving…" : "Save rating"}
+          </Button>
+          {ratedForm ? (
+            <QuietButton onClick={cancel}>Cancel</QuietButton>
+          ) : null}
+          <a href="/rubric" className="link-button ml-1">
+            Rating rubric
+          </a>
+          {message ? (
+            <p className="text-paper-300 text-sm" role="status">
+              {message}
+            </p>
+          ) : null}
+        </footer>
+      </section>
+    </>
   );
 }
 

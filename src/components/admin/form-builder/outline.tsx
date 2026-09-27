@@ -583,33 +583,55 @@ function DragHandle({
   onDragEnd: () => void;
   onMove: (direction: -1 | 1) => void;
 }) {
+  // Drag events do not fire from touch, so touch screens get up and down
+  // buttons in place of the drag handle.
+  const moveButtonClass =
+    "text-paper-500 hover:text-paper-100 hidden h-11 w-9 place-items-center text-sm [@media(pointer:coarse)]:grid";
   return (
-    <button
-      type="button"
-      draggable
-      aria-label={label}
-      title={`${label}. Use arrow keys for keyboard reordering.`}
-      className="text-paper-500 hover:text-paper-100 cursor-grab touch-none px-1 py-2 text-base active:cursor-grabbing"
-      onDragStart={(event) => {
-        event.dataTransfer.effectAllowed = "move";
-        event.dataTransfer.setData(dragType, String(dragId));
-        event.dataTransfer.setData("text/plain", String(dragId));
-        onDragStart();
-      }}
-      onDragEnd={onDragEnd}
-      onKeyDown={(event) => {
-        if (event.key === "ArrowUp") {
-          event.preventDefault();
-          onMove(-1);
-        }
-        if (event.key === "ArrowDown") {
-          event.preventDefault();
-          onMove(1);
-        }
-      }}
-    >
-      ⠿
-    </button>
+    <>
+      <button
+        type="button"
+        aria-label={`${label}: move up`}
+        className={moveButtonClass}
+        onClick={() => onMove(-1)}
+      >
+        ↑
+      </button>
+      <button
+        type="button"
+        aria-label={`${label}: move down`}
+        className={moveButtonClass}
+        onClick={() => onMove(1)}
+      >
+        ↓
+      </button>
+      <button
+        type="button"
+        draggable
+        aria-label={label}
+        title={`${label}. Use arrow keys for keyboard reordering.`}
+        className="text-paper-500 hover:text-paper-100 cursor-grab touch-none px-1 py-2 text-base active:cursor-grabbing [@media(pointer:coarse)]:hidden"
+        onDragStart={(event) => {
+          event.dataTransfer.effectAllowed = "move";
+          event.dataTransfer.setData(dragType, String(dragId));
+          event.dataTransfer.setData("text/plain", String(dragId));
+          onDragStart();
+        }}
+        onDragEnd={onDragEnd}
+        onKeyDown={(event) => {
+          if (event.key === "ArrowUp") {
+            event.preventDefault();
+            onMove(-1);
+          }
+          if (event.key === "ArrowDown") {
+            event.preventDefault();
+            onMove(1);
+          }
+        }}
+      >
+        ⠿
+      </button>
+    </>
   );
 }
 

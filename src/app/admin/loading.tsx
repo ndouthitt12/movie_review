@@ -1,6 +1,6 @@
 export default function Loading() {
   return (
-    <div className="min-h-screen pb-20 md:pb-0">
+    <div className="min-h-screen pb-[calc(5.5rem+env(safe-area-inset-bottom))] min-[901px]:pb-0">
       <main className="mx-auto max-w-7xl px-5 py-10 sm:px-8">
         <div
           className="animate-pulse space-y-6"

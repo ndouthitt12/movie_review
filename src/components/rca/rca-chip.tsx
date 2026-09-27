@@ -30,7 +30,8 @@ export function RcaChip({
           type="button"
           onClick={() => onRemove(tag.id)}
           aria-label={`Remove ${tag.label}`}
-          className="-mr-0.5 leading-none opacity-70 hover:opacity-100"
+          // The ::before box widens the tap area without changing the look.
+          className="relative -mr-0.5 leading-none opacity-70 before:absolute before:-inset-3 before:content-[''] hover:opacity-100"
         >
           ×
         </button>

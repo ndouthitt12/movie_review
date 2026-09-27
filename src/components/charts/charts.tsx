@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { ChartReadout } from "@/components/charts/chart-readout";
 
 export type ChartDatum = {
   label: string;
@@ -297,6 +298,7 @@ export function RadarChart({ data }: { data: readonly ChartDatum[] }) {
       height={height}
       viewBox={`0 0 ${width} ${height}`}
       label="Average attribute profile radar chart"
+      phoneMinWidth=""
     >
       {[0.25, 0.5, 0.75, 1].map((level) => (
         <polygon
@@ -325,7 +327,7 @@ export function RadarChart({ data }: { data: readonly ChartDatum[] }) {
               textAnchor={
                 x < centerX - 20 ? "end" : x > centerX + 20 ? "start" : "middle"
               }
-              className="fill-paper-300 text-[10px]"
+              className="fill-paper-300 text-[12px]"
             >
               {datum.label} {datum.value.toFixed(0)}
             </text>
@@ -393,7 +395,12 @@ export function HeatmapCellGrid({
   const offset = (firstDay.getUTCDay() + 6) % 7;
   const maximum = Math.max(1, ...data.map(({ count }) => count));
   return (
-    <ChartFrame height={height} label={`Watch calendar for ${year}`}>
+    <ChartFrame
+      height={height}
+      label={`Watch calendar for ${year}`}
+      // The calendar panel already scrolls sideways.
+      phoneMinWidth=""
+    >
       {["M", "W", "F"].map((day, index) => (
         <text
           key={day}
@@ -431,21 +438,37 @@ function ChartFrame({
   height,
   label,
   viewBox = `0 0 760 ${height}`,
+  // At phone width a 760-unit chart shrinks its 10px labels to about 4px.
+  // A minimum width keeps them readable, and the chart scrolls sideways.
+  phoneMinWidth = "min-w-[680px] sm:min-w-0",
 }: {
   children: ReactNode;
   height: number;
   label: string;
   viewBox?: string;
+  phoneMinWidth?: string;
 }) {
   return (
-    <svg
-      viewBox={viewBox}
-      role="img"
-      aria-label={label}
-      className="h-auto w-full overflow-visible"
-    >
-      {children}
-    </svg>
+    <ChartReadout>
+      <div
+        className={
+          // Inline-size containment stops the wide chart from widening a
+          // parent grid column, which made the whole page scroll sideways.
+          phoneMinWidth
+            ? "overflow-x-auto overscroll-x-contain [contain:inline-size] sm:overflow-visible sm:[contain:none]"
+            : ""
+        }
+      >
+        <svg
+          viewBox={viewBox}
+          role="img"
+          aria-label={label}
+          className={`h-auto w-full overflow-visible ${phoneMinWidth}`}
+        >
+          {children}
+        </svg>
+      </div>
+    </ChartReadout>
   );
 }
 

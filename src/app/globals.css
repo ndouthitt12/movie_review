@@ -62,6 +62,16 @@ body {
   background: var(--color-ink-950);
   color: var(--color-paper-100);
   font: var(--type-body);
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* iOS Safari zooms the page when a field under 16px gets focus. */
+@media (max-width: 900px) {
+  input:not([type="checkbox"], [type="radio"], [type="range"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
 }
 
 ::selection {
@@ -216,6 +226,18 @@ body {
 .type-score {
   font: var(--type-score);
   font-variant-numeric: tabular-nums;
+}
+
+/* The hero size, smaller on phones where the title sits beside the poster. */
+.film-hero-title {
+  font: var(--type-hero);
+}
+
+@media (max-width: 639px) {
+  .film-hero-title {
+    font-size: 1.625rem;
+    line-height: 1.12;
+  }
 }
 
 .markdown-content {

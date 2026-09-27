@@ -1,7 +1,7 @@
 import Image from "next/image";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { BackLink } from "@/components/back-link";
 import { FilmEditor } from "@/components/film/film-editor";
 import { RatingEditor } from "@/components/film/rating-editor";
 import { WatchLog } from "@/components/film/watch-log";
@@ -70,13 +70,12 @@ async function FilmContent({ params, searchParams }: FilmPageProps) {
 
   return (
     <>
-      <Link
-        href="/library"
-        className="type-label text-paper-500 hover:text-accent-400 tracking-widest uppercase transition-colors"
-      >
-        ← Library
-      </Link>
-      <section className="panel relative mt-5 min-h-[31rem] overflow-hidden">
+      <BackLink
+        fallbackHref="/library"
+        fallbackLabel="Library"
+        className="type-label text-paper-500 hover:text-accent-400 -my-3 inline-block py-3 tracking-widest uppercase transition-colors"
+      />
+      <section className="panel relative mt-5 overflow-hidden md:min-h-[31rem]">
         {backdrop ? (
           <Image
             src={backdrop}
@@ -89,51 +88,52 @@ async function FilmContent({ params, searchParams }: FilmPageProps) {
         ) : null}
         <div className="from-ink-950/95 via-ink-950/80 to-ink-950/65 absolute inset-0 bg-gradient-to-r" />
         <div className="film-grain absolute inset-0 opacity-10" />
-        <div className="relative z-10 grid min-h-[31rem] items-center gap-8 p-6 sm:p-10 md:grid-cols-[14rem_1fr] lg:gap-12">
-          <div className="poster-frame relative aspect-[2/3] w-40 overflow-hidden sm:w-52 md:w-auto">
+        {/* Phones put a small poster beside the title, then the score, then
+            the overview, so the score shows on the first screen. From md up
+            the text is one column beside a large poster. */}
+        <div className="relative z-10 grid grid-cols-[6rem_1fr] items-center gap-x-5 gap-y-6 p-5 sm:grid-cols-[9rem_1fr] sm:p-10 md:min-h-[31rem] md:grid-cols-[14rem_1fr] md:gap-8 lg:gap-12">
+          <div className="poster-frame relative aspect-[2/3] w-full overflow-hidden">
             {poster ? (
               <Image
                 src={poster}
                 alt={`${film.title} poster`}
                 fill
-                sizes="224px"
+                priority
+                sizes="(max-width: 639px) 96px, (max-width: 767px) 144px, 224px"
                 className="object-cover"
               />
             ) : (
-              <div className="type-body text-paper-500 flex h-full items-center justify-center p-5 text-center">
+              <div className="type-meta text-paper-500 flex h-full items-center justify-center p-3 text-center">
                 No poster
               </div>
             )}
           </div>
-          <div>
-            <p className="type-label text-accent-400 tracking-[0.2em] uppercase">
-              {statusLabels[film.status] ?? film.status}
-            </p>
-            <h1 className="type-hero text-paper-100 mt-3 max-w-4xl tracking-[-0.02em]">
-              {film.title}
-            </h1>
-            <p className="type-meta text-paper-300 mt-5">
-              {[
-                film.genrePrimary,
-                film.genreSecondary,
-                film.releaseYear,
-                formatRuntime(film.runtime, ""),
-              ]
-                .filter(Boolean)
-                .join(" · ")}
-            </p>
-            {film.director ? (
-              <p className="type-meta text-paper-500 mt-2">
-                Directed by {film.director}
+          <div className="contents md:flex md:flex-col">
+            <div className="md:order-1">
+              <p className="type-label text-accent-400 tracking-[0.2em] uppercase">
+                {statusLabels[film.status] ?? film.status}
               </p>
-            ) : null}
-            {film.overview ? (
-              <p className="type-body border-hairline text-paper-300 mt-6 max-w-3xl border-t pt-5">
-                {film.overview}
+              <h1 className="film-hero-title text-paper-100 mt-2 max-w-4xl tracking-[-0.02em] md:mt-3">
+                {film.title}
+              </h1>
+              <p className="type-meta text-paper-300 mt-3 md:mt-5">
+                {[
+                  film.genrePrimary,
+                  film.genreSecondary,
+                  film.releaseYear,
+                  formatRuntime(film.runtime, ""),
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
               </p>
-            ) : null}
+              {film.director ? (
+                <p className="type-meta text-paper-500 mt-2">
+                  Directed by {film.director}
+                </p>
+              ) : null}
+            </div>
             {rating ? (
-              <div className="mt-7 flex flex-wrap items-center gap-x-3 gap-y-2">
+              <div className="col-span-2 flex flex-wrap items-center gap-x-3 gap-y-2 md:order-3 md:mt-7">
                 <Stars
                   value={rating.overall / 2}
                   className="text-2xl sm:text-3xl"
@@ -144,6 +144,11 @@ async function FilmContent({ params, searchParams }: FilmPageProps) {
                 <span className="type-body text-paper-500">/ {scale}</span>
               </div>
             ) : null}
+            {film.overview ? (
+              <p className="type-body border-hairline text-paper-300 col-span-2 max-w-3xl border-t pt-5 md:order-2 md:mt-6">
+                {film.overview}
+              </p>
+            ) : null}
           </div>
         </div>
       </section>
@@ -152,6 +157,7 @@ async function FilmContent({ params, searchParams }: FilmPageProps) {
         <RatingEditor
           key={film.id}
           filmId={film.id}
+          filmTitle={film.title}
           genres={getFilmGenres(film)}
           status={film.status}
           publishedForm={publishedForm}

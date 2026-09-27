@@ -107,11 +107,11 @@ export function WatchLog({
                 className="mt-2"
               />
             </label>
-            <label className="text-paper-300 flex h-10 items-center gap-2 text-sm">
+            <label className="text-paper-300 flex h-11 items-center gap-2 text-sm sm:h-10">
               <input
                 name="isRewatch"
                 type="checkbox"
-                className="accent-accent-400"
+                className="accent-accent-400 h-5 w-5 sm:h-4 sm:w-4"
               />{" "}
               Rewatch
             </label>
@@ -139,7 +139,7 @@ export function WatchLog({
                     }
                     className="w-auto"
                   />
-                  <label className="text-paper-300 flex items-center gap-2 text-sm">
+                  <label className="text-paper-300 flex min-h-11 items-center gap-2 text-sm sm:min-h-0">
                     <input
                       type="checkbox"
                       checked={watch.isRewatch}
@@ -152,14 +152,15 @@ export function WatchLog({
                           ),
                         )
                       }
-                      className="accent-accent-400"
+                      className="accent-accent-400 h-5 w-5 sm:h-4 sm:w-4"
                     />{" "}
                     Rewatch
                   </label>
                   <QuietButton onClick={() => save(watch)}>Save</QuietButton>
                   <button
+                    type="button"
                     onClick={() => remove(watch.id)}
-                    className="text-paper-500 hover:text-paper-100 text-xs underline underline-offset-4"
+                    className="text-paper-500 hover:text-paper-100 min-h-11 px-2 text-xs underline underline-offset-4 sm:min-h-0"
                   >
                     Delete
                   </button>

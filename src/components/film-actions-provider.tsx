@@ -14,6 +14,7 @@ import {
 } from "react";
 import { Button, QuietButton } from "@/components/button";
 import { addTmdbFilm } from "@/lib/add-film-client";
+import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
 import { loginHref, useIsOwner } from "@/lib/use-is-owner";
 import { tmdbImage, type TmdbMovieDetails } from "@/lib/tmdb";
 
@@ -34,6 +35,7 @@ export function FilmActionsProvider({ children }: { children: ReactNode }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [libraryFilmId, setLibraryFilmId] = useState<number | null>(null);
+  useBodyScrollLock(target !== null);
 
   const close = useCallback(() => {
     setTarget(null);
@@ -149,13 +151,15 @@ export function FilmActionsProvider({ children }: { children: ReactNode }) {
       {children}
       {target ? (
         <div
-          className="bg-ink-950/92 fixed inset-0 z-[100] grid place-items-center overflow-y-auto p-4 backdrop-blur-sm"
+          className="bg-ink-950/92 fixed inset-0 z-[100] flex overflow-y-auto overscroll-contain p-4 pt-[calc(1rem+env(safe-area-inset-top))] pb-[calc(1rem+env(safe-area-inset-bottom))] backdrop-blur-sm"
           role="dialog"
           aria-modal="true"
           aria-labelledby="quick-add-title"
           ref={dialogRef}
         >
-          <div className="rounded-card border-hairline bg-ink-900 w-full max-w-xl border p-5 shadow-2xl sm:p-7">
+          {/* m-auto centres the card, but a card taller than the screen
+              starts at the top, so its Close button stays reachable. */}
+          <div className="rounded-card border-hairline bg-ink-900 m-auto w-full max-w-xl border p-5 shadow-2xl sm:p-7">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="type-label text-accent-400 tracking-[0.18em] uppercase">
