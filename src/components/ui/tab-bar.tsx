@@ -28,7 +28,7 @@ export function TabBar({
               key={tab.href}
               href={tab.href}
               aria-current={active ? "page" : undefined}
-              className={`relative pb-3 text-sm transition-colors ${active ? "text-paper-100" : "text-paper-500 hover:text-paper-300"}`}
+              className={`relative pt-3 pb-3 text-sm transition-colors ${active ? "text-paper-100" : "text-paper-500 hover:text-paper-300"}`}
             >
               {tab.label}
               {active ? (

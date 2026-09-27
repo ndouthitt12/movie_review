@@ -11,6 +11,7 @@ import {
 } from "react";
 import { Button, QuietButton } from "@/components/button";
 import { Input } from "@/components/input";
+import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
 import { useIsOwner } from "@/lib/use-is-owner";
 import {
   tmdbImage,
@@ -33,6 +34,7 @@ export function AddFilmDialog({ genres, franchiseNames }: Props) {
   const [searching, setSearching] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  useBodyScrollLock(open);
 
   const close = useCallback(() => {
     setOpen(false);
@@ -187,7 +189,8 @@ export function AddFilmDialog({ genres, franchiseNames }: Props) {
       </Button>
       {open ? (
         <div
-          className="bg-ink-950/95 fixed inset-0 z-50 overflow-y-auto px-4 py-8"
+          // z-[100] keeps the dialog above the phone bottom nav (z-50).
+          className="bg-ink-950/95 fixed inset-0 z-[100] overflow-y-auto overscroll-contain px-4 pt-[calc(1rem+env(safe-area-inset-top))] pb-[calc(2rem+env(safe-area-inset-bottom))] sm:py-8"
           role="dialog"
           aria-modal="true"
           aria-labelledby="add-film-title"
@@ -217,6 +220,8 @@ export function AddFilmDialog({ genres, franchiseNames }: Props) {
                   Search TMDB
                   <Input
                     autoFocus
+                    type="search"
+                    enterKeyHint="search"
                     value={query}
                     onChange={(event) => {
                       setQuery(event.target.value);
@@ -355,6 +360,7 @@ function FilmFields({
             <Input
               name="releaseYear"
               type="number"
+              inputMode="numeric"
               min={1888}
               max={2200}
               required
@@ -371,7 +377,7 @@ function FilmFields({
           </select>
         </Field>
         <Field label="Watch order (optional)">
-          <Input name="watchOrder" type="number" min={0} />
+          <Input name="watchOrder" type="number" inputMode="numeric" min={0} />
         </Field>
         <Field label="Primary genre">
           <Input name="genrePrimary" list="genre-options" />
@@ -395,7 +401,13 @@ function FilmFields({
               <Input name="director" />
             </Field>
             <Field label="Runtime in minutes (optional)">
-              <Input name="runtime" type="number" min={1} max={1000} />
+              <Input
+                name="runtime"
+                type="number"
+                inputMode="numeric"
+                min={1}
+                max={1000}
+              />
             </Field>
           </>
         ) : null}

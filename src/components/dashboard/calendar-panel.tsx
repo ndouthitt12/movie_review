@@ -60,7 +60,7 @@ export function CalendarPanel({
           <HeatmapCellGrid year={year} data={days} />
         </div>
         <p className="text-paper-500 mt-3 text-xs">
-          Hover a cell to see the films watched that day.
+          Tap or hover a cell to see the films watched that day.
         </p>
       </div>
       <div className="border-hairline bg-ink-850 grid gap-4 border-t px-5 py-5 sm:grid-cols-[1fr_auto] sm:items-center sm:px-7">
@@ -75,22 +75,20 @@ export function CalendarPanel({
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <input
-            id="weekly-goal-enabled"
-            type="checkbox"
-            checked={goal !== null}
-            onChange={(event) => setGoal(event.target.checked ? 3 : null)}
-            className="accent-accent-400 h-4 w-4"
-          />
-          <label
-            htmlFor="weekly-goal-enabled"
-            className="text-paper-300 text-xs"
-          >
+          {/* The label wraps the box so the whole 44px row is the tap target. */}
+          <label className="text-paper-300 flex min-h-11 items-center gap-2 text-xs sm:min-h-0">
+            <input
+              type="checkbox"
+              checked={goal !== null}
+              onChange={(event) => setGoal(event.target.checked ? 3 : null)}
+              className="accent-accent-400 h-5 w-5 sm:h-4 sm:w-4"
+            />
             Goal
           </label>
           <input
             aria-label="Films per week"
             type="number"
+            inputMode="numeric"
             min={1}
             max={30}
             disabled={goal === null}
@@ -98,7 +96,7 @@ export function CalendarPanel({
             onChange={(event) =>
               setGoal(Math.max(1, Number(event.target.value) || 1))
             }
-            className="border-hairline bg-ink-900 text-paper-100 rounded-ui focus:border-accent-400 h-9 w-16 border px-2 text-sm tabular-nums outline-none"
+            className="border-hairline bg-ink-900 text-paper-100 rounded-ui focus:border-accent-400 h-11 w-16 border px-2 text-sm tabular-nums outline-none sm:h-9"
           />
           <span className="text-paper-500 text-xs">films/week</span>
         </div>

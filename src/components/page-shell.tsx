@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { Suspense, type ReactNode } from "react";
+import { RouteTracker } from "@/components/back-link";
 import { CommandPaletteProvider } from "@/components/command-palette";
 import { FilmActionsProvider } from "@/components/film-actions-provider";
 import { ShellHeader } from "@/components/shell-header";
@@ -11,7 +12,7 @@ export function PageShell({ children }: { children: ReactNode }) {
   return (
     <FilmActionsProvider>
       <CommandPaletteProvider>
-        <div className="min-h-screen pb-20 min-[901px]:pb-0">
+        <div className="min-h-screen pb-[calc(5.5rem+env(safe-area-inset-bottom))] min-[901px]:pb-0">
           <Suspense fallback={null}>
             <ShellHeader displayName={displayName} />
           </Suspense>
@@ -41,6 +42,7 @@ export function PageShell({ children }: { children: ReactNode }) {
           </footer>
           <Suspense fallback={null}>
             <BottomNav />
+            <RouteTracker />
           </Suspense>
         </div>
       </CommandPaletteProvider>

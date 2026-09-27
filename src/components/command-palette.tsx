@@ -17,6 +17,7 @@ import { useFilmActions } from "@/components/film-actions-provider";
 import { jumpPages } from "@/components/nav-items";
 import { SearchIcon } from "@/components/ui/icons";
 import { addTmdbFilm, fetchTmdbDetails } from "@/lib/add-film-client";
+import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
 import type { RateQueue } from "@/lib/rate-queue";
 import { tmdbImage, type TmdbSearchResult } from "@/lib/tmdb";
 
@@ -104,6 +105,7 @@ function Palette({
   const [error, setError] = useState("");
   const [queue, setQueue] = useState<RateQueue | null>(null);
   const trimmed = query.trim();
+  useBodyScrollLock(true);
 
   // In rate mode, offer likely films before anything is typed.
   useEffect(() => {
@@ -240,8 +242,10 @@ function Palette({
   const tmdbStart = offset;
 
   return (
+    // Below sm the palette is a full-screen sheet, so results have the whole
+    // screen above the keyboard. From sm up it is a centred card.
     <div
-      className="bg-ink-950/85 fixed inset-0 z-[110] overflow-y-auto px-4 pt-[10vh] pb-8 backdrop-blur-sm"
+      className="bg-ink-950/85 fixed inset-0 z-[110] backdrop-blur-sm sm:overflow-y-auto sm:px-4 sm:pt-[10dvh] sm:pb-8"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
@@ -250,12 +254,14 @@ function Palette({
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="border-ink-800 bg-ink-900 rounded-card mx-auto w-full max-w-xl overflow-hidden border shadow-2xl"
+        className="bg-ink-900 sm:border-ink-800 sm:rounded-card mx-auto flex h-full w-full max-w-xl flex-col overflow-hidden pt-[env(safe-area-inset-top)] shadow-2xl sm:h-auto sm:border sm:pt-0"
       >
-        <div className="border-hairline flex items-center gap-3 border-b px-4">
+        <div className="border-hairline flex shrink-0 items-center gap-3 border-b px-4">
           <SearchIcon className="text-paper-500 h-5 w-5 shrink-0" />
           <input
             autoFocus
+            type="search"
+            enterKeyHint="go"
             value={query}
             onChange={(event) => {
               setQuery(event.target.value);
@@ -285,7 +291,7 @@ function Palette({
             type="button"
             onClick={onClose}
             aria-keyshortcuts="Escape"
-            className="border-hairline text-paper-300 hover:text-paper-100 rounded border px-2 py-1 text-xs"
+            className="border-hairline text-paper-300 hover:text-paper-100 min-h-11 rounded border px-3 text-sm sm:min-h-0 sm:px-2 sm:py-1 sm:text-xs"
           >
             Close
           </button>
@@ -295,7 +301,7 @@ function Palette({
           id="palette-results"
           role="listbox"
           aria-label="Results"
-          className="max-h-[60vh] overflow-y-auto p-2"
+          className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:max-h-[60dvh] sm:flex-none sm:pb-2"
         >
           {mode === "rate" && !searched ? (
             <p className="text-paper-500 px-3 pt-3 pb-1 text-sm">
@@ -450,7 +456,7 @@ function Option({
       tabIndex={-1}
       onMouseEnter={() => onHover(index)}
       onClick={onChoose}
-      className={`rounded-ui flex w-full items-center gap-3 px-3 py-2 text-left text-sm ${active ? "bg-ink-850" : ""}`}
+      className={`rounded-ui flex min-h-11 w-full items-center gap-3 px-3 py-2 text-left text-sm ${active ? "bg-ink-850" : ""}`}
     >
       {children}
     </button>

@@ -84,6 +84,8 @@ export function LibraryView({
   );
   const [dragging, setDragging] = useState<number | null>(null);
   const [orderError, setOrderError] = useState("");
+  // Phones show only the search box until the user opens the other filters.
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const selectedRcaIds = useMemo(
     () =>
       validRcaFilterIds(
@@ -251,9 +253,18 @@ export function LibraryView({
     "maxScoreExclusive",
     "rca",
   ].some((key) => params.has(key));
+  const activeFilterCount = [
+    "genre",
+    "franchise",
+    "minYear",
+    "maxYear",
+    "minScore",
+    "maxScore",
+    "rca",
+  ].filter((key) => params.has(key)).length;
 
   const tabClass = (active: boolean) =>
-    `relative -mb-px border-b-2 pb-3 text-sm transition-colors ${
+    `relative -mb-px border-b-2 pt-3 pb-3 text-sm transition-colors ${
       active
         ? "border-accent-400 text-paper-100"
         : "text-paper-500 hover:text-paper-300 border-transparent"
@@ -295,7 +306,7 @@ export function LibraryView({
                 type="button"
                 aria-pressed={view === value}
                 onClick={() => setDiscreteParam("view", value)}
-                className={`rounded-md px-3 py-1 text-[0.8rem] ${
+                className={`rounded-md px-3 py-2 text-[0.8rem] sm:py-1 ${
                   view === value
                     ? "bg-ink-850 text-paper-100"
                     : "text-paper-500 hover:text-paper-300"
@@ -309,89 +320,121 @@ export function LibraryView({
       </div>
 
       <div className="border-hairline bg-ink-900 rounded-card mt-5 grid gap-3 border p-4 md:grid-cols-4 lg:grid-cols-8">
-        <Input
-          value={params.get("q") ?? ""}
-          onChange={(event) => setParam("q", event.target.value)}
-          placeholder="Search title or notes"
-          className="md:col-span-2"
-        />
-        <FilterSelect
-          value={params.get("genre") ?? ""}
-          onChange={(value) => setDiscreteParam("genre", value)}
-          label="All genres"
-          options={genres}
-        />
-        <FilterSelect
-          value={params.get("franchise") ?? ""}
-          onChange={(value) => setDiscreteParam("franchise", value)}
-          label="All franchises"
-          options={franchises}
-        />
-        <Input
-          aria-label="Minimum year"
-          type="number"
-          value={params.get("minYear") ?? ""}
-          onChange={(event) => setParam("minYear", event.target.value)}
-          placeholder="Year from"
-        />
-        <Input
-          aria-label="Maximum year"
-          type="number"
-          value={params.get("maxYear") ?? ""}
-          onChange={(event) => setParam("maxYear", event.target.value)}
-          placeholder="Year to"
-        />
-        {mode === "library" ? (
-          <>
-            <Input
-              aria-label={`Minimum score out of ${scale}`}
-              type="number"
-              min="0"
-              max={scale}
-              step="0.1"
-              value={params.get("minScore") ?? ""}
-              onChange={(event) => setParam("minScore", event.target.value)}
-              placeholder="Min score"
-              title={`Out of ${scale}`}
-            />
-            <Input
-              aria-label={`Maximum score out of ${scale}`}
-              type="number"
-              min="0"
-              max={scale}
-              step="0.1"
-              value={params.get("maxScore") ?? ""}
-              onChange={(event) => setParam("maxScore", event.target.value)}
-              placeholder="Max score"
-              title={`Out of ${scale}`}
-            />
-            <div className="md:col-span-3 lg:col-span-3">
-              <RcaMultiselect
-                label="Filter by why tags"
-                options={rcaTags}
-                selectedIds={selectedRcaIds}
-                onChange={(ids) =>
-                  setDiscreteParam("rca", ids.length ? ids.join(",") : null)
-                }
-                placeholder="Filter by why tags…"
+        <div className="flex gap-2 md:col-span-2">
+          <Input
+            type="search"
+            enterKeyHint="search"
+            aria-label="Search title or notes"
+            value={params.get("q") ?? ""}
+            onChange={(event) => setParam("q", event.target.value)}
+            placeholder="Search title or notes"
+          />
+          <button
+            type="button"
+            aria-expanded={filtersOpen}
+            aria-controls="library-filters"
+            onClick={() => setFiltersOpen((open) => !open)}
+            className={`rounded-ui flex h-10 shrink-0 items-center gap-1.5 border px-3 text-sm md:hidden ${
+              filtersOpen || activeFilterCount
+                ? "border-accent-400 text-paper-100"
+                : "border-hairline text-paper-300"
+            }`}
+          >
+            Filters
+            {activeFilterCount ? (
+              <span className="bg-accent-400 grid h-5 min-w-5 place-items-center rounded-full px-1 text-xs font-semibold text-[#1a0e08]">
+                {activeFilterCount}
+              </span>
+            ) : null}
+          </button>
+        </div>
+        {/* On md and up, "contents" lets these fields join the parent grid. */}
+        <div
+          id="library-filters"
+          className={`${filtersOpen ? "grid" : "hidden"} gap-3 md:contents`}
+        >
+          <FilterSelect
+            value={params.get("genre") ?? ""}
+            onChange={(value) => setDiscreteParam("genre", value)}
+            label="All genres"
+            options={genres}
+          />
+          <FilterSelect
+            value={params.get("franchise") ?? ""}
+            onChange={(value) => setDiscreteParam("franchise", value)}
+            label="All franchises"
+            options={franchises}
+          />
+          <Input
+            aria-label="Minimum year"
+            type="number"
+            inputMode="numeric"
+            value={params.get("minYear") ?? ""}
+            onChange={(event) => setParam("minYear", event.target.value)}
+            placeholder="Year from"
+          />
+          <Input
+            aria-label="Maximum year"
+            type="number"
+            inputMode="numeric"
+            value={params.get("maxYear") ?? ""}
+            onChange={(event) => setParam("maxYear", event.target.value)}
+            placeholder="Year to"
+          />
+          {mode === "library" ? (
+            <>
+              <Input
+                aria-label={`Minimum score out of ${scale}`}
+                type="number"
+                inputMode="decimal"
+                min="0"
+                max={scale}
+                step="0.1"
+                value={params.get("minScore") ?? ""}
+                onChange={(event) => setParam("minScore", event.target.value)}
+                placeholder="Min score"
+                title={`Out of ${scale}`}
               />
-            </div>
-            <select
-              value={params.get("rcaMode") === "all" ? "all" : "any"}
-              onChange={(event) =>
-                setDiscreteParam(
-                  "rcaMode",
-                  event.target.value === "all" ? "all" : null,
-                )
-              }
-              aria-label="Why tag match mode"
-              className="select-field"
-            >
-              <option value="any">Match any tag</option>
-              <option value="all">Match all tags</option>
-            </select>
-          </>
-        ) : null}
+              <Input
+                aria-label={`Maximum score out of ${scale}`}
+                type="number"
+                inputMode="decimal"
+                min="0"
+                max={scale}
+                step="0.1"
+                value={params.get("maxScore") ?? ""}
+                onChange={(event) => setParam("maxScore", event.target.value)}
+                placeholder="Max score"
+                title={`Out of ${scale}`}
+              />
+              <div className="md:col-span-3 lg:col-span-3">
+                <RcaMultiselect
+                  label="Filter by why tags"
+                  options={rcaTags}
+                  selectedIds={selectedRcaIds}
+                  onChange={(ids) =>
+                    setDiscreteParam("rca", ids.length ? ids.join(",") : null)
+                  }
+                  placeholder="Filter by why tags…"
+                />
+              </div>
+              <select
+                value={params.get("rcaMode") === "all" ? "all" : "any"}
+                onChange={(event) =>
+                  setDiscreteParam(
+                    "rcaMode",
+                    event.target.value === "all" ? "all" : null,
+                  )
+                }
+                aria-label="Why tag match mode"
+                className="select-field"
+              >
+                <option value="any">Match any tag</option>
+                <option value="all">Match all tags</option>
+              </select>
+            </>
+          ) : null}
+        </div>
       </div>
 
       <p className="text-paper-500 my-5 text-xs tracking-widest uppercase">
@@ -421,14 +464,29 @@ export function LibraryView({
       ) : view === "grid" && isRatingView ? (
         <PosterGrid films={filtered} scale={scale} />
       ) : (
-        <FilmTable
-          films={filtered}
-          scale={scale}
-          ranks={ranks}
-          sort={sort}
-          direction={direction}
-          onSort={changeSort}
-        />
+        <>
+          <FilmCardList
+            films={filtered}
+            scale={scale}
+            ranks={ranks}
+            sort={sort}
+            direction={direction}
+            onSort={(key, dir) => {
+              const next = new URLSearchParams(params.toString());
+              next.set("sort", key);
+              next.set("dir", dir);
+              router.push(`${pathname}?${next.toString()}`, { scroll: false });
+            }}
+          />
+          <FilmTable
+            films={filtered}
+            scale={scale}
+            ranks={ranks}
+            sort={sort}
+            direction={direction}
+            onSort={changeSort}
+          />
+        </>
       )}
     </div>
   );
@@ -489,7 +547,7 @@ function FilmTable({
     ["lastWatchDate", "Last watch"],
   ];
   return (
-    <div className="border-hairline bg-ink-900 rounded-card max-h-[70vh] overflow-auto border">
+    <div className="border-hairline bg-ink-900 rounded-card hidden max-h-[70vh] overflow-auto border md:block">
       <table className="w-full min-w-[1100px] border-collapse text-left text-xs tabular-nums">
         <thead className="bg-ink-850 text-paper-500 sticky top-0 z-10">
           <tr>
@@ -557,6 +615,134 @@ function FilmTable({
   );
 }
 
+const sortLabels: Record<SortKey, string> = {
+  rank: "Rank",
+  title: "Title",
+  releaseYear: "Year",
+  lastWatchDate: "Last watch",
+  overall: "Score",
+  story: "Story",
+  direction: "Direction",
+  writing: "Writing",
+  acting: "Acting",
+  music: "Music",
+  impact: "Impact",
+  rewatchability: "Rewatchability",
+  genreFit: "Genre fit",
+};
+
+/** The phone layout of the library table: one card per film. */
+function FilmCardList({
+  films,
+  scale,
+  ranks,
+  sort,
+  direction,
+  onSort,
+}: {
+  films: LibraryFilm[];
+  scale: ScoreScale;
+  ranks: Map<number, number>;
+  sort: SortKey;
+  direction: string;
+  onSort: (key: SortKey, direction: "asc" | "desc") => void;
+}) {
+  // A sort by an attribute shows that attribute's value next to the score.
+  const attributeSort = (attributes as readonly string[]).includes(sort)
+    ? (sort as (typeof attributes)[number])
+    : null;
+  return (
+    <div className="md:hidden">
+      <div className="mb-3 flex gap-2">
+        <select
+          aria-label="Sort by"
+          value={sort}
+          onChange={(event) =>
+            onSort(
+              event.target.value as SortKey,
+              direction === "desc" ? "desc" : "asc",
+            )
+          }
+          className="select-field bg-ink-850 h-11"
+        >
+          {(Object.keys(sortLabels) as SortKey[]).map((key) => (
+            <option key={key} value={key}>
+              Sort by {sortLabels[key].toLowerCase()}
+            </option>
+          ))}
+        </select>
+        <button
+          type="button"
+          onClick={() => onSort(sort, direction === "asc" ? "desc" : "asc")}
+          aria-label={
+            direction === "asc" ? "Sorted ascending" : "Sorted descending"
+          }
+          className="rounded-ui border-hairline bg-ink-850 text-paper-300 grid h-11 w-11 shrink-0 place-items-center border text-lg"
+        >
+          {direction === "asc" ? "↑" : "↓"}
+        </button>
+      </div>
+      <ol className="divide-hairline border-hairline bg-ink-900 rounded-card divide-y overflow-hidden border">
+        {films.map((film) => (
+          <li key={film.id}>
+            <Link
+              href={`/films/${film.id}`}
+              className="active:bg-ink-850 grid grid-cols-[1.75rem_2.5rem_1fr_auto] items-center gap-3 px-3 py-3"
+            >
+              <span className="text-paper-500 text-right text-sm tabular-nums">
+                {ranks.get(film.id) ?? "—"}
+              </span>
+              <span className="bg-ink-850 relative block aspect-[2/3] overflow-hidden rounded">
+                {film.posterPath ? (
+                  <Image
+                    src={tmdbImage(film.posterPath, "w185")!}
+                    alt=""
+                    fill
+                    sizes="40px"
+                    className="object-cover"
+                  />
+                ) : null}
+              </span>
+              <span className="min-w-0">
+                <span className="text-paper-100 line-clamp-2 font-medium">
+                  {film.title}
+                </span>
+                <span className="text-paper-500 mt-0.5 block text-xs">
+                  {[
+                    film.releaseYear,
+                    attributeSort
+                      ? `${sortLabels[attributeSort]} ${film[attributeSort] ?? "—"}`
+                      : sort === "lastWatchDate"
+                        ? film.lastWatchDate
+                        : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </span>
+                {film.rcaTags.length ? (
+                  <span className="mt-1.5 flex flex-wrap gap-1">
+                    {film.rcaTags.slice(0, 2).map((tag) => (
+                      <RcaChip key={tag.id} tag={tag} compact />
+                    ))}
+                    {film.rcaTags.length > 2 ? (
+                      <span className="text-paper-500 text-[11px]">
+                        +{film.rcaTags.length - 2}
+                      </span>
+                    ) : null}
+                  </span>
+                ) : null}
+              </span>
+              <span className="text-accent-400 font-mono text-base font-semibold tabular-nums">
+                {formatScore(film.overall, scale)}
+              </span>
+            </Link>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
 function PosterGrid({
   films,
   scale,
@@ -582,7 +768,8 @@ function PosterGrid({
                 {film.title}
               </div>
             )}
-            <div className="bg-ink-950/95 absolute inset-x-0 bottom-0 translate-y-full p-3 transition-transform duration-200 group-hover:translate-y-0 group-focus-visible:translate-y-0">
+            {/* Touch screens cannot hover, so they get the tags below the title. */}
+            <div className="bg-ink-950/95 absolute inset-x-0 bottom-0 hidden translate-y-full p-3 transition-transform duration-200 group-hover:translate-y-0 group-focus-visible:translate-y-0 [@media(hover:hover)]:block">
               <p className="text-accent-400 font-mono text-xl font-bold tabular-nums">
                 {formatScore(film.overall, scale, "Unrated")}
               </p>
@@ -611,6 +798,13 @@ function PosterGrid({
               ? `· ${formatScore(film.overall, scale)}`
               : ""}
           </p>
+          {film.rcaTags.length ? (
+            <div className="mt-1.5 flex flex-wrap gap-1 [@media(hover:hover)]:hidden">
+              {film.rcaTags.slice(0, 2).map((tag) => (
+                <RcaChip key={tag.id} tag={tag} compact />
+              ))}
+            </div>
+          ) : null}
         </Link>
       ))}
     </div>
@@ -644,7 +838,7 @@ function WatchOrderList({
             if (draggable) event.preventDefault();
           }}
           onDrop={() => onDrop(film.id)}
-          className={`hover:bg-ink-850 grid grid-cols-[3rem_1fr_auto] items-center gap-3 px-4 py-3 ${draggable ? "cursor-grab" : ""}`}
+          className={`hover:bg-ink-850 grid grid-cols-[2rem_1fr_auto] items-center gap-3 px-4 py-3 sm:grid-cols-[3rem_1fr_auto] ${draggable ? "cursor-grab" : ""}`}
         >
           <span className="text-accent-400 text-sm tabular-nums">
             {String(index + 1).padStart(2, "0")}
@@ -669,7 +863,7 @@ function WatchOrderList({
                 disabled={!draggable || index === 0}
                 onClick={() => onMove(film.id, -1)}
                 aria-label={`Move ${film.title} up`}
-                className="rounded-ui border-hairline text-paper-500 hover:text-paper-100 border px-2 py-1 text-xs disabled:opacity-30"
+                className="rounded-ui border-hairline text-paper-500 hover:text-paper-100 grid h-11 w-11 place-items-center border text-sm disabled:opacity-30 sm:h-8 sm:w-8 sm:text-xs"
               >
                 ↑
               </button>
@@ -678,7 +872,7 @@ function WatchOrderList({
                 disabled={!draggable || index === films.length - 1}
                 onClick={() => onMove(film.id, 1)}
                 aria-label={`Move ${film.title} down`}
-                className="rounded-ui border-hairline text-paper-500 hover:text-paper-100 border px-2 py-1 text-xs disabled:opacity-30"
+                className="rounded-ui border-hairline text-paper-500 hover:text-paper-100 grid h-11 w-11 place-items-center border text-sm disabled:opacity-30 sm:h-8 sm:w-8 sm:text-xs"
               >
                 ↓
               </button>

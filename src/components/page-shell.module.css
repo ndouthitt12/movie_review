@@ -1,8 +1,10 @@
 .header {
   position: sticky;
-  top: env(safe-area-inset-top, 0px);
+  top: 0;
   z-index: 50;
+  box-sizing: content-box;
   height: 58px;
+  padding-top: env(safe-area-inset-top, 0px);
   border-bottom: 1px solid var(--color-hairline);
   background: color-mix(in srgb, var(--color-ink-900) 94%, transparent);
   backdrop-filter: blur(14px);
@@ -285,17 +287,29 @@
   }
 
   .headerInner {
-    gap: 12px;
+    gap: 8px;
   }
 
   .command kbd {
     display: none;
   }
 
+  /* 44px is the smallest comfortable tap target on a phone. */
   .command {
-    width: 36px;
+    width: 44px;
+    height: 44px;
     justify-content: center;
     padding: 0;
+  }
+
+  .iconButton,
+  .userChip {
+    width: 44px;
+    height: 44px;
+  }
+
+  .accountArea {
+    gap: 0;
   }
 
   .main {

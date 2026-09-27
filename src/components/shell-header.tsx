@@ -35,13 +35,13 @@ export function ShellHeader({ displayName }: { displayName: string }) {
   const [activityLoading, setActivityLoading] = useState(false);
 
   useEffect(() => {
-    function closeMenus(event: MouseEvent) {
+    function closeMenus(event: PointerEvent) {
       const target = event.target as Node;
       if (!accountRef.current?.contains(target)) setAccountOpen(false);
       if (!activityRef.current?.contains(target)) setActivityOpen(false);
     }
-    document.addEventListener("mousedown", closeMenus);
-    return () => document.removeEventListener("mousedown", closeMenus);
+    document.addEventListener("pointerdown", closeMenus);
+    return () => document.removeEventListener("pointerdown", closeMenus);
   }, []);
 
   async function logOut() {
